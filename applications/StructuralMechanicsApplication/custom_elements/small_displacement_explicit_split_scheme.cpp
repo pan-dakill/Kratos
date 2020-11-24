@@ -117,18 +117,20 @@ void SmallDisplacementExplicitSplitScheme::AddExplicitContribution(
         CalculateLumpedDampingVector(element_damping_vector, rCurrentProcessInfo);
 
         for (IndexType i = 0; i < number_of_nodes; ++i) {
-            double& r_nodal_stiffness = r_geom[i].GetValue(NODAL_PAUX);
-            double& r_nodal_damping = r_geom[i].GetValue(NODAL_DISPLACEMENT_DAMPING);
+            array_1d<double, 3>& r_nodal_stiffness = r_geom[i].GetValue(NODAL_DIAGONAL_STIFFNESS);
+            array_1d<double, 3>& r_nodal_damping = r_geom[i].GetValue(NODAL_DIAGONAL_DAMPING);
             const IndexType index = i * dimension;
 
             #pragma omp atomic
             r_geom[i].GetValue(NODAL_MASS) += element_mass_vector[index];
 
-            #pragma omp atomic
-            r_nodal_stiffness += element_stiffness_vector[index];
+            for (IndexType j = 0; j < dimension; ++j) {
+                #pragma omp atomic
+                r_nodal_stiffness[j] += element_stiffness_vector[index+j];
 
-            #pragma omp atomic
-            r_nodal_damping += element_damping_vector[index];
+                #pragma omp atomic
+                r_nodal_damping[j] += element_damping_vector[index+j];
+            }
         }
     }
 
@@ -155,6 +157,39 @@ void SmallDisplacementExplicitSplitScheme::AddExplicitContribution(
 
     Vector internal_forces = ZeroVector(element_size);
     this->CalculateInternalForces(internal_forces,rCurrentProcessInfo);
+
+    // VectorType displacement_vector(element_size);
+    // GetValuesVector(displacement_vector);
+
+    // // VectorType k_a(element_size);
+    // MatrixType stiffness_matrix( element_size, element_size );
+    // noalias(stiffness_matrix) = ZeroMatrix(element_size,element_size);
+    // this->CalculateLeftHandSide(stiffness_matrix, rCurrentProcessInfo);
+    // // noalias(k_a) = prod(stiffness_matrix,displacement_vector);
+
+    // // VectorType k_hat_a(element_size);
+    // // MatrixType non_diagonal_stiffness_matrix( element_size, element_size );
+    // // noalias(non_diagonal_stiffness_matrix) = ZeroMatrix(element_size,element_size);
+    // // this->CalculateLeftHandSide(non_diagonal_stiffness_matrix, rCurrentProcessInfo);
+    // // for (IndexType i = 0; i < element_size; ++i)
+    // //     non_diagonal_stiffness_matrix(i,i) = 0.0;
+    // // noalias(k_hat_a) = prod(non_diagonal_stiffness_matrix,displacement_vector);
+
+    // VectorType element_mass_vector(element_size);
+    // this->CalculateLumpedMassVector(element_mass_vector);
+    // VectorType M_d_a(element_size);
+    // MatrixType diagonal_mass_matrix( element_size, element_size );
+    // noalias(diagonal_mass_matrix) = ZeroMatrix(element_size,element_size);
+    // for (IndexType i = 0; i < element_size; ++i)
+    //     diagonal_mass_matrix(i,i) = element_mass_vector[i];
+    // noalias(M_d_a) = prod(diagonal_mass_matrix,displacement_vector);
+
+    // VectorType k_d_a(element_size);
+    // MatrixType diagonal_stiffness_matrix( element_size, element_size );
+    // noalias(diagonal_stiffness_matrix) = ZeroMatrix(element_size,element_size);
+    // for (IndexType i = 0; i < element_size; ++i)
+    //     diagonal_stiffness_matrix(i,i) = stiffness_matrix(i,i);
+    // noalias(k_d_a) = prod(diagonal_stiffness_matrix,displacement_vector);
 
     // Computing the force residual
     if (rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == FORCE_RESIDUAL) {
