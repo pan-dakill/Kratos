@@ -241,7 +241,10 @@ public:
         const array_1d<double, 3> zero_array = ZeroVector(3);
         // Initializing the variables
         VariableUtils().SetVariable(FORCE_RESIDUAL, zero_array,r_nodes);
-        VariableUtils().SetVariable(NODAL_INERTIA, zero_array,r_nodes);
+        VariableUtils().SetVariable(NODAL_INERTIA, zero_array,r_nodes); // K*a
+        // VariableUtils().SetVariable(FRACTIONAL_ACCELERATION, zero_array,r_nodes); // Kd*a
+        // VariableUtils().SetVariable(MIDDLE_VELOCITY, zero_array,r_nodes); // K^*a=K*a-Kd*a
+        // VariableUtils().SetVariable(MIDDLE_ANGULAR_VELOCITY, zero_array,r_nodes); // (Kd*a)/(K^*a)
 
         KRATOS_CATCH("")
     }
@@ -274,10 +277,16 @@ public:
             it_node->SetValue(NODAL_DIAGONAL_DAMPING,zero_vector);
             array_1d<double, 3>& r_current_impulse = it_node->FastGetSolutionStepValue(NODAL_DISPLACEMENT_STIFFNESS);
             array_1d<double, 3>& r_external_forces = it_node->FastGetSolutionStepValue(FORCE_RESIDUAL);
-            array_1d<double, 3>& r_current_internal_force = it_node->FastGetSolutionStepValue(NODAL_INERTIA);
+            array_1d<double, 3>& r_current_internal_force = it_node->FastGetSolutionStepValue(NODAL_INERTIA); // K*a
+            // array_1d<double, 3>& r_kda = it_node->FastGetSolutionStepValue(FRACTIONAL_ACCELERATION); // Kd*a
+            // array_1d<double, 3>& r_khata = it_node->FastGetSolutionStepValue(MIDDLE_VELOCITY); // K^*a=K*a-Kd*a
+            // array_1d<double, 3>& r_kda_over_khata = it_node->FastGetSolutionStepValue(MIDDLE_ANGULAR_VELOCITY); // (Kd*a)/(K^*a)
             noalias(r_current_impulse) = ZeroVector(3);
             noalias(r_external_forces) = ZeroVector(3);
             noalias(r_current_internal_force) = ZeroVector(3);
+            // noalias(r_kda) = ZeroVector(3);
+            // noalias(r_khata) = ZeroVector(3);
+            // noalias(r_kda_over_khata) = ZeroVector(3);
         }
 
         KRATOS_CATCH("")
@@ -388,6 +397,28 @@ public:
         const ProcessInfo& r_current_process_info = rModelPart.GetProcessInfo();
         NodesArrayType& r_nodes = rModelPart.Nodes();
         const auto it_node_begin = rModelPart.NodesBegin();
+
+        // #pragma omp parallel for
+        // for (int i = 0; i < static_cast<int>(r_nodes.size()); ++i) {
+        //     NodeIterator itCurrentNode = it_node_begin + i;
+        //     const array_1d<double, 3>& r_current_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA); // internal_force: int(Bt*sigma)
+        //     array_1d<double, 3>& r_kda = itCurrentNode->FastGetSolutionStepValue(FRACTIONAL_ACCELERATION); // Kd*a
+        //     array_1d<double, 3>& r_khata = itCurrentNode->FastGetSolutionStepValue(MIDDLE_VELOCITY); // K^*a=K*a-Kd*a
+        //     array_1d<double, 3>& r_kda_over_khata = itCurrentNode->FastGetSolutionStepValue(MIDDLE_ANGULAR_VELOCITY); // (Kd*a)/(K^*a)
+        //     const array_1d<double, 3>& r_current_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT);
+        //     const array_1d<double, 3>& r_nodal_stiffness = itCurrentNode->GetValue(NODAL_DIAGONAL_STIFFNESS);
+        //     for(unsigned int j=0; j<3; ++j){
+        //         r_kda[j] = r_nodal_stiffness[j]*r_current_displacement[j];
+        //         r_khata[j] = r_current_internal_force[j]-r_nodal_stiffness[j]*r_current_displacement[j];
+        //         if(std::abs(r_khata[j]) > numerical_limit){
+        //             r_kda_over_khata[j] = r_kda[j]/r_khata[j];
+        //         } else if(r_khata[j] > 0.0) {
+        //             r_kda_over_khata[j] = r_kda[j]/numerical_limit;
+        //         } else if(r_khata[j] < 0.0) {
+        //             r_kda_over_khata[j] = -r_kda[j]/numerical_limit;
+        //         }
+        //     }
+        // }
 
         // double omega_min = 1.0e30;
         // double omega_max = -1.0e30;
