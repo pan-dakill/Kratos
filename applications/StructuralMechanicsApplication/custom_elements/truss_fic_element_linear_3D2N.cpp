@@ -75,15 +75,16 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
         VectorType element_damping_vector(msLocalSize);
         CalculateLumpedDampingVector(element_damping_vector, rCurrentProcessInfo);
 
-        for (IndexType i = 0; i < number_of_nodes; ++i) {
+        for (SizeType i = 0; i < msNumberOfNodes; ++i) {
+            double& r_nodal_mass = r_geom[i].GetValue(NODAL_MASS);
             array_1d<double, 3>& r_nodal_stiffness = r_geom[i].GetValue(NODAL_DIAGONAL_STIFFNESS);
             array_1d<double, 3>& r_nodal_damping = r_geom[i].GetValue(NODAL_DIAGONAL_DAMPING);
-            const IndexType index = i * dimension;
+            int index = i * msDimension;
 
             #pragma omp atomic
-            r_geom[i].GetValue(NODAL_MASS) += element_mass_vector[index];
+            r_nodal_mass += element_mass_vector[index];
 
-            for (IndexType j = 0; j < dimension; ++j) {
+            for (SizeType j = 0; j < msDimension; ++j) {
                 #pragma omp atomic
                 r_nodal_stiffness[j] += element_stiffness_vector[index+j];
 
