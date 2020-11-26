@@ -429,14 +429,15 @@ public:
         // #pragma omp parallel for
         // for (int i = 0; i < static_cast<int>(r_nodes.size()); ++i) {
         //     NodeIterator itCurrentNode = it_node_begin + i;
-        //     // const array_1d<double, 3>& r_current_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT);
+            // const array_1d<double, 3>& r_current_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT);
 
-        //     // const array_1d<double, 3>& r_current_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA);
-        //     const array_1d<double, 3>& r_nodal_stiffness = itCurrentNode->GetValue(NODAL_DIAGONAL_STIFFNESS);
-        //     const double nodal_mass = itCurrentNode->GetValue(NODAL_MASS);
+            // const array_1d<double, 3>& r_current_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA);
+            // const array_1d<double, 3>& r_nodal_stiffness = itCurrentNode->GetValue(NODAL_DIAGONAL_STIFFNESS);
+            // const double nodal_mass = itCurrentNode->GetValue(NODAL_MASS);
 
-        //     KRATOS_WATCH(itCurrentNode->Id())
-        //     // KRATOS_WATCH(nodal_mass*r_current_displacement)
+            // KRATOS_WATCH(itCurrentNode->Id())
+            // KRATOS_WATCH(nodal_mass)
+            // KRATOS_WATCH(r_nodal_stiffness)
 
         //     for(unsigned int j=0; j<3; ++j){
         //         double omega_i=std::sqrt(r_nodal_stiffness[j]/nodal_mass);

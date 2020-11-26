@@ -75,6 +75,10 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
         VectorType element_damping_vector(msLocalSize);
         CalculateLumpedDampingVector(element_damping_vector, rCurrentProcessInfo);
 
+        // KRATOS_WATCH(this->Id())
+        // KRATOS_WATCH(element_mass_vector)
+        // KRATOS_WATCH(element_stiffness_vector)
+
         for (SizeType i = 0; i < msNumberOfNodes; ++i) {
             double& r_nodal_mass = r_geom[i].GetValue(NODAL_MASS);
             array_1d<double, 3>& r_nodal_stiffness = r_geom[i].GetValue(NODAL_DIAGONAL_STIFFNESS);
