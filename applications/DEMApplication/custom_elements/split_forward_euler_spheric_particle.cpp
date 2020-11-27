@@ -66,7 +66,7 @@ void SplitForwardEulerSphericParticle::Initialize(const ProcessInfo& r_process_i
     node.SetValue(BETA_RAYLEIGH,0.0);
     node.SetValue(THETA_1,0.0);
     node.SetValue(THETA_2,0.0);
-    node.SetValue(THETA_3,0.0); // TODO
+    // node.SetValue(THETA_3,0.0); // TODO
     array_1d<double,3> zero_vector = ZeroVector(3);
     node.SetValue(EXTERNAL_FORCES,zero_vector);
     node.SetValue(ROTATIONAL_EXTERNAL_FORCES,zero_vector);
@@ -536,8 +536,10 @@ void SplitForwardEulerSphericParticle::ComputeBallToRigidFaceContactForce(Spheri
 }// ComputeBallToRigidFaceContactForce
 
 void SplitForwardEulerSphericParticle::ComputeBallToBallStiffness(SphericParticle::ParticleDataBuffer & data_buffer,
-                                                                            array_1d<double, 3>& r_nodal_stiffness,
-                                                                            array_1d<double, 3>& r_nodal_rotational_stiffness)
+                                                                            double& r_nodal_stiffness,
+                                                                            double& r_nodal_rotational_stiffness)
+                                                                            // array_1d<double, 3>& r_nodal_stiffness,
+                                                                            // array_1d<double, 3>& r_nodal_rotational_stiffness)
 {
     KRATOS_TRY
 
@@ -549,28 +551,28 @@ void SplitForwardEulerSphericParticle::ComputeBallToBallStiffness(SphericParticl
             mDiscontinuumConstitutiveLaw->InitializeContact(this, data_buffer.mpOtherParticle, data_buffer.mIndentation);
 
             // TODO: do for the rest
-            array_1d<double, 3> LocalStiffness;
-            array_1d<double, 3> GlobalStiffness;
-            LocalStiffness[0] = mDiscontinuumConstitutiveLaw->mKt;
-            LocalStiffness[1] = LocalStiffness[0];
-            LocalStiffness[2] = mDiscontinuumConstitutiveLaw->mKn;
-            double LocalCoordSystem[3] = {0.0};
-            GeometryFunctions::ComputeContactLocalCoordSystem(data_buffer.mOtherToMeVector, data_buffer.mDistance, LocalCoordSystem);
-            GeometryFunctions::VectorLocal2Global(LocalCoordSystem, LocalStiffness, GlobalStiffness);
-            noalias(r_nodal_stiffness) += GlobalStiffness;
+            // array_1d<double, 3> LocalStiffness;
+            // array_1d<double, 3> GlobalStiffness;
+            // LocalStiffness[0] = mDiscontinuumConstitutiveLaw->mKt;
+            // LocalStiffness[1] = LocalStiffness[0];
+            // LocalStiffness[2] = mDiscontinuumConstitutiveLaw->mKn;
+            // double LocalCoordSystem[3] = {0.0};
+            // GeometryFunctions::ComputeContactLocalCoordSystem(data_buffer.mOtherToMeVector, data_buffer.mDistance, LocalCoordSystem);
+            // GeometryFunctions::VectorLocal2Global(LocalCoordSystem, LocalStiffness, GlobalStiffness);
+            // noalias(r_nodal_stiffness) += GlobalStiffness;
 
-            if (this->Is(DEMFlags::HAS_ROTATION) && !data_buffer.mMultiStageRHS) {
-                // TODO: is this right ?
-                double arm_length = GetInteractionRadius() - data_buffer.mIndentation;
-                array_1d<double, 3> LocalRotationalStiffness;
-                LocalRotationalStiffness[0] = LocalStiffness[0] * arm_length*1.0;
-                LocalRotationalStiffness[1] = LocalRotationalStiffness[0];
-                LocalRotationalStiffness[2] = LocalStiffness[2] * arm_length*1.0;
-                array_1d<double, 3> GlobalRotationalStiffness;
-                GeometryFunctions::VectorLocal2Global(LocalCoordSystem, LocalRotationalStiffness, GlobalRotationalStiffness);
+            // if (this->Is(DEMFlags::HAS_ROTATION) && !data_buffer.mMultiStageRHS) {
+            //     // TODO: is this right ?
+            //     double arm_length = GetInteractionRadius() - data_buffer.mIndentation;
+            //     array_1d<double, 3> LocalRotationalStiffness;
+            //     LocalRotationalStiffness[0] = LocalStiffness[0] * arm_length*1.0;
+            //     LocalRotationalStiffness[1] = LocalRotationalStiffness[0];
+            //     LocalRotationalStiffness[2] = LocalStiffness[2] * arm_length*1.0;
+            //     array_1d<double, 3> GlobalRotationalStiffness;
+            //     GeometryFunctions::VectorLocal2Global(LocalCoordSystem, LocalRotationalStiffness, GlobalRotationalStiffness);
 
-                noalias(r_nodal_rotational_stiffness) += GlobalRotationalStiffness;
-            }
+            //     noalias(r_nodal_rotational_stiffness) += GlobalRotationalStiffness;
+            // }
         }
     }// for each neighbor
 
