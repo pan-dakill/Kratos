@@ -434,6 +434,8 @@ add_subdirectory(external_libraries/gidpost)
 add_subdirectory(kratos)
 
 # Configure kratos applications
+# Please note that all applications, research_applications and external_applications will
+# be built in the /applications folder
 message("-- Configuring applications (ENV):")
 set_property(GLOBAL PROPERTY LIST_OF_APPLICATIONS_ADDED_THROUGH_DEPENDENCIES)
 if(DEFINED ENV{KRATOS_APPLICATIONS})
