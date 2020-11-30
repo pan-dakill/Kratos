@@ -158,8 +158,8 @@ void SmallDisplacementExplicitSplitScheme::AddExplicitContribution(
     Vector internal_forces = ZeroVector(element_size);
     this->CalculateInternalForces(internal_forces,rCurrentProcessInfo);
 
-    // VectorType displacement_vector(element_size);
-    // GetValuesVector(displacement_vector);
+    VectorType displacement_vector(element_size);
+    GetValuesVector(displacement_vector);
 
     // VectorType k_a(element_size);
     // MatrixType stiffness_matrix( element_size, element_size );
@@ -167,13 +167,13 @@ void SmallDisplacementExplicitSplitScheme::AddExplicitContribution(
     // this->CalculateLeftHandSide(stiffness_matrix, rCurrentProcessInfo);
     // noalias(k_a) = prod(stiffness_matrix,displacement_vector);
 
-    // VectorType k_hat_a(element_size);
-    // MatrixType non_diagonal_stiffness_matrix( element_size, element_size );
-    // noalias(non_diagonal_stiffness_matrix) = ZeroMatrix(element_size,element_size);
-    // this->CalculateLeftHandSide(non_diagonal_stiffness_matrix, rCurrentProcessInfo);
-    // for (IndexType i = 0; i < element_size; ++i)
-    //     non_diagonal_stiffness_matrix(i,i) = 0.0;
-    // noalias(k_hat_a) = prod(non_diagonal_stiffness_matrix,displacement_vector);
+    VectorType k_hat_a(element_size);
+    MatrixType non_diagonal_stiffness_matrix( element_size, element_size );
+    noalias(non_diagonal_stiffness_matrix) = ZeroMatrix(element_size,element_size);
+    this->CalculateLeftHandSide(non_diagonal_stiffness_matrix, rCurrentProcessInfo);
+    for (IndexType i = 0; i < element_size; ++i)
+        non_diagonal_stiffness_matrix(i,i) = 0.0;
+    noalias(k_hat_a) = prod(non_diagonal_stiffness_matrix,displacement_vector);
 
     // VectorType element_mass_vector(element_size);
     // this->CalculateLumpedMassVector(element_mass_vector);
@@ -197,7 +197,7 @@ void SmallDisplacementExplicitSplitScheme::AddExplicitContribution(
             const IndexType index = dimension * i;
             array_1d<double, 3>& r_external_forces = GetGeometry()[i].FastGetSolutionStepValue(FORCE_RESIDUAL);
             array_1d<double, 3>& r_internal_forces = GetGeometry()[i].FastGetSolutionStepValue(NODAL_INERTIA);
-            // array_1d<double, 3>& r_k_hat_a = GetGeometry()[i].FastGetSolutionStepValue(FRACTIONAL_ACCELERATION);
+            array_1d<double, 3>& r_k_hat_a = GetGeometry()[i].FastGetSolutionStepValue(MIDDLE_VELOCITY);
 
             for (IndexType j = 0; j < dimension; ++j) {
                 #pragma omp atomic
@@ -206,8 +206,8 @@ void SmallDisplacementExplicitSplitScheme::AddExplicitContribution(
                 #pragma omp atomic
                 r_internal_forces[j] += internal_forces[index + j];
 
-                // #pragma omp atomic
-                // r_k_hat_a[j] += k_hat_a[index + j];
+                #pragma omp atomic
+                r_k_hat_a[j] += k_hat_a[index + j];
             }
         }
     }
