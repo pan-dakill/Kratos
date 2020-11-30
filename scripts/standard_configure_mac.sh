@@ -23,6 +23,7 @@ export CXX=/usr/local/opt/llvm/bin/clang++
 export KRATOS_SOURCE="${KRATOS_SOURCE:-"$( cd "$(dirname "$0")" ; pwd -P )"/..}"
 export KRATOS_BUILD="${KRATOS_SOURCE}/build"
 export KRATOS_APP_DIR="${KRATOS_SOURCE}/applications"
+export KRATOS_APP_DIR="${KRATOS_SOURCE}/research_applications"
 export KRATOS_INSTALL_PYTHON_USING_LINKS=ON
 
 # Set basic configuration

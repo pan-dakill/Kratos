@@ -23,6 +23,7 @@ export CXX=g++
 export KRATOS_SOURCE="kratos_folder/Kratos"
 export KRATOS_BUILD="${KRATOS_SOURCE}/build"
 export KRATOS_APP_DIR="${KRATOS_SOURCE}/applications"
+export RESEARCH_APP_DIR="${KRATOS_SOURCE}/research_applications"
 # export KRATOS_INSTALL_PYTHON_USING_LINKS=ON
 
 # Set basic configuration
