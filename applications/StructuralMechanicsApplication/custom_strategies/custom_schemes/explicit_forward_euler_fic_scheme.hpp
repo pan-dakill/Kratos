@@ -243,7 +243,7 @@ public:
         VariableUtils().SetVariable(FORCE_RESIDUAL, zero_array,r_nodes);
         VariableUtils().SetVariable(NODAL_INERTIA, zero_array,r_nodes); // K*a (internal_forces)
         // VariableUtils().SetVariable(FRACTIONAL_ACCELERATION, zero_array,r_nodes); // Kd*a
-        VariableUtils().SetVariable(MIDDLE_VELOCITY, zero_array,r_nodes); // K^*a=K*a-Kd*a
+        // VariableUtils().SetVariable(MIDDLE_VELOCITY, zero_array,r_nodes); // K^*a=K*a-Kd*a
         // VariableUtils().SetVariable(FRACTIONAL_ANGULAR_ACCELERATION, zero_array,r_nodes); // K*a
         // VariableUtils().SetVariable(MIDDLE_ANGULAR_VELOCITY, zero_array,r_nodes); // (Kd*a)/(K^*a)
 
@@ -280,14 +280,14 @@ public:
             array_1d<double, 3>& r_external_forces = it_node->FastGetSolutionStepValue(FORCE_RESIDUAL);
             array_1d<double, 3>& r_current_internal_force = it_node->FastGetSolutionStepValue(NODAL_INERTIA); // K*a (internal_forces)
             // array_1d<double, 3>& r_kda = it_node->FastGetSolutionStepValue(FRACTIONAL_ACCELERATION); // Kd*a
-            array_1d<double, 3>& r_khata = it_node->FastGetSolutionStepValue(MIDDLE_VELOCITY); // K^*a=K*a-Kd*a
+            // array_1d<double, 3>& r_khata = it_node->FastGetSolutionStepValue(MIDDLE_VELOCITY); // K^*a=K*a-Kd*a
             // array_1d<double, 3>& r_ka = it_node->FastGetSolutionStepValue(FRACTIONAL_ANGULAR_ACCELERATION); // K*a
             // array_1d<double, 3>& r_kda_over_khata = it_node->FastGetSolutionStepValue(MIDDLE_ANGULAR_VELOCITY); // (Kd*a)/(K^*a)
             noalias(r_current_impulse) = ZeroVector(3);
             noalias(r_external_forces) = ZeroVector(3);
             noalias(r_current_internal_force) = ZeroVector(3);
             // noalias(r_kda) = ZeroVector(3);
-            noalias(r_khata) = ZeroVector(3);
+            // noalias(r_khata) = ZeroVector(3);
             // noalias(r_ka) = ZeroVector(3);
             // noalias(r_kda_over_khata) = ZeroVector(3);
         }
@@ -305,6 +305,8 @@ public:
     ) override
     {
         KRATOS_TRY;
+
+        this->CalculateAndAddRHS(rModelPart);
 
         // The current process info
         const ProcessInfo& r_current_process_info = rModelPart.GetProcessInfo();
@@ -334,6 +336,8 @@ public:
             this->PredictTranslationalDegreesOfFreedom(it_node_begin + i, disppos, dim);
         } // for Node parallel
 
+        InitializeResidual(rModelPart);
+
         this->CalculateAndAddRHS(rModelPart);
 
         // TODO: STOP CRITERION
@@ -356,11 +360,11 @@ public:
     {
         array_1d<double, 3>& r_current_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT);
         const array_1d<double, 3>& r_current_impulse = itCurrentNode->FastGetSolutionStepValue(NODAL_DISPLACEMENT_STIFFNESS);
-        // const array_1d<double, 3>& r_current_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA);
+        const array_1d<double, 3>& r_current_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA);
         const double nodal_mass = itCurrentNode->GetValue(NODAL_MASS);
-        // const array_1d<double, 3>& r_nodal_stiffness = itCurrentNode->GetValue(NODAL_DIAGONAL_STIFFNESS);
+        const array_1d<double, 3>& r_nodal_stiffness = itCurrentNode->GetValue(NODAL_DIAGONAL_STIFFNESS);
         const array_1d<double, 3>& r_nodal_damping = itCurrentNode->GetValue(NODAL_DIAGONAL_DAMPING);
-        const array_1d<double, 3>& r_current_k_hat_a = itCurrentNode->FastGetSolutionStepValue(MIDDLE_VELOCITY);
+        // const array_1d<double, 3>& r_current_k_hat_a = itCurrentNode->FastGetSolutionStepValue(MIDDLE_VELOCITY);
 
         std::array<bool, 3> fix_displacements = {false, false, false};
         fix_displacements[0] = (itCurrentNode->GetDof(DISPLACEMENT_X, DisplacementPosition).IsFixed());
@@ -369,39 +373,39 @@ public:
             fix_displacements[2] = (itCurrentNode->GetDof(DISPLACEMENT_Z, DisplacementPosition + 2).IsFixed());
 
         // Solution of the explicit equation:
-        // if ( (nodal_mass + mDeltaTime*mTheta2*r_nodal_damping[0]) > numerical_limit){
-        //     for (IndexType j = 0; j < DomainSize; j++) {
-        //         if (fix_displacements[j] == false) {
-        //             r_current_displacement[j] = (mDeltaTime*r_current_impulse[j] + (nodal_mass-mDeltaTime*(1.0-mTheta2)*r_nodal_damping[j]+
-        //                                         mDeltaTime*mTheta3*mBeta*r_nodal_stiffness[j])*r_current_displacement[j] -
-        //                                         mDeltaTime*mTheta3*mBeta*r_current_internal_force[j]) /
-        //                                         (nodal_mass + mDeltaTime*mTheta2*r_nodal_damping[j]);
-        //         }
-        //     }
-        // } else{
-        //     for (IndexType j = 0; j < DomainSize; j++) {
-        //         if (fix_displacements[j] == false) {
-        //             r_current_displacement[j] = 0.0;
-        //         }
-        //     }
-        // }
-
         if ( (nodal_mass + mDeltaTime*mTheta2*r_nodal_damping[0]) > numerical_limit){
             for (IndexType j = 0; j < DomainSize; j++) {
                 if (fix_displacements[j] == false) {
-                    r_current_displacement[j] = (mDeltaTime*r_current_impulse[j] + (nodal_mass
-                                                    - mDeltaTime*(1.0-mTheta2)*r_nodal_damping[j])*r_current_displacement[j]
-                                                    - mDeltaTime*mTheta3*mBeta*r_current_k_hat_a[j]) /
+                    r_current_displacement[j] = (mDeltaTime*r_current_impulse[j] + (nodal_mass-mDeltaTime*(1.0-mTheta2)*r_nodal_damping[j]+
+                                                mDeltaTime*mTheta3*mBeta*r_nodal_stiffness[j])*r_current_displacement[j] -
+                                                mDeltaTime*mTheta3*mBeta*r_current_internal_force[j]) /
                                                 (nodal_mass + mDeltaTime*mTheta2*r_nodal_damping[j]);
                 }
             }
-        } else {
+        } else{
             for (IndexType j = 0; j < DomainSize; j++) {
                 if (fix_displacements[j] == false) {
                     r_current_displacement[j] = 0.0;
                 }
             }
         }
+
+        // if ( (nodal_mass + mDeltaTime*mTheta2*r_nodal_damping[0]) > numerical_limit){
+        //     for (IndexType j = 0; j < DomainSize; j++) {
+        //         if (fix_displacements[j] == false) {
+        //             r_current_displacement[j] = (mDeltaTime*r_current_impulse[j] + (nodal_mass
+        //                                             - mDeltaTime*(1.0-mTheta2)*r_nodal_damping[j])*r_current_displacement[j]
+        //                                             - mDeltaTime*mTheta3*mBeta*r_current_k_hat_a[j]) /
+        //                                         (nodal_mass + mDeltaTime*mTheta2*r_nodal_damping[j]);
+        //         }
+        //     }
+        // } else {
+        //     for (IndexType j = 0; j < DomainSize; j++) {
+        //         if (fix_displacements[j] == false) {
+        //             r_current_displacement[j] = 0.0;
+        //         }
+        //     }
+        // }
 
         const array_1d<double, 3>& r_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,1);
         const array_1d<double, 3>& r_previous_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY,1);
@@ -638,28 +642,28 @@ public:
         )
     {
         array_1d<double, 3>& r_current_impulse = itCurrentNode->FastGetSolutionStepValue(NODAL_DISPLACEMENT_STIFFNESS);
-        // const array_1d<double, 3>& r_current_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY);
+        const array_1d<double, 3>& r_current_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY);
         const array_1d<double, 3>& r_external_forces = itCurrentNode->FastGetSolutionStepValue(FORCE_RESIDUAL);
         const array_1d<double, 3>& r_current_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA);
         const array_1d<double, 3>& r_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA,1);
-        // const array_1d<double, 3>& r_nodal_stiffness = itCurrentNode->GetValue(NODAL_DIAGONAL_STIFFNESS);
-        const array_1d<double, 3>& r_current_k_hat_a = itCurrentNode->FastGetSolutionStepValue(MIDDLE_VELOCITY);
-        const array_1d<double, 3>& r_previous_k_hat_a = itCurrentNode->FastGetSolutionStepValue(MIDDLE_VELOCITY,1);
+        const array_1d<double, 3>& r_nodal_stiffness = itCurrentNode->GetValue(NODAL_DIAGONAL_STIFFNESS);
+        // const array_1d<double, 3>& r_current_k_hat_a = itCurrentNode->FastGetSolutionStepValue(MIDDLE_VELOCITY);
+        // const array_1d<double, 3>& r_previous_k_hat_a = itCurrentNode->FastGetSolutionStepValue(MIDDLE_VELOCITY,1);
         // const array_1d<double, 3>& r_current_k_a = itCurrentNode->FastGetSolutionStepValue(FRACTIONAL_ANGULAR_ACCELERATION);
         // const array_1d<double, 3>& r_previous_k_a = itCurrentNode->FastGetSolutionStepValue(FRACTIONAL_ANGULAR_ACCELERATION,1);
 
         // Solution of the explicit equation:
-        // for (IndexType j = 0; j < DomainSize; j++) {
-        //     r_current_impulse[j] += mDeltaTime*r_external_forces[j] - ((1.0-mTheta3)*mBeta+mDeltaTime*mTheta1)*r_current_internal_force[j] +
-        //                                 ((1.0-mTheta3)*mBeta-mDeltaTime*(1.0-mTheta1))*r_previous_internal_force[j] +
-        //                                 mDeltaTime*(1.0-mTheta3)*mBeta*r_nodal_stiffness[j]*r_current_velocity[j];
-        // }
         for (IndexType j = 0; j < DomainSize; j++) {
-            r_current_impulse[j] += mDeltaTime*r_external_forces[j] - (1.0-mTheta3)*mBeta*r_current_k_hat_a[j]
-                                    + (1.0-mTheta3)*mBeta*r_previous_k_hat_a[j]
-                                    - (mDeltaTime*mTheta1)*r_current_internal_force[j]
-                                    - (mDeltaTime*(1.0-mTheta1))*r_previous_internal_force[j];
+            r_current_impulse[j] += mDeltaTime*r_external_forces[j] - ((1.0-mTheta3)*mBeta+mDeltaTime*mTheta1)*r_current_internal_force[j] +
+                                        ((1.0-mTheta3)*mBeta-mDeltaTime*(1.0-mTheta1))*r_previous_internal_force[j] +
+                                        mDeltaTime*(1.0-mTheta3)*mBeta*r_nodal_stiffness[j]*r_current_velocity[j];
         }
+        // for (IndexType j = 0; j < DomainSize; j++) {
+        //     r_current_impulse[j] += mDeltaTime*r_external_forces[j] - (1.0-mTheta3)*mBeta*r_current_k_hat_a[j]
+        //                             + (1.0-mTheta3)*mBeta*r_previous_k_hat_a[j]
+        //                             - (mDeltaTime*mTheta1)*r_current_internal_force[j]
+        //                             - (mDeltaTime*(1.0-mTheta1))*r_previous_internal_force[j];
+        // }
         // for (IndexType j = 0; j < DomainSize; j++) {
         //     r_current_impulse[j] += mDeltaTime*r_external_forces[j] - (1.0-mTheta3)*mBeta*r_current_k_hat_a[j]
         //                             + (1.0-mTheta3)*mBeta*r_previous_k_hat_a[j]
