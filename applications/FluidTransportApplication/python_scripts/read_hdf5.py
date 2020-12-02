@@ -36,7 +36,7 @@ class ReadHdf5(KratosMultiphysics.Process):
         # temp = self.f[self.group_name + '/TEMP'][:,]
         vel_x = self.f[self.group_name + '/VEL_X'][:,]
         vel_y = self.f[self.group_name + '/VEL_Y'][:,]
-        # vel_z = self.f[self.group_name + '/VEL_Z'][:,]
+        vel_z = self.f[self.group_name + '/VEL_Z'][:,]
 
         self.components_process_list = []
 
@@ -49,8 +49,8 @@ class ReadHdf5(KratosMultiphysics.Process):
                 node.SetSolutionStepValue(KratosMultiphysics.VELOCITY_Y,vel_y[i])
                 node.Fix(KratosMultiphysics.VELOCITY_Y)
 
-            # if self.settings["active"][2].GetBool() == True:
-            #     node.SetSolutionStepValue(KratosMultiphysics.VELOCITY_Z,vel_z[i])
-            #     node.Fix(KratosMultiphysics.VELOCITY_Z)
+            if self.settings["active"][2].GetBool() == True:
+                node.SetSolutionStepValue(KratosMultiphysics.VELOCITY_Z,vel_z[i])
+                node.Fix(KratosMultiphysics.VELOCITY_Z)
 
             i += 1
