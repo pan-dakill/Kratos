@@ -152,6 +152,7 @@ public:
         mTheta1 = r_current_process_info[THETA_1];
         mTheta2 = r_current_process_info[THETA_2];
         mTheta3 = r_current_process_info[THETA_3];
+        mGamma = r_current_process_info[LOAD_FACTOR];
 
         /// Working in 2D/3D (the definition of DOMAIN_SIZE is check in the Check method)
         const SizeType dim = r_current_process_info[DOMAIN_SIZE];
@@ -323,6 +324,7 @@ public:
         mDeltaTime = r_current_process_info[DELTA_TIME];
         mAlpha = r_current_process_info[RAYLEIGH_ALPHA];
         mBeta = r_current_process_info[RAYLEIGH_BETA];
+        mGamma = r_current_process_info[LOAD_FACTOR];
 
         // The iterator of the first node
         const auto it_node_begin = rModelPart.NodesBegin();
@@ -377,7 +379,7 @@ public:
             for (IndexType j = 0; j < DomainSize; j++) {
                 if (fix_displacements[j] == false) {
                     r_current_displacement[j] = (mDeltaTime*r_current_impulse[j] + (nodal_mass-mDeltaTime*(1.0-mTheta2)*r_nodal_damping[j]+
-                                                mDeltaTime*mTheta3*mBeta*r_nodal_stiffness[j])*r_current_displacement[j] -
+                                                mGamma*mDeltaTime*mTheta3*mBeta*r_nodal_stiffness[j])*r_current_displacement[j] -
                                                 mDeltaTime*mTheta3*mBeta*r_current_internal_force[j]) /
                                                 (nodal_mass + mDeltaTime*mTheta2*r_nodal_damping[j]);
                 }
@@ -656,7 +658,7 @@ public:
         for (IndexType j = 0; j < DomainSize; j++) {
             r_current_impulse[j] += mDeltaTime*r_external_forces[j] - ((1.0-mTheta3)*mBeta+mDeltaTime*mTheta1)*r_current_internal_force[j] +
                                         ((1.0-mTheta3)*mBeta-mDeltaTime*(1.0-mTheta1))*r_previous_internal_force[j] +
-                                        mDeltaTime*(1.0-mTheta3)*mBeta*r_nodal_stiffness[j]*r_current_velocity[j];
+                                        mGamma*mDeltaTime*(1.0-mTheta3)*mBeta*r_nodal_stiffness[j]*r_current_velocity[j];
         }
         // for (IndexType j = 0; j < DomainSize; j++) {
         //     r_current_impulse[j] += mDeltaTime*r_external_forces[j] - (1.0-mTheta3)*mBeta*r_current_k_hat_a[j]
@@ -806,6 +808,7 @@ protected:
     double mDeltaTime;
     double mAlpha;
     double mBeta;
+    double mGamma;
     double mTheta1;
     double mTheta2;
     double mTheta3;
