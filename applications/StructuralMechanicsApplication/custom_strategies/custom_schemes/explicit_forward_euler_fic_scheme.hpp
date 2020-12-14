@@ -152,7 +152,7 @@ public:
         mTheta1 = r_current_process_info[THETA_1];
         mTheta2 = r_current_process_info[THETA_2];
         mTheta3 = r_current_process_info[THETA_3];
-        mGamma = r_current_process_info[LOAD_FACTOR];
+        mGamma = r_current_process_info[LOAD_FACTOR]; // This is omega_hat^2
 
         /// Working in 2D/3D (the definition of DOMAIN_SIZE is check in the Check method)
         const SizeType dim = r_current_process_info[DOMAIN_SIZE];
@@ -274,9 +274,9 @@ public:
         for (int i = 0; i < static_cast<int>(r_nodes.size()); ++i) {
             auto it_node = (it_node_begin + i);
             it_node->SetValue(NODAL_MASS, 0.0);
-            array_1d<double,3> zero_vector = ZeroVector(3);
-            it_node->SetValue(NODAL_DIAGONAL_STIFFNESS,zero_vector);
-            it_node->SetValue(NODAL_DIAGONAL_DAMPING,zero_vector);
+            // array_1d<double,3> zero_vector = ZeroVector(3);
+            // it_node->SetValue(NODAL_DIAGONAL_STIFFNESS,zero_vector);
+            // it_node->SetValue(NODAL_DIAGONAL_DAMPING,zero_vector);
             array_1d<double, 3>& r_current_impulse = it_node->FastGetSolutionStepValue(NODAL_DISPLACEMENT_STIFFNESS);
             array_1d<double, 3>& r_external_forces = it_node->FastGetSolutionStepValue(FORCE_RESIDUAL);
             array_1d<double, 3>& r_current_internal_force = it_node->FastGetSolutionStepValue(NODAL_INERTIA); // K*a (internal_forces)
@@ -364,8 +364,8 @@ public:
         const array_1d<double, 3>& r_current_impulse = itCurrentNode->FastGetSolutionStepValue(NODAL_DISPLACEMENT_STIFFNESS);
         const array_1d<double, 3>& r_current_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA);
         const double nodal_mass = itCurrentNode->GetValue(NODAL_MASS);
-        const array_1d<double, 3>& r_nodal_stiffness = itCurrentNode->GetValue(NODAL_DIAGONAL_STIFFNESS);
-        const array_1d<double, 3>& r_nodal_damping = itCurrentNode->GetValue(NODAL_DIAGONAL_DAMPING);
+        // const array_1d<double, 3>& r_nodal_stiffness = itCurrentNode->GetValue(NODAL_DIAGONAL_STIFFNESS);
+        // const array_1d<double, 3>& r_nodal_damping = itCurrentNode->GetValue(NODAL_DIAGONAL_DAMPING);
         // const array_1d<double, 3>& r_current_k_hat_a = itCurrentNode->FastGetSolutionStepValue(MIDDLE_VELOCITY);
 
         std::array<bool, 3> fix_displacements = {false, false, false};
@@ -375,13 +375,12 @@ public:
             fix_displacements[2] = (itCurrentNode->GetDof(DISPLACEMENT_Z, DisplacementPosition + 2).IsFixed());
 
         // Solution of the explicit equation:
-        if ( (nodal_mass + mDeltaTime*mTheta2*r_nodal_damping[0]) > numerical_limit){
+        if ( nodal_mass*(1.0+mDeltaTime*(mAlpha+mBeta*mGamma)) ) > numerical_limit){
             for (IndexType j = 0; j < DomainSize; j++) {
                 if (fix_displacements[j] == false) {
-                    r_current_displacement[j] = (mDeltaTime*r_current_impulse[j] + (nodal_mass-mDeltaTime*(1.0-mTheta2)*r_nodal_damping[j]+
-                                                mGamma*mDeltaTime*mTheta3*mBeta*r_nodal_stiffness[j])*r_current_displacement[j] -
-                                                mDeltaTime*mTheta3*mBeta*r_current_internal_force[j]) /
-                                                (nodal_mass + mDeltaTime*mTheta2*r_nodal_damping[j]);
+                    r_current_displacement[j] = (mDeltaTime*r_current_impulse[j] + (1.0+mDeltaTime*mBeta*mGamma)*nodal_mass*r_current_displacement[j] 
+                                                - mDeltaTime*mBeta*r_current_internal_force[j]) /
+                                                (nodal_mass*(1.0+mDeltaTime*(mAlpha+mBeta*mGamma)));
                 }
             }
         } else{
@@ -391,23 +390,6 @@ public:
                 }
             }
         }
-
-        // if ( (nodal_mass + mDeltaTime*mTheta2*r_nodal_damping[0]) > numerical_limit){
-        //     for (IndexType j = 0; j < DomainSize; j++) {
-        //         if (fix_displacements[j] == false) {
-        //             r_current_displacement[j] = (mDeltaTime*r_current_impulse[j] + (nodal_mass
-        //                                             - mDeltaTime*(1.0-mTheta2)*r_nodal_damping[j])*r_current_displacement[j]
-        //                                             - mDeltaTime*mTheta3*mBeta*r_current_k_hat_a[j]) /
-        //                                         (nodal_mass + mDeltaTime*mTheta2*r_nodal_damping[j]);
-        //         }
-        //     }
-        // } else {
-        //     for (IndexType j = 0; j < DomainSize; j++) {
-        //         if (fix_displacements[j] == false) {
-        //             r_current_displacement[j] = 0.0;
-        //         }
-        //     }
-        // }
 
         const array_1d<double, 3>& r_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,1);
         const array_1d<double, 3>& r_previous_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY,1);
@@ -644,11 +626,11 @@ public:
         )
     {
         array_1d<double, 3>& r_current_impulse = itCurrentNode->FastGetSolutionStepValue(NODAL_DISPLACEMENT_STIFFNESS);
-        const array_1d<double, 3>& r_current_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY);
+        // const array_1d<double, 3>& r_current_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY);
         const array_1d<double, 3>& r_external_forces = itCurrentNode->FastGetSolutionStepValue(FORCE_RESIDUAL);
         const array_1d<double, 3>& r_current_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA);
         const array_1d<double, 3>& r_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA,1);
-        const array_1d<double, 3>& r_nodal_stiffness = itCurrentNode->GetValue(NODAL_DIAGONAL_STIFFNESS);
+        // const array_1d<double, 3>& r_nodal_stiffness = itCurrentNode->GetValue(NODAL_DIAGONAL_STIFFNESS);
         // const array_1d<double, 3>& r_current_k_hat_a = itCurrentNode->FastGetSolutionStepValue(MIDDLE_VELOCITY);
         // const array_1d<double, 3>& r_previous_k_hat_a = itCurrentNode->FastGetSolutionStepValue(MIDDLE_VELOCITY,1);
         // const array_1d<double, 3>& r_current_k_a = itCurrentNode->FastGetSolutionStepValue(FRACTIONAL_ANGULAR_ACCELERATION);
@@ -656,22 +638,9 @@ public:
 
         // Solution of the explicit equation:
         for (IndexType j = 0; j < DomainSize; j++) {
-            r_current_impulse[j] += mDeltaTime*r_external_forces[j] - ((1.0-mTheta3)*mBeta+mDeltaTime*mTheta1)*r_current_internal_force[j] +
-                                        ((1.0-mTheta3)*mBeta-mDeltaTime*(1.0-mTheta1))*r_previous_internal_force[j] +
-                                        mGamma*mDeltaTime*(1.0-mTheta3)*mBeta*r_nodal_stiffness[j]*r_current_velocity[j];
+            r_current_impulse[j] += mDeltaTime*r_external_forces[j] - mDeltaTime*mTheta1*r_current_internal_force[j] 
+                                    - mDeltaTime*(1.0-mTheta1)*r_previous_internal_force[j];
         }
-        // for (IndexType j = 0; j < DomainSize; j++) {
-        //     r_current_impulse[j] += mDeltaTime*r_external_forces[j] - (1.0-mTheta3)*mBeta*r_current_k_hat_a[j]
-        //                             + (1.0-mTheta3)*mBeta*r_previous_k_hat_a[j]
-        //                             - (mDeltaTime*mTheta1)*r_current_internal_force[j]
-        //                             - (mDeltaTime*(1.0-mTheta1))*r_previous_internal_force[j];
-        // }
-        // for (IndexType j = 0; j < DomainSize; j++) {
-        //     r_current_impulse[j] += mDeltaTime*r_external_forces[j] - (1.0-mTheta3)*mBeta*r_current_k_hat_a[j]
-        //                             + (1.0-mTheta3)*mBeta*r_previous_k_hat_a[j]
-        //                             - (mDeltaTime*mTheta1)*r_current_k_a[j]
-        //                             - (mDeltaTime*(1.0-mTheta1))*r_previous_k_a[j];
-        // }
     }
 
     /**

@@ -69,28 +69,28 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
         VectorType element_mass_vector(msLocalSize);
         CalculateLumpedMassVector(element_mass_vector);
 
-        VectorType element_stiffness_vector(msLocalSize);
-        CalculateLumpedStiffnessVector(element_stiffness_vector,rCurrentProcessInfo);
+        // VectorType element_stiffness_vector(msLocalSize);
+        // CalculateLumpedStiffnessVector(element_stiffness_vector,rCurrentProcessInfo);
 
-        VectorType element_damping_vector(msLocalSize);
-        CalculateLumpedDampingVector(element_damping_vector, rCurrentProcessInfo);
+        // VectorType element_damping_vector(msLocalSize);
+        // CalculateLumpedDampingVector(element_damping_vector, rCurrentProcessInfo);
 
         for (SizeType i = 0; i < msNumberOfNodes; ++i) {
             double& r_nodal_mass = r_geom[i].GetValue(NODAL_MASS);
-            array_1d<double, 3>& r_nodal_stiffness = r_geom[i].GetValue(NODAL_DIAGONAL_STIFFNESS);
-            array_1d<double, 3>& r_nodal_damping = r_geom[i].GetValue(NODAL_DIAGONAL_DAMPING);
+            // array_1d<double, 3>& r_nodal_stiffness = r_geom[i].GetValue(NODAL_DIAGONAL_STIFFNESS);
+            // array_1d<double, 3>& r_nodal_damping = r_geom[i].GetValue(NODAL_DIAGONAL_DAMPING);
             int index = i * msDimension;
 
             #pragma omp atomic
             r_nodal_mass += element_mass_vector[index];
 
-            for (SizeType j = 0; j < msDimension; ++j) {
-                #pragma omp atomic
-                r_nodal_stiffness[j] += element_stiffness_vector[index+j];
+            // for (SizeType j = 0; j < msDimension; ++j) {
+            //     #pragma omp atomic
+            //     r_nodal_stiffness[j] += element_stiffness_vector[index+j];
 
-                #pragma omp atomic
-                r_nodal_damping[j] += element_damping_vector[index+j];
-            }
+            //     #pragma omp atomic
+            //     r_nodal_damping[j] += element_damping_vector[index+j];
+            // }
         }
     }
 
@@ -257,12 +257,6 @@ void TrussFICElementLinear3D2N::CalculateLumpedDampingVector(
         else if( rCurrentProcessInfo.Has(RAYLEIGH_BETA) )
             beta = rCurrentProcessInfo[RAYLEIGH_BETA];
         
-        double gamma = 0.0;
-        if( GetProperties().Has(LOAD_FACTOR) )
-            gamma = GetProperties()[LOAD_FACTOR];
-        else if( rCurrentProcessInfo.Has(LOAD_FACTOR) )
-            gamma = rCurrentProcessInfo[LOAD_FACTOR];
-
         // 1.-Calculate mass Vector:
         if (alpha > std::numeric_limits<double>::epsilon()) {
             VectorType mass_vector(msLocalSize);
@@ -276,7 +270,7 @@ void TrussFICElementLinear3D2N::CalculateLumpedDampingVector(
             VectorType stiffness_vector(msLocalSize);
             CalculateLumpedStiffnessVector(stiffness_vector,rCurrentProcessInfo);
             for (IndexType i = 0; i < msLocalSize; ++i)
-                rDampingVector[i] += gamma * beta * stiffness_vector[i];
+                rDampingVector[i] += beta * stiffness_vector[i];
         }
 
     } else {

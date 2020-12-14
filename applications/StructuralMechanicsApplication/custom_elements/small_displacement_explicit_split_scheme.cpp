@@ -110,27 +110,27 @@ void SmallDisplacementExplicitSplitScheme::AddExplicitContribution(
         VectorType element_mass_vector(mat_size);
         this->CalculateLumpedMassVector(element_mass_vector);
 
-        VectorType element_stiffness_vector(mat_size);
-        CalculateLumpedStiffnessVector(element_stiffness_vector, rCurrentProcessInfo);
+        // VectorType element_stiffness_vector(mat_size);
+        // CalculateLumpedStiffnessVector(element_stiffness_vector, rCurrentProcessInfo);
 
-        VectorType element_damping_vector(mat_size);
-        CalculateLumpedDampingVector(element_damping_vector, rCurrentProcessInfo);
+        // VectorType element_damping_vector(mat_size);
+        // CalculateLumpedDampingVector(element_damping_vector, rCurrentProcessInfo);
 
         for (IndexType i = 0; i < number_of_nodes; ++i) {
-            array_1d<double, 3>& r_nodal_stiffness = r_geom[i].GetValue(NODAL_DIAGONAL_STIFFNESS);
-            array_1d<double, 3>& r_nodal_damping = r_geom[i].GetValue(NODAL_DIAGONAL_DAMPING);
+            // array_1d<double, 3>& r_nodal_stiffness = r_geom[i].GetValue(NODAL_DIAGONAL_STIFFNESS);
+            // array_1d<double, 3>& r_nodal_damping = r_geom[i].GetValue(NODAL_DIAGONAL_DAMPING);
             const IndexType index = i * dimension;
 
             #pragma omp atomic
             r_geom[i].GetValue(NODAL_MASS) += element_mass_vector[index];
 
-            for (IndexType j = 0; j < dimension; ++j) {
-                #pragma omp atomic
-                r_nodal_stiffness[j] += element_stiffness_vector[index+j];
+            // for (IndexType j = 0; j < dimension; ++j) {
+            //     #pragma omp atomic
+            //     r_nodal_stiffness[j] += element_stiffness_vector[index+j];
 
-                #pragma omp atomic
-                r_nodal_damping[j] += element_damping_vector[index+j];
-            }
+            //     #pragma omp atomic
+            //     r_nodal_damping[j] += element_damping_vector[index+j];
+            // }
         }
     }
 
@@ -252,12 +252,6 @@ void SmallDisplacementExplicitSplitScheme::CalculateLumpedDampingVector(
         else if( rCurrentProcessInfo.Has(RAYLEIGH_BETA) )
             beta = rCurrentProcessInfo[RAYLEIGH_BETA];
 
-        double gamma = 0.0;
-        if( GetProperties().Has(LOAD_FACTOR) )
-            gamma = GetProperties()[LOAD_FACTOR];
-        else if( rCurrentProcessInfo.Has(LOAD_FACTOR) )
-            gamma = rCurrentProcessInfo[LOAD_FACTOR];
-
         // 1.-Calculate mass Vector:
         if (alpha > std::numeric_limits<double>::epsilon()) {
             VectorType mass_vector(mat_size);
@@ -271,7 +265,7 @@ void SmallDisplacementExplicitSplitScheme::CalculateLumpedDampingVector(
             VectorType stiffness_vector(mat_size);
             CalculateLumpedStiffnessVector(stiffness_vector,rCurrentProcessInfo);
             for (IndexType i = 0; i < mat_size; ++i)
-                rDampingVector[i] += gamma * beta * stiffness_vector[i];
+                rDampingVector[i] += beta * stiffness_vector[i];
         }
 
     } else {
