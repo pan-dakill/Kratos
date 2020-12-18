@@ -152,7 +152,7 @@ public:
         mTheta1 = r_current_process_info[THETA_1];
         mTheta2 = r_current_process_info[THETA_2];
         mTheta3 = r_current_process_info[THETA_3];
-        mGamma = r_current_process_info[LOAD_FACTOR]; // This is omega_hat^2
+        mGamma = r_current_process_info[LOAD_FACTOR]; // This is omega_hat^2=(delta*omega_max)^2
 
         /// Working in 2D/3D (the definition of DOMAIN_SIZE is check in the Check method)
         const SizeType dim = r_current_process_info[DOMAIN_SIZE];
