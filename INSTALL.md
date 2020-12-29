@@ -4,12 +4,13 @@
   * [Kratos Core Dependencies](#kratos-core-dependencies)
     * [Linux Installation](#linux-installation)
     * [Windows Installation](#windows-installation)
+    * [macOS Installation](#macos-installation)
   * [Specific Application Dependencies](#specific-application-dependencies)
 * [Basic Configuration](#basic-configuration)
 * [Examples](#examples)
   * [Linux](#linux)
   * [Windows](#windows)
-  * [MacOS](#macos)
+  * [macOS](#macos)
 * [Adding Applications](#adding-applications)
 * [Post Compilation](#post-compilation)
 * [Advanced Configuration](#advanced-configuration)
@@ -98,6 +99,16 @@ Additionaly, Visual Studio is required to compile in Windows.
 
         Extract boost, and note the path as it will be needed in the configure stage to set the environmental variable `BOOST_ROOT`.
 
+
+
+  #### macOS installation
+  The command below will install all the packages needed.
+
+    ```Shell
+    brew install python3
+    brew install boost
+    brew install llvm
+    ```
 
 ### Specific Application Dependencies
 
