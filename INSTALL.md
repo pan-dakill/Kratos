@@ -101,7 +101,8 @@ Additionaly, Visual Studio is required to compile in Windows.
 
 
 
-  #### macOS installation
+- #### macOS installation
+  You'll need [brew](https://brew.sh/) as package manager.
   The command below will install all the packages needed.
 
     ```Shell
@@ -281,19 +282,20 @@ add_app () {
 }
 
 # Set compiler
-export CC=/usr/local/opt/llvm/bin/clang
-export CXX=/usr/local/opt/llvm/bin/clang++
+export LLVMROOT="/usr/local/opt/llvm"
+export CC=${LLVMROOT}/bin/clang
+export CXX=${LLVMROOT}/bin/clang++
 
 # Set variables
 export KRATOS_SOURCE="${KRATOS_SOURCE:-"$( cd "$(dirname "$0")" ; pwd -P )"/..}"
 export KRATOS_BUILD="${KRATOS_SOURCE}/build"
 export KRATOS_APP_DIR="${KRATOS_SOURCE}/applications"
-export KRATOS_INSTALL_PYTHON_USING_LINKS=ON
+export KRATOS_INSTALL_PYTHON_USING_LINKS=OFF
 
 # Set basic configuration
 export KRATOS_BUILD_TYPE="Release"
-export BOOST_ROOT="/path/to/boost"
-export PYTHON_EXECUTABLE="/Library/Frameworks/Python.framework/Versions/3.7/bin/python3"
+export BOOST_ROOT=${BOOST_ROOT:-"/usr/local/bin/boost/1.74.0/"}
+export PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE:-"/usr/local/bin/python3"}
 
 # Set applications to compile
 export KRATOS_APPLICATIONS=
@@ -309,8 +311,8 @@ rm -rf "${KRATOS_BUILD}/${KRATOS_BUILD_TYPE}/CMakeFiles"
 
 # Configure
 /Applications/CMake.app/Contents/bin/cmake -H"${KRATOS_SOURCE}" -B"${KRATOS_BUILD}/${KRATOS_BUILD_TYPE}" \
- -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS} -msse3 -std=c++11 -L/usr/local/opt/llvm/lib" \
- -DCMAKE_C_FLAGS="${CMAKE_C_FLAGS} -msse3 -L/usr/local/opt/llvm/lib" \
+ -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS} -msse3 -std=c++11 -L${LLVMROOT}/lib" \
+ -DCMAKE_C_FLAGS="${CMAKE_C_FLAGS} -msse3 -L${LLVMROOT}/lib" \
  -DUSE_EIGEN_MKL=OFF
 
 # Buid
@@ -324,7 +326,7 @@ In order to add an application you can use the provided macro (`add_app [PATH]` 
 
 Its now also possible to compile applications outside kratos source dir:
 
-Linux:
+Linux and macOS:
 ```shell
 add_app ${KRATOS_APP_DIR}/LinearSolversApplication
 add_app ${KRATOS_APP_DIR}/FluidDynamicApplication
