@@ -660,15 +660,15 @@ public:
             fix_displacements[2] = (itCurrentNode->GetDof(DISPLACEMENT_Z, DisplacementPosition + 2).IsFixed());
 
         // Solution of the explicit equation:
-        if ( (nodal_mass*(1.0+mDeltaTime*(mAlpha+mBeta*mGamma))) > numerical_limit ){
+        if ( (nodal_mass*(1.0+mAlpha*mTheta2*mDeltaTime)) > numerical_limit ){
             for (IndexType j = 0; j < DomainSize; j++) {
                 if (fix_displacements[j] == false) {
-                    r_current_displacement[j] = ((2.0+mDeltaTime*(mAlpha+2.0*mBeta*mGamma))*nodal_mass*r_current_displacement[j]
+                    r_current_displacement[j] = ( (2.0-mDeltaTime*mAlpha*(1.0-2.0*mTheta2))*nodal_mass*r_current_displacement[j]
+                                                - (1.0-mDeltaTime*mAlpha*(1.0-mTheta2))*nodal_mass*r_actual_previous_displacement[j]
                                                 - mDeltaTime*(mBeta+mDeltaTime)*r_current_internal_force[j]
-                                                - (1.0+mDeltaTime*mBeta*mGamma)*nodal_mass*r_actual_previous_displacement[j]
                                                 + mDeltaTime*mBeta*r_previous_internal_force[j]
-                                                + mDeltaTime*mDeltaTime*0.5*(r_previous_external_forces[j]+r_external_forces[j])) /
-                                                (nodal_mass*(1.0+mDeltaTime*(mAlpha+mBeta*mGamma)));
+                                                + mDeltaTime*mDeltaTime*0.5*(r_previous_external_forces[j]+r_external_forces[j]) ) /
+                                                (nodal_mass*(1.0+mAlpha*mTheta2*mDeltaTime));
                 }
             }
         } else{
