@@ -629,27 +629,27 @@ public:
         )
     {
         array_1d<double, 3>& r_current_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT);
-        const array_1d<double, 3>& r_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,1);
+        // const array_1d<double, 3>& r_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,1);
         const array_1d<double, 3>& r_actual_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,2);
         const double nodal_mass = itCurrentNode->GetValue(NODAL_MASS);
 
-KRATOS_WATCH(r_current_displacement)
-KRATOS_WATCH(r_previous_displacement)
-KRATOS_WATCH(r_actual_previous_displacement)
+// KRATOS_WATCH(r_current_displacement)
+// KRATOS_WATCH(r_previous_displacement)
+// KRATOS_WATCH(r_actual_previous_displacement)
 
         const array_1d<double, 3>& r_external_forces = itCurrentNode->FastGetSolutionStepValue(FORCE_RESIDUAL);
         const array_1d<double, 3>& r_previous_external_forces = itCurrentNode->FastGetSolutionStepValue(FORCE_RESIDUAL,1);
-        const array_1d<double, 3>& r_actual_previous_external_forces = itCurrentNode->FastGetSolutionStepValue(FORCE_RESIDUAL,2);
+        // const array_1d<double, 3>& r_actual_previous_external_forces = itCurrentNode->FastGetSolutionStepValue(FORCE_RESIDUAL,2);
         const array_1d<double, 3>& r_current_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA);
         const array_1d<double, 3>& r_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA,1);
-        const array_1d<double, 3>& r_actual_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA,2);
+        // const array_1d<double, 3>& r_actual_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA,2);
 
-KRATOS_WATCH(r_external_forces)
-KRATOS_WATCH(r_previous_external_forces)
-KRATOS_WATCH(r_actual_previous_external_forces)
-KRATOS_WATCH(r_current_internal_force)
-KRATOS_WATCH(r_previous_internal_force)
-KRATOS_WATCH(r_actual_previous_internal_force)
+// KRATOS_WATCH(r_external_forces)
+// KRATOS_WATCH(r_previous_external_forces)
+// KRATOS_WATCH(r_actual_previous_external_forces)
+// KRATOS_WATCH(r_current_internal_force)
+// KRATOS_WATCH(r_previous_internal_force)
+// KRATOS_WATCH(r_actual_previous_internal_force)
 
         std::array<bool, 3> fix_displacements = {false, false, false};
         fix_displacements[0] = (itCurrentNode->GetDof(DISPLACEMENT_X, DisplacementPosition).IsFixed());
@@ -677,7 +677,7 @@ KRATOS_WATCH(r_actual_previous_internal_force)
             }
         }
 
-        // const array_1d<double, 3>& r_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,1);
+        const array_1d<double, 3>& r_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,1);
         const array_1d<double, 3>& r_previous_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY,1);
         array_1d<double, 3>& r_current_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY);
         array_1d<double, 3>& r_current_acceleration = itCurrentNode->FastGetSolutionStepValue(ACCELERATION);
