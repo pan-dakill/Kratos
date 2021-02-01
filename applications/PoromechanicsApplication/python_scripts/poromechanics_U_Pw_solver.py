@@ -1,5 +1,3 @@
-from __future__ import print_function, absolute_import, division # makes KratosMultiphysics backward compatible with python 2.6 and 2.7
-
 # Importing the Kratos Library
 import KratosMultiphysics
 from KratosMultiphysics.python_solver import PythonSolver
@@ -67,8 +65,8 @@ class UPwSolver(PythonSolver):
             "newmark_beta": 0.25,
             "newmark_gamma": 0.5,
             "newmark_theta": 0.5,
-            "rayleigh_m": 0.0,
-            "rayleigh_k": 0.0,
+            "rayleigh_alpha": 0.0,
+            "rayleigh_beta": 0.0,
             "strategy_type": "newton_raphson",
             "convergence_criterion": "Displacement_criterion",
             "displacement_relative_tolerance": 1.0e-4,
@@ -386,12 +384,12 @@ class UPwSolver(PythonSolver):
             beta = self.settings["newmark_beta"].GetDouble()
             gamma = self.settings["newmark_gamma"].GetDouble()
             theta = self.settings["newmark_theta"].GetDouble()
-            rayleigh_m = self.settings["rayleigh_m"].GetDouble()
-            rayleigh_k = self.settings["rayleigh_k"].GetDouble()
-            self.main_model_part.ProcessInfo.SetValue(KratosStructural.RAYLEIGH_ALPHA,rayleigh_m)
-            self.main_model_part.ProcessInfo.SetValue(KratosStructural.RAYLEIGH_BETA,rayleigh_k)
+            rayleigh_alpha = self.settings["rayleigh_alpha"].GetDouble()
+            rayleigh_beta = self.settings["rayleigh_beta"].GetDouble()
+            self.main_model_part.ProcessInfo.SetValue(KratosStructural.RAYLEIGH_ALPHA,rayleigh_alpha)
+            self.main_model_part.ProcessInfo.SetValue(KratosStructural.RAYLEIGH_BETA,rayleigh_beta)
             if(solution_type == "quasi_static"):
-                if(rayleigh_m<1.0e-20 and rayleigh_k<1.0e-20):
+                if(rayleigh_alpha<1.0e-20 and rayleigh_beta<1.0e-20):
                     scheme = KratosPoro.NewmarkQuasistaticUPwScheme(beta,gamma,theta)
                 else:
                     scheme = KratosPoro.NewmarkQuasistaticDampedUPwScheme(beta,gamma,theta)
