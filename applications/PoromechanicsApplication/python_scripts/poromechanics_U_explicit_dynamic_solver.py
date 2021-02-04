@@ -188,10 +188,10 @@ class ExplicitUSolver(UPwSolver):
                                                                                reform_step_dofs,
                                                                                move_mesh_flag)
         else:
-            self.strategy_params = KratosMultiphysics.Parameters("{}")
-            self.strategy_params.AddValue("loads_sub_model_part_list",self.loads_sub_sub_model_part_list)
-            self.strategy_params.AddValue("loads_variable_list",self.settings["loads_variable_list"])
             if nonlocal_damage:
+                self.strategy_params = KratosMultiphysics.Parameters("{}")
+                self.strategy_params.AddValue("loads_sub_model_part_list",self.loads_sub_sub_model_part_list)
+                self.strategy_params.AddValue("loads_variable_list",self.settings["loads_variable_list"])
                 self.strategy_params.AddValue("body_domain_sub_model_part_list",self.body_domain_sub_sub_model_part_list)
                 self.strategy_params.AddValue("characteristic_length",self.settings["characteristic_length"])
                 self.strategy_params.AddValue("search_neighbours_step",self.settings["search_neighbours_step"])
@@ -202,9 +202,8 @@ class ExplicitUSolver(UPwSolver):
                                                                                reform_step_dofs,
                                                                                move_mesh_flag)
             else:
-                solving_strategy = KratosPoro.PoromechanicsExplicitStrategy(self.computing_model_part,
+                solving_strategy = StructuralMechanicsApplication.MechanicalExplicitStrategy(self.computing_model_part,
                                                                                self.scheme,
-                                                                               self.strategy_params,
                                                                                compute_reactions,
                                                                                reform_step_dofs,
                                                                                move_mesh_flag)
