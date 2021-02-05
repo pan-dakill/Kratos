@@ -12,15 +12,16 @@
 //
 //
 
-#if !defined(KRATOS_EXPLICIT_VELOCITY_VERLET_SCHEME_HPP_INCLUDED)
-#define KRATOS_EXPLICIT_VELOCITY_VERLET_SCHEME_HPP_INCLUDED
+#if !defined(KRATOS_EXPLICIT_VV_SCHEME_HPP_INCLUDED)
+#define KRATOS_EXPLICIT_VV_SCHEME_HPP_INCLUDED
 
 /* System includes */
+#include <fstream>
 
 /* External includes */
 
 /* Project includes */
-#include "custom_strategies/custom_schemes/explicit_forward_euler_fic_scheme.hpp"
+#include "solving_strategies/schemes/scheme.h"
 #include "utilities/variable_utils.h"
 #include "custom_utilities/explicit_integration_utilities.h"
 
@@ -47,7 +48,7 @@ namespace Kratos {
 ///@{
 
 /**
- * @class ExplicitVelocityVerletScheme
+ * @class ExplicitVVScheme
  * @ingroup StructuralMechanicsApplciation
  * @brief An explicit forward euler scheme with a split of the inertial term
  * @author Ignasi de Pouplana
@@ -55,8 +56,8 @@ namespace Kratos {
 template <class TSparseSpace,
           class TDenseSpace //= DenseSpace<double>
           >
-class ExplicitVelocityVerletScheme
-    : public ExplicitForwardEulerFICScheme<TSparseSpace, TDenseSpace> {
+class ExplicitVVScheme
+    : public Scheme<TSparseSpace, TDenseSpace> {
 
 public:
     ///@name Type Definitions
@@ -87,10 +88,8 @@ public:
     /// The definition of the numerical limit
     static constexpr double numerical_limit = std::numeric_limits<double>::epsilon();
 
-    using ExplicitForwardEulerFICScheme<TSparseSpace,TDenseSpace>::mDeltaTime;
-
-    /// Counted pointer of ExplicitVelocityVerletScheme
-    KRATOS_CLASS_POINTER_DEFINITION(ExplicitVelocityVerletScheme);
+    /// Counted pointer of ExplicitVVScheme
+    KRATOS_CLASS_POINTER_DEFINITION(ExplicitVVScheme);
 
     ///@}
     ///@name Life Cycle
@@ -98,17 +97,17 @@ public:
 
     /**
      * @brief Default constructor.
-     * @details The ExplicitVelocityVerletScheme method
+     * @details The ExplicitVVScheme method
      */
-    ExplicitVelocityVerletScheme()
-        : ExplicitForwardEulerFICScheme<TSparseSpace, TDenseSpace>()
+    ExplicitVVScheme()
+        : Scheme<TSparseSpace, TDenseSpace>()
     {
 
     }
 
     /** Destructor.
     */
-    virtual ~ExplicitVelocityVerletScheme() {}
+    virtual ~ExplicitVVScheme() {}
 
     ///@}
     ///@name Operators
@@ -116,10 +115,124 @@ public:
 
 
     /**
+     * @brief This function is designed to be called once to perform all the checks needed
+     * on the input provided.
+     * @details Checks can be "expensive" as the function is designed
+     * to catch user's errors.
+     * @param rModelPart The model of the problem to solve
+     * @return Zero means  all ok
+     */
+    int Check(const ModelPart& rModelPart) const override
+    {
+        KRATOS_TRY;
+
+        BaseType::Check(rModelPart);
+
+        KRATOS_ERROR_IF(rModelPart.GetBufferSize() < 2) << "Insufficient buffer size for Forward Euler Scheme. It has to be >= 2" << std::endl;
+
+        KRATOS_ERROR_IF_NOT(rModelPart.GetProcessInfo().Has(DOMAIN_SIZE)) << "DOMAIN_SIZE not defined on ProcessInfo. Please define" << std::endl;
+
+        return 0;
+
+        KRATOS_CATCH("");
+    }
+
+    /**
+     * @brief This is the place to initialize the Scheme. This is intended to be called just once when the strategy is initialized
+     * @param rModelPart The model of the problem to solve
+     */
+    void Initialize(ModelPart& rModelPart) override
+    {
+        KRATOS_TRY
+
+        const ProcessInfo& r_current_process_info = rModelPart.GetProcessInfo();
+
+        // Preparing the time values for the first step (where time = initial_time +
+        // dt)
+        // mTime.Current = r_current_process_info[TIME] + r_current_process_info[DELTA_TIME];
+        mDeltaTime = r_current_process_info[DELTA_TIME];
+        mAlpha = r_current_process_info[RAYLEIGH_ALPHA];
+        mBeta = r_current_process_info[RAYLEIGH_BETA];
+        mTheta1 = r_current_process_info[THETA_1];
+
+        /// Working in 2D/3D (the definition of DOMAIN_SIZE is check in the Check method)
+        const SizeType dim = r_current_process_info[DOMAIN_SIZE];
+
+        // Initialize scheme
+        if (!BaseType::SchemeIsInitialized())
+            InitializeExplicitScheme(rModelPart, dim);
+        else
+            SchemeCustomInitialization(rModelPart, dim);
+
+        BaseType::SetSchemeIsInitialized();
+
+        KRATOS_CATCH("")
+    }
+
+    /**
+     * @brief It initializes time step solution. Only for reasons if the time step solution is restarted
+     * @param rModelPart The model of the problem to solve
+     * @param rA LHS matrix
+     * @param rDx Incremental update of primary variables
+     * @param rb RHS Vector
+     * @todo I cannot find the formula for the higher orders with variable time step. I tried to deduce by myself but the result was very unstable
+     */
+    void InitializeSolutionStep(
+        ModelPart& rModelPart,
+        TSystemMatrixType& rA,
+        TSystemVectorType& rDx,
+        TSystemVectorType& rb
+        ) override
+    {
+        KRATOS_TRY
+
+        BaseType::InitializeSolutionStep(rModelPart, rA, rDx, rb);
+
+        InitializeResidual(rModelPart);
+        KRATOS_CATCH("")
+    }
+
+    /**
+     * @brief It initializes the non-linear iteration
+     * @param rModelPart The model of the problem to solve
+     * @param rA LHS matrix
+     * @param rDx Incremental update of primary variables
+     * @param rb RHS Vector
+     * @todo I cannot find the formula for the higher orders with variable time step. I tried to deduce by myself but the result was very unstable
+     */
+    void InitializeNonLinIteration(
+        ModelPart& rModelPart,
+        TSystemMatrixType& rA,
+        TSystemVectorType& rDx,
+        TSystemVectorType& rb
+        ) override
+    {
+        KRATOS_TRY;
+
+        const ProcessInfo& r_current_process_info = rModelPart.GetProcessInfo();
+
+        const auto it_elem_begin = rModelPart.ElementsBegin();
+        #pragma omp parallel for schedule(guided,512)
+        for(int i=0; i<static_cast<int>(rModelPart.Elements().size()); ++i) {
+            auto it_elem = it_elem_begin + i;
+            it_elem->InitializeNonLinearIteration(r_current_process_info);
+        }
+
+        const auto it_cond_begin = rModelPart.ConditionsBegin();
+        #pragma omp parallel for schedule(guided,512)
+        for(int i=0; i<static_cast<int>(rModelPart.Conditions().size()); ++i) {
+            auto it_elem = it_cond_begin + i;
+            it_elem->InitializeNonLinearIteration(r_current_process_info);
+        }
+
+        KRATOS_CATCH( "" );
+    }
+
+    /**
      * @brief This method initializes the residual in the nodes of the model part
      * @param rModelPart The model of the problem to solve
      */
-    void InitializeResidual(ModelPart& rModelPart) override
+    virtual void InitializeResidual(ModelPart& rModelPart)
     {
         KRATOS_TRY
 
@@ -139,10 +252,10 @@ public:
      * @param rModelPart The model of the problem to solve
      * @param DomainSize The current dimention of the problem
      */
-    void InitializeExplicitScheme(
+    virtual void InitializeExplicitScheme(
         ModelPart& rModelPart,
         const SizeType DomainSize = 3
-        ) override
+        )
     {
         KRATOS_TRY
 
@@ -159,12 +272,6 @@ public:
             it_node->SetValue(NODAL_MASS, 0.0);
             array_1d<double, 3>& r_current_residual = it_node->FastGetSolutionStepValue(FORCE_RESIDUAL);
             noalias(r_current_residual) = ZeroVector(3);
-            // TODO: initial velocity X
-            // if(it_node->Id()==4){
-            //     array_1d<double, 3>& r_current_velocity = it_node->FastGetSolutionStepValue(VELOCITY);
-            //     noalias(r_current_velocity) = ZeroVector(3);
-            //     r_current_velocity[0] = 1.3145e-6;
-            // }
         }
 
         KRATOS_CATCH("")
@@ -209,7 +316,7 @@ public:
         } // for Node parallel
 
         InitializeResidual(rModelPart);
-        
+
         this->CalculateAndAddRHS(rModelPart);
 
         KRATOS_CATCH("")
@@ -221,11 +328,11 @@ public:
      * @param DisplacementPosition The position of the displacement dof on the database
      * @param DomainSize The current dimention of the problem
      */
-    void PredictTranslationalDegreesOfFreedom(
+    virtual void PredictTranslationalDegreesOfFreedom(
         NodeIterator itCurrentNode,
         const IndexType DisplacementPosition,
         const SizeType DomainSize = 3
-        ) override
+        )
     {
         const double nodal_mass = itCurrentNode->GetValue(NODAL_MASS);
         const array_1d<double, 3>& r_current_residual = itCurrentNode->FastGetSolutionStepValue(FORCE_RESIDUAL);
@@ -308,11 +415,11 @@ public:
      * @param DisplacementPosition The position of the displacement dof on the database
      * @param DomainSize The current dimention of the problem
      */
-    void UpdateTranslationalDegreesOfFreedom(
+    virtual void UpdateTranslationalDegreesOfFreedom(
         NodeIterator itCurrentNode,
         const IndexType DisplacementPosition,
         const SizeType DomainSize = 3
-        ) override
+        )
     {
         const double nodal_mass = itCurrentNode->GetValue(NODAL_MASS);
         const array_1d<double, 3>& r_current_residual = itCurrentNode->FastGetSolutionStepValue(FORCE_RESIDUAL);
@@ -342,6 +449,131 @@ public:
         noalias(r_current_acceleration) = (1.0/mDeltaTime) * (r_current_velocity - r_previous_velocity);
     }
 
+    void CheckStopCriterion(ModelPart& rModelPart)
+    {
+        const ProcessInfo& r_current_process_info = rModelPart.GetProcessInfo();
+        NodesArrayType& r_nodes = rModelPart.Nodes();
+        const auto it_node_begin = rModelPart.NodesBegin();
+
+        double l2_numerator = 0.0;
+        double l2_denominator = 0.0;
+        #pragma omp parallel for reduction(+:l2_numerator,l2_denominator)
+        for (int i = 0; i < static_cast<int>(r_nodes.size()); ++i) {
+            NodeIterator itCurrentNode = it_node_begin + i;
+            const array_1d<double, 3>& r_current_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT);
+            const array_1d<double, 3>& r_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,1);
+            array_1d<double, 3> delta_displacement;
+            noalias(delta_displacement) = r_current_displacement-r_previous_displacement;
+            const double norm_2_du = inner_prod(delta_displacement,delta_displacement);
+            const double norm_2_u_old = inner_prod(r_previous_displacement,r_previous_displacement);
+
+            l2_numerator += norm_2_du;
+            l2_denominator += norm_2_u_old;
+        }
+        if (l2_denominator > 1.0e-12) {
+            double l2_abs_error = std::sqrt(l2_numerator);
+            double l2_rel_error = l2_abs_error/std::sqrt(l2_denominator);
+
+            // std::fstream l2_error_file;
+            // l2_error_file.open ("l2_error_time.txt", std::fstream::out | std::fstream::app);
+            // l2_error_file.precision(12);
+            // l2_error_file << r_current_process_info[TIME] << " " << l2_error << std::endl;
+            // l2_error_file.close();
+
+            if (l2_rel_error <= r_current_process_info[ERROR_RATIO] && l2_abs_error <= r_current_process_info[ERROR_INTEGRATION_POINT]) {
+            // if (l2_rel_error <= r_current_process_info[ERROR_RATIO]) {
+                KRATOS_INFO("STOP CRITERION") << "The simulation is completed at step: " << r_current_process_info[STEP] << std::endl;
+                KRATOS_INFO("STOP CRITERION") << "L2 Relative Error is: " << l2_rel_error << std::endl;
+                KRATOS_INFO("STOP CRITERION") << "L2 Absolute Error is: " << l2_abs_error << std::endl;
+                KRATOS_INFO("STOP CRITERION") << "L2 denominator is: " << std::sqrt(l2_denominator) << std::endl;
+                // KRATOS_ERROR << "L2 Error is: " << l2_rel_error << " . The simulation is completed at step: " << r_current_process_info[STEP] << std::endl;
+            }
+        }
+    }
+
+    /**
+     * @brief This method performs some custom operations to initialize the scheme
+     * @param rModelPart The model of the problem to solve
+     * @param DomainSize The current dimention of the problem
+     */
+    virtual void SchemeCustomInitialization(
+        ModelPart& rModelPart,
+        const SizeType DomainSize = 3
+        )
+    {
+        KRATOS_TRY
+
+        KRATOS_CATCH("")
+    }
+
+
+    /**
+     * @brief This function is designed to calculate just the RHS contribution
+     * @param rCurrentElement The element to compute
+     * @param RHS_Contribution The RHS vector contribution
+     * @param EquationId The ID's of the element degrees of freedom
+     * @param rCurrentProcessInfo The current process info instance
+     */
+    void CalculateRHSContribution(
+        Element& rCurrentElement,
+        LocalSystemVectorType& RHS_Contribution,
+        Element::EquationIdVectorType& EquationId,
+        const ProcessInfo& rCurrentProcessInfo
+        ) override
+    {
+        KRATOS_TRY
+
+        this->TCalculateRHSContribution(rCurrentElement, RHS_Contribution, rCurrentProcessInfo);
+        KRATOS_CATCH("")
+    }
+
+    /**
+     * @brief Functions that calculates the RHS of a "condition" object
+     * @param rCurrentCondition The condition to compute
+     * @param RHS_Contribution The RHS vector contribution
+     * @param EquationId The ID's of the condition degrees of freedom
+     * @param rCurrentProcessInfo The current process info instance
+     */
+    void CalculateRHSContribution(
+        Condition& rCurrentCondition,
+        LocalSystemVectorType& RHS_Contribution,
+        Element::EquationIdVectorType& EquationId,
+        const ProcessInfo& rCurrentProcessInfo
+        ) override
+    {
+        KRATOS_TRY
+
+        this->TCalculateRHSContribution(rCurrentCondition, RHS_Contribution, rCurrentProcessInfo);
+
+        KRATOS_CATCH("")
+    }
+
+
+    void CalculateAndAddRHS(ModelPart& rModelPart)
+    {
+        KRATOS_TRY
+
+        const ProcessInfo& r_current_process_info = rModelPart.GetProcessInfo();
+        ConditionsArrayType& r_conditions = rModelPart.Conditions();
+        ElementsArrayType& r_elements = rModelPart.Elements();
+
+        LocalSystemVectorType RHS_Contribution = LocalSystemVectorType(0);
+        Element::EquationIdVectorType equation_id_vector_dummy; // Dummy
+
+        #pragma omp parallel for firstprivate(RHS_Contribution, equation_id_vector_dummy), schedule(guided,512)
+        for (int i = 0; i < static_cast<int>(r_conditions.size()); ++i) {
+            auto it_cond = r_conditions.begin() + i;
+            CalculateRHSContribution(*it_cond, RHS_Contribution, equation_id_vector_dummy, r_current_process_info);
+        }
+
+        #pragma omp parallel for firstprivate(RHS_Contribution, equation_id_vector_dummy), schedule(guided,512)
+        for (int i = 0; i < static_cast<int>(r_elements.size()); ++i) {
+            auto it_elem = r_elements.begin() + i;
+            CalculateRHSContribution(*it_elem, RHS_Contribution, equation_id_vector_dummy, r_current_process_info);
+        }
+
+        KRATOS_CATCH("")
+    }
 
     ///@}
     ///@name Operations
@@ -376,9 +608,32 @@ protected:
     ///@name Protected member Variables
     ///@{
 
+    double mDeltaTime;
+    double mAlpha;
+    double mBeta;
+    double mTheta1;
+
     ///@}
     ///@name Protected Operators
     ///@{
+
+    /**
+    * @brief Functions that calculates the RHS of a "TObjectType" object
+    * @param rCurrentEntity The TObjectType to compute
+    * @param RHS_Contribution The RHS vector contribution
+    * @param rCurrentProcessInfo The current process info instance
+    */
+    template <typename TObjectType>
+    void TCalculateRHSContribution(
+        TObjectType& rCurrentEntity,
+        LocalSystemVectorType& RHS_Contribution,
+        const ProcessInfo& rCurrentProcessInfo
+        )
+    {
+        rCurrentEntity.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
+
+        rCurrentEntity.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, FORCE_RESIDUAL, rCurrentProcessInfo);
+    }
 
     ///@}
     ///@name Protected Operations
@@ -428,7 +683,7 @@ private:
 
     ///@}
 
-}; /* Class ExplicitVelocityVerletScheme */
+}; /* Class ExplicitVVScheme */
 
 ///@}
 
@@ -439,4 +694,4 @@ private:
 
 } /* namespace Kratos.*/
 
-#endif /* KRATOS_EXPLICIT_VELOCITY_VERLET_SCHEME_HPP_INCLUDED  defined */
+#endif /* KRATOS_EXPLICIT_VV_SCHEME_HPP_INCLUDED  defined */

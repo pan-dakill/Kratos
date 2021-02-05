@@ -30,9 +30,10 @@
 #include "custom_strategies/custom_schemes/residual_based_relaxation_scheme.hpp"
 #include "custom_strategies/custom_schemes/explicit_central_differences_scheme.hpp"
 #include "custom_strategies/custom_schemes/explicit_multi_stage_kim_scheme.hpp"
-#include "custom_strategies/custom_schemes/explicit_forward_euler_fic_scheme.hpp"
-#include "custom_strategies/custom_schemes/explicit_symplectic_euler_scheme.hpp"
-#include "custom_strategies/custom_schemes/explicit_velocity_verlet_scheme.hpp"
+#include "custom_strategies/custom_schemes/explicit_cd_scheme.hpp"
+#include "custom_strategies/custom_schemes/explicit_ocd_scheme.hpp"
+#include "custom_strategies/custom_schemes/explicit_vv_scheme.hpp"
+#include "custom_strategies/custom_schemes/explicit_ovv_scheme.hpp"
 #include "custom_strategies/custom_schemes/eigensolver_dynamic_scheme.hpp"
 
 // Convergence criterias
@@ -79,10 +80,10 @@ void  AddCustomStrategiesToPython(pybind11::module& m)
     typedef EigensolverDynamicScheme< SparseSpaceType, LocalSpaceType > EigensolverDynamicSchemeType;
     typedef ExplicitCentralDifferencesScheme< SparseSpaceType, LocalSpaceType >  ExplicitCentralDifferencesSchemeType;
     typedef ExplicitMultiStageKimScheme< SparseSpaceType, LocalSpaceType >  ExplicitMultiStageKimSchemeType;
-    typedef ExplicitForwardEulerFICScheme< SparseSpaceType, LocalSpaceType >  ExplicitForwardEulerFICSchemeType;
-    typedef ExplicitSymplecticEulerScheme< SparseSpaceType, LocalSpaceType >  ExplicitSymplecticEulerSchemeType;
-    typedef ExplicitVelocityVerletScheme< SparseSpaceType, LocalSpaceType >  ExplicitVelocityVerletSchemeType;
-
+    typedef ExplicitCDScheme< SparseSpaceType, LocalSpaceType >  ExplicitCDSchemeType;
+    typedef ExplicitOCDScheme< SparseSpaceType, LocalSpaceType >  ExplicitOCDSchemeType;
+    typedef ExplicitVVScheme< SparseSpaceType, LocalSpaceType >  ExplicitVVSchemeType;
+    typedef ExplicitOVVScheme< SparseSpaceType, LocalSpaceType >  ExplicitOVVSchemeType;
 
     // Custom convergence criterion types
     typedef ResidualDisplacementAndOtherDoFCriteria< SparseSpaceType,  LocalSpaceType > ResidualDisplacementAndOtherDoFCriteriaType;
@@ -162,18 +163,21 @@ void  AddCustomStrategiesToPython(pybind11::module& m)
         .def(py::init< Parameters>())
         ;
 
-    py::class_< ExplicitForwardEulerFICSchemeType,typename ExplicitForwardEulerFICSchemeType::Pointer, BaseSchemeType >(m,"ExplicitForwardEulerFICScheme")
+    py::class_< ExplicitCDSchemeType,typename ExplicitCDSchemeType::Pointer, BaseSchemeType >(m,"ExplicitCDScheme")
         .def(py::init< >())
         ;
 
-    py::class_< ExplicitSymplecticEulerSchemeType,typename ExplicitSymplecticEulerSchemeType::Pointer, BaseSchemeType >(m,"ExplicitSymplecticEulerScheme")
+    py::class_< ExplicitOCDSchemeType,typename ExplicitOCDSchemeType::Pointer, BaseSchemeType >(m,"ExplicitOCDScheme")
         .def(py::init< >())
         ;
 
-    py::class_< ExplicitVelocityVerletSchemeType,typename ExplicitVelocityVerletSchemeType::Pointer, BaseSchemeType >(m,"ExplicitVelocityVerletScheme")
+    py::class_< ExplicitVVSchemeType,typename ExplicitVVSchemeType::Pointer, BaseSchemeType >(m,"ExplicitVVScheme")
         .def(py::init< >())
         ;
 
+    py::class_< ExplicitOVVSchemeType,typename ExplicitOVVSchemeType::Pointer, BaseSchemeType >(m,"ExplicitOVVScheme")
+        .def(py::init< >())
+        ;
 
 
     //********************************************************************

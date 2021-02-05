@@ -236,55 +236,34 @@ void SmallDisplacementExplicitSplitScheme::CalculateLumpedDampingVector(
     }
     noalias(rDampingVector) = ZeroVector(mat_size);
 
-    if (rCurrentProcessInfo[USE_CONSISTENT_MASS_MATRIX] == true) {
+    // Rayleigh Damping Vector (C= alpha*M + beta*K)
 
-        // Rayleigh Damping Vector (C= alpha*M + beta*K)
+    // Get Damping Coefficients (RAYLEIGH_ALPHA, RAYLEIGH_BETA)
+    double alpha = 0.0;
+    if( GetProperties().Has(RAYLEIGH_ALPHA) )
+        alpha = GetProperties()[RAYLEIGH_ALPHA];
+    else if( rCurrentProcessInfo.Has(RAYLEIGH_ALPHA) )
+        alpha = rCurrentProcessInfo[RAYLEIGH_ALPHA];
+    double beta  = 0.0;
+    if( GetProperties().Has(RAYLEIGH_BETA) )
+        beta = GetProperties()[RAYLEIGH_BETA];
+    else if( rCurrentProcessInfo.Has(RAYLEIGH_BETA) )
+        beta = rCurrentProcessInfo[RAYLEIGH_BETA];
 
-        // Get Damping Coefficients (RAYLEIGH_ALPHA, RAYLEIGH_BETA)
-        double alpha = 0.0;
-        if( GetProperties().Has(RAYLEIGH_ALPHA) )
-            alpha = GetProperties()[RAYLEIGH_ALPHA];
-        else if( rCurrentProcessInfo.Has(RAYLEIGH_ALPHA) )
-            alpha = rCurrentProcessInfo[RAYLEIGH_ALPHA];
-        double beta  = 0.0;
-        if( GetProperties().Has(RAYLEIGH_BETA) )
-            beta = GetProperties()[RAYLEIGH_BETA];
-        else if( rCurrentProcessInfo.Has(RAYLEIGH_BETA) )
-            beta = rCurrentProcessInfo[RAYLEIGH_BETA];
-
-        // 1.-Calculate mass Vector:
-        if (alpha > std::numeric_limits<double>::epsilon()) {
-            VectorType mass_vector(mat_size);
-            CalculateLumpedMassVector(mass_vector);
-            for (IndexType i = 0; i < mat_size; ++i)
-                rDampingVector[i] += alpha * mass_vector[i];
-        }
-
-        // 2.-Calculate Stiffness Vector:
-        if (beta > std::numeric_limits<double>::epsilon()) {
-            VectorType stiffness_vector(mat_size);
-            CalculateLumpedStiffnessVector(stiffness_vector,rCurrentProcessInfo);
-            for (IndexType i = 0; i < mat_size; ++i)
-                rDampingVector[i] += beta * stiffness_vector[i];
-        }
-
-    } else {
-
-        // Critical damping vector (C=2*xi*sqrt(K*M))
-
-        double xi_damping  = 0.0;
-        if( GetProperties().Has(XI_DAMPING) )
-            xi_damping = GetProperties()[XI_DAMPING];
-        else if( rCurrentProcessInfo.Has(XI_DAMPING) )
-            xi_damping = rCurrentProcessInfo[XI_DAMPING];
-
+    // 1.-Calculate mass Vector:
+    if (alpha > std::numeric_limits<double>::epsilon()) {
         VectorType mass_vector(mat_size);
         CalculateLumpedMassVector(mass_vector);
+        for (IndexType i = 0; i < mat_size; ++i)
+            rDampingVector[i] += alpha * mass_vector[i];
+    }
+
+    // 2.-Calculate Stiffness Vector:
+    if (beta > std::numeric_limits<double>::epsilon()) {
         VectorType stiffness_vector(mat_size);
         CalculateLumpedStiffnessVector(stiffness_vector,rCurrentProcessInfo);
         for (IndexType i = 0; i < mat_size; ++i)
-            rDampingVector[i] = 2.0 * xi_damping * sqrt(stiffness_vector[i] * mass_vector[i]);
-
+            rDampingVector[i] += beta * stiffness_vector[i];
     }
 
     KRATOS_CATCH( "" )
