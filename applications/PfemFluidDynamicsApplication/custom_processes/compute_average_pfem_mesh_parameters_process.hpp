@@ -151,21 +151,14 @@ public:
         }
         else if (dimension == 3)
         {
-          double elementSize=i_node->FastGetSolutionStepValue(NODAL_H);
-          double safetyDistance=5.0*elementSize;
-          if ((i_node->X() < (RefiningBoxMinimumPoint[0]-safetyDistance) && i_node->Y() < (RefiningBoxMinimumPoint[1]-safetyDistance) && i_node->Z() < (RefiningBoxMinimumPoint[2]-safetyDistance)) ||
-              (i_node->X() > (RefiningBoxMaximumPoint[0]+safetyDistance) && i_node->Y() > (RefiningBoxMaximumPoint[1]+safetyDistance) && i_node->Z() > (RefiningBoxMaximumPoint[2]+safetyDistance))) // I want to be far from the refined zone
+          if (i_node->X() < RefiningBoxMinimumPoint[0] || i_node->Y() < RefiningBoxMinimumPoint[1] || i_node->Z() < RefiningBoxMinimumPoint[2] ||
+              i_node->X() > RefiningBoxMaximumPoint[0] || i_node->Y() > RefiningBoxMaximumPoint[1] || i_node->Z() > RefiningBoxMaximumPoint[2])
           {
             //CONSIDER ONLY THE NODES OUT FROM THE REFINEMENT AREA
             if (i_node->Is(FLUID))
             {
               fluidNodes += 1.0;
-              meanNodalSize += elementSize;
-              // double nodeSize= i_node->FastGetSolutionStepValue(NODAL_H);
-              // double coorX=i_node->X();
-              // double coorY=i_node->Y();
-              // double coorZ=i_node->Z();
-              // std::cout<<coorX<<", "<<coorY<<", "<<coorZ<<",  nodeSize=  "<< nodeSize<<std::endl;
+              meanNodalSize += i_node->FastGetSolutionStepValue(NODAL_H);
             }
           }
           // else
