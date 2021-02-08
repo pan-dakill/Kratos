@@ -158,6 +158,14 @@ void SmallDisplacementExplicitSplitScheme::AddExplicitContribution(
     Vector internal_forces = ZeroVector(element_size);
     this->CalculateInternalForces(internal_forces,rCurrentProcessInfo);
 
+    Vector damping_residual_contribution = ZeroVector(element_size);
+    Vector current_nodal_velocities = ZeroVector(element_size);
+    this->GetFirstDerivativesVector(current_nodal_velocities);
+    Matrix damping_matrix(element_size, element_size);
+    this->CalculateDampingMatrixWithLumpedMass(damping_matrix, rCurrentProcessInfo);
+    // Current residual contribution due to damping
+    noalias(damping_residual_contribution) = prod(damping_matrix, current_nodal_velocities);
+
     // VectorType displacement_vector(element_size);
     // GetValuesVector(displacement_vector);
 
@@ -197,7 +205,7 @@ void SmallDisplacementExplicitSplitScheme::AddExplicitContribution(
             const IndexType index = dimension * i;
             array_1d<double, 3>& r_external_forces = GetGeometry()[i].FastGetSolutionStepValue(FORCE_RESIDUAL);
             array_1d<double, 3>& r_internal_forces = GetGeometry()[i].FastGetSolutionStepValue(NODAL_INERTIA);
-            // array_1d<double, 3>& r_k_hat_a = GetGeometry()[i].FastGetSolutionStepValue(MIDDLE_VELOCITY);
+            array_1d<double, 3>& r_c_v = GetGeometry()[i].FastGetSolutionStepValue(MIDDLE_VELOCITY);
 
             for (IndexType j = 0; j < dimension; ++j) {
                 #pragma omp atomic
@@ -206,8 +214,8 @@ void SmallDisplacementExplicitSplitScheme::AddExplicitContribution(
                 #pragma omp atomic
                 r_internal_forces[j] += internal_forces[index + j];
 
-                // #pragma omp atomic
-                // r_k_hat_a[j] += k_hat_a[index + j];
+                #pragma omp atomic
+                r_c_v[j] += damping_residual_contribution[index + j];
             }
         }
     }
@@ -398,6 +406,66 @@ void SmallDisplacementExplicitSplitScheme::CalculateInternalForces(
     }
 
     KRATOS_CATCH("");
+}
+
+/***********************************************************************************/
+/***********************************************************************************/
+
+void SmallDisplacementExplicitSplitScheme::CalculateDampingMatrixWithLumpedMass(
+    MatrixType& rDampingMatrix,
+    const ProcessInfo& rCurrentProcessInfo
+    )
+{
+    KRATOS_TRY;
+
+    unsigned int number_of_nodes = GetGeometry().size();
+    unsigned int dimension = GetGeometry().WorkingSpaceDimension();
+
+    // Resizing as needed the LHS
+    unsigned int mat_size = number_of_nodes * dimension;
+
+    if ( rDampingMatrix.size1() != mat_size )
+        rDampingMatrix.resize( mat_size, mat_size, false );
+
+    noalias( rDampingMatrix ) = ZeroMatrix( mat_size, mat_size );
+
+    // 1.-Get Damping Coeffitients (RAYLEIGH_ALPHA, RAYLEIGH_BETA)
+    double alpha = 0.0;
+    if( GetProperties().Has(RAYLEIGH_ALPHA) )
+        alpha = GetProperties()[RAYLEIGH_ALPHA];
+    else if( rCurrentProcessInfo.Has(RAYLEIGH_ALPHA) )
+        alpha = rCurrentProcessInfo[RAYLEIGH_ALPHA];
+
+    double beta  = 0.0;
+    if( GetProperties().Has(RAYLEIGH_BETA) )
+        beta = GetProperties()[RAYLEIGH_BETA];
+    else if( rCurrentProcessInfo.Has(RAYLEIGH_BETA) )
+        beta = rCurrentProcessInfo[RAYLEIGH_BETA];
+
+    // Compose the Damping Matrix:
+    // Rayleigh Damping Matrix: alpha*M + beta*K
+
+    // 2.-Calculate mass matrix:
+    if (alpha > std::numeric_limits<double>::epsilon()) {
+        VectorType temp_vector(mat_size);
+        CalculateLumpedMassVector(temp_vector);
+        // KRATOS_WATCH("mass_vector")
+        // KRATOS_WATCH(temp_vector)
+        for (IndexType i = 0; i < mat_size; ++i)
+            rDampingMatrix(i, i) += alpha * temp_vector[i];
+    }
+
+    // 3.-Calculate StiffnessMatrix:
+    if (beta > std::numeric_limits<double>::epsilon()) {
+        MatrixType stiffness_matrix( mat_size, mat_size );
+        VectorType residual_vector( mat_size );
+
+        this->CalculateAll(stiffness_matrix, residual_vector, rCurrentProcessInfo, true, false);
+        // KRATOS_WATCH(stiffness_matrix)
+        noalias( rDampingMatrix ) += beta  * stiffness_matrix;
+    }
+
+    KRATOS_CATCH( "" )
 }
 
 /***********************************************************************************/

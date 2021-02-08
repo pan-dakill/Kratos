@@ -145,7 +145,11 @@ public:
         ) override
     {
         const double nodal_mass = itCurrentNode->GetValue(NODAL_MASS);
-        const array_1d<double, 3>& r_current_residual = itCurrentNode->FastGetSolutionStepValue(FORCE_RESIDUAL);
+        const array_1d<double, 3>& r_external_forces = itCurrentNode->FastGetSolutionStepValue(FORCE_RESIDUAL);
+        const array_1d<double, 3>& r_previous_external_forces = itCurrentNode->FastGetSolutionStepValue(FORCE_RESIDUAL,1);
+        const array_1d<double, 3>& r_current_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA);
+        const array_1d<double, 3>& r_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA,1);
+        const array_1d<double, 3>& r_current_damping_force = itCurrentNode->FastGetSolutionStepValue(MIDDLE_VELOCITY);
         array_1d<double, 3>& r_current_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT);
         array_1d<double, 3>& r_current_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY);
 
@@ -159,8 +163,12 @@ public:
         if ((nodal_mass*mDelta*mDelta) > numerical_limit){
             for (IndexType j = 0; j < DomainSize; j++) {
                 if (fix_displacements[j] == false) {
-                    r_current_displacement[j] += r_current_velocity[j]*mDeltaTime + 0.5 * r_current_residual[j]/(nodal_mass*mDelta*mDelta) * mDeltaTime * mDeltaTime;
-                    r_current_velocity[j] += 0.5 * mDeltaTime * r_current_residual[j]/(nodal_mass*mDelta*mDelta);
+                    r_current_displacement[j] += r_current_velocity[j]*mDeltaTime + 0.5 * (mTheta1*r_external_forces[j]+(1.0-mTheta1)*r_previous_external_forces[j]
+                                                                                           - (mTheta1*r_current_internal_force[j]+(1.0-mTheta1)*r_previous_internal_force[j])
+                                                                                           - r_current_damping_force[j])/(nodal_mass*mDelta*mDelta) * mDeltaTime * mDeltaTime;
+                    r_current_velocity[j] += 0.5 * mDeltaTime * (mTheta1*r_external_forces[j]+(1.0-mTheta1)*r_previous_external_forces[j]
+                                                                 - (mTheta1*r_current_internal_force[j]+(1.0-mTheta1)*r_previous_internal_force[j])
+                                                                 - r_current_damping_force[j])/(nodal_mass*mDelta*mDelta);
                 }
             }
         }
@@ -183,7 +191,11 @@ public:
         ) override
     {
         const double nodal_mass = itCurrentNode->GetValue(NODAL_MASS);
-        const array_1d<double, 3>& r_current_residual = itCurrentNode->FastGetSolutionStepValue(FORCE_RESIDUAL);
+        const array_1d<double, 3>& r_external_forces = itCurrentNode->FastGetSolutionStepValue(FORCE_RESIDUAL);
+        const array_1d<double, 3>& r_previous_external_forces = itCurrentNode->FastGetSolutionStepValue(FORCE_RESIDUAL,1);
+        const array_1d<double, 3>& r_current_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA);
+        const array_1d<double, 3>& r_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA,1);
+        const array_1d<double, 3>& r_current_damping_force = itCurrentNode->FastGetSolutionStepValue(MIDDLE_VELOCITY);
         array_1d<double, 3>& r_current_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY);
 
         std::array<bool, 3> fix_displacements = {false, false, false};
@@ -196,7 +208,9 @@ public:
         if ((nodal_mass*mDelta*mDelta) > numerical_limit){
             for (IndexType j = 0; j < DomainSize; j++) {
                 if (fix_displacements[j] == false) {
-                    r_current_velocity[j] += 0.5 * mDeltaTime * r_current_residual[j]/(nodal_mass*mDelta*mDelta);
+                    r_current_velocity[j] += 0.5 * mDeltaTime * (mTheta1*r_external_forces[j]+(1.0-mTheta1)*r_previous_external_forces[j]
+                                                                 - (mTheta1*r_current_internal_force[j]+(1.0-mTheta1)*r_previous_internal_force[j])
+                                                                 - r_current_damping_force[j])/(nodal_mass*mDelta*mDelta);
                 }
             }
         }

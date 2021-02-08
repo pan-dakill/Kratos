@@ -127,11 +127,19 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
         //     non_diagonal_stiffness_matrix(i,i) = 0.0;
         // noalias(k_hat_a) = prod(non_diagonal_stiffness_matrix,current_disp);
 
+        BoundedVector<double, msLocalSize> damping_residual_contribution = ZeroVector(msLocalSize);
+        Vector current_nodal_velocities = ZeroVector(msLocalSize);
+        GetFirstDerivativesVector(current_nodal_velocities);
+        Matrix damping_matrix;
+        CalculateDampingMatrix(damping_matrix, rCurrentProcessInfo);
+        // current residual contribution due to damping
+        noalias(damping_residual_contribution) = prod(damping_matrix, current_nodal_velocities);
+
         for (size_t i = 0; i < msNumberOfNodes; ++i) {
             size_t index = msDimension * i;
             array_1d<double, 3>& r_external_forces = GetGeometry()[i].FastGetSolutionStepValue(FORCE_RESIDUAL);
             array_1d<double, 3>& r_internal_forces = GetGeometry()[i].FastGetSolutionStepValue(NODAL_INERTIA);
-            // array_1d<double, 3>& r_k_hat_a = GetGeometry()[i].FastGetSolutionStepValue(MIDDLE_VELOCITY);
+            array_1d<double, 3>& r_c_v = GetGeometry()[i].FastGetSolutionStepValue(MIDDLE_VELOCITY);
             // array_1d<double, 3>& r_k_a = GetGeometry()[i].FastGetSolutionStepValue(FRACTIONAL_ANGULAR_ACCELERATION);
 
             for (size_t j = 0; j < msDimension; ++j) {
@@ -143,7 +151,7 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
                 r_internal_forces[j] += internal_forces[index + j];
 
                 // #pragma omp atomic
-                // r_k_hat_a[j] += k_hat_a[index + j];
+                r_c_v[j] += damping_residual_contribution[index + j];
 
                 // #pragma omp atomic
                 // r_k_a[j] += k_a[index + j];

@@ -150,7 +150,7 @@ public:
         const double nodal_mass = itCurrentNode->GetValue(NODAL_MASS);
 
         const array_1d<double, 3>& r_external_forces = itCurrentNode->FastGetSolutionStepValue(FORCE_RESIDUAL);
-        // const array_1d<double, 3>& r_previous_external_forces = itCurrentNode->FastGetSolutionStepValue(FORCE_RESIDUAL,1);
+        const array_1d<double, 3>& r_previous_external_forces = itCurrentNode->FastGetSolutionStepValue(FORCE_RESIDUAL,1);
         // const array_1d<double, 3>& r_actual_previous_external_forces = itCurrentNode->FastGetSolutionStepValue(FORCE_RESIDUAL,2);
         const array_1d<double, 3>& r_current_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA);
         const array_1d<double, 3>& r_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA,1);
@@ -168,9 +168,9 @@ public:
                 if (fix_displacements[j] == false) {
                     r_current_displacement[j] = ( (2.0*mDelta*mDelta-mDeltaTime*mAlpha)*nodal_mass*r_current_displacement[j]
                                                 + (mDeltaTime*mAlpha-mDelta*mDelta)*nodal_mass*r_actual_previous_displacement[j]
-                                                - mDeltaTime*(mBeta+mDeltaTime)*r_current_internal_force[j]
-                                                + mDeltaTime*mBeta*r_previous_internal_force[j]
-                                                + mDeltaTime*mDeltaTime*r_external_forces[j] ) /
+                                                - mDeltaTime*(mBeta+mTheta1*mDeltaTime)*r_current_internal_force[j]
+                                                + mDeltaTime*(mBeta-(1.0-mTheta1)*mDeltaTime)*r_previous_internal_force[j]
+                                                + mDeltaTime*mDeltaTime*(mTheta1*r_external_forces[j]+(1.0-mTheta1)*r_previous_external_forces[j]) ) /
                                                 (nodal_mass*mDelta*mDelta);
                 }
             }
