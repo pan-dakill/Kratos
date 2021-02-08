@@ -1135,22 +1135,31 @@ namespace Kratos
 			{
 				array_1d<double, 3> RefiningBoxMinimumPoint = mrRemesh.RefiningBoxMinimumPoint;
 				array_1d<double, 3> RefiningBoxMaximumPoint = mrRemesh.RefiningBoxMaximumPoint;
+				double meshSizeInsideRefinedZone = mrRemesh.RefiningBoxMeshSize;
+				double meshSizeOutsideRefinedZone = mrRemesh.Refine->CriticalRadius;
+				double meanSize = 0.5 * (meshSizeInsideRefinedZone + meshSizeOutsideRefinedZone);
+
 				if (baricenterX > RefiningBoxMinimumPoint[0] && baricenterX < RefiningBoxMaximumPoint[0] &&
 					baricenterY > RefiningBoxMinimumPoint[1] && baricenterY < RefiningBoxMaximumPoint[1] &&
 					baricenterZ > RefiningBoxMinimumPoint[2] && baricenterZ < RefiningBoxMaximumPoint[2])
 				{
-					criticalVolume = 0.01 * (pow(mrRemesh.RefiningBoxMeshSize, 3) / (6.0 * sqrt(2))); //mean Volume of a regular tetrahedral per node with 0.01 of penalization
+
+					criticalVolume = 0.075 * (pow(meshSizeInsideRefinedZone, 3) / (6.0 * sqrt(2))); //mean Volume of a regular tetrahedral per node with 0.05 of penalization
 				}
 				else
 				{
-					criticalVolume = 0.01 * (pow(mrRemesh.Refine->CriticalRadius, 3) / (6.0 * sqrt(2)));
+					criticalVolume = 0.075 * (pow(meshSizeOutsideRefinedZone, 3) / (6.0 * sqrt(2))); //mean Volume of a regular tetrahedral per node with 0.05 of penalization
 				}
-				double meanSize = 0.5 * (mrRemesh.RefiningBoxMeshSize + mrRemesh.Refine->CriticalRadius);
+
 				if ((baricenterX > (RefiningBoxMinimumPoint[0] - meanSize) && baricenterX < (RefiningBoxMaximumPoint[0] + meanSize)) ||
 					(baricenterY > (RefiningBoxMinimumPoint[1] - meanSize) && baricenterY < (RefiningBoxMaximumPoint[1] + meanSize)) ||
 					(baricenterZ > (RefiningBoxMinimumPoint[2] - meanSize) && baricenterZ < (RefiningBoxMaximumPoint[2] + meanSize))) //transition zone
 				{
-					safetyCoefficient3D *= 0.8;
+					if (meanSize < meshSizeOutsideRefinedZone)
+					{
+						criticalVolume = 0.075 * (pow(meanSize, 3) / (6.0 * sqrt(2)));
+					}
+					safetyCoefficient3D *= 0.85;
 				}
 			}
 

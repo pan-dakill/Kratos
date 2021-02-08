@@ -151,8 +151,9 @@ public:
         }
         else if (dimension == 3)
         {
-          if (i_node->X() < RefiningBoxMinimumPoint[0] || i_node->Y() < RefiningBoxMinimumPoint[1] || i_node->Z() < RefiningBoxMinimumPoint[2] ||
-              i_node->X() > RefiningBoxMaximumPoint[0] || i_node->Y() > RefiningBoxMaximumPoint[1] || i_node->Z() > RefiningBoxMaximumPoint[2])
+          double safetyDistance=3*i_node->FastGetSolutionStepValue(NODAL_H);
+          if (i_node->X() < (RefiningBoxMinimumPoint[0]-safetyDistance) || i_node->Y() < (RefiningBoxMinimumPoint[1]-safetyDistance) || i_node->Z() < (RefiningBoxMinimumPoint[2]-safetyDistance) ||
+              i_node->X() > (RefiningBoxMaximumPoint[0]+safetyDistance) || i_node->Y() > (RefiningBoxMaximumPoint[1]+safetyDistance) || i_node->Z() > (RefiningBoxMaximumPoint[2]+safetyDistance))
           {
             //CONSIDER ONLY THE NODES OUT FROM THE REFINEMENT AREA
             if (i_node->Is(FLUID))

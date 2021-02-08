@@ -891,7 +891,7 @@ namespace Kratos
                 }
                 else
                 {
-                    Alpha *= 1.05;
+                    Alpha *= 1.075;
                 }
             }
             KRATOS_CATCH("")
