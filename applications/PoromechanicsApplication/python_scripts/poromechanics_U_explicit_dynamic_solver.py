@@ -23,7 +23,7 @@ class ExplicitUSolver(UPwSolver):
 
         # TODO: check
         scheme_type = self.settings["scheme_type"].GetString()
-        if(scheme_type == "omdp"):
+        if(scheme_type == "cd" or scheme_type == "ocd"):
             self.min_buffer_size = 3
         else:
             self.min_buffer_size = 2
@@ -35,9 +35,11 @@ class ExplicitUSolver(UPwSolver):
     @classmethod
     def GetDefaultParameters(cls):
         this_defaults = KratosMultiphysics.Parameters("""{
-            "scheme_type"                : "omdp",
-            "theta_1"                    : 0.0,
-            "theta_2"                    : 0.0
+            "scheme_type"                : "ocd",
+            "l2_rel_tolerance"           : 1.0e-4,
+            "l2_abs_tolerance"           : 1.0e-9,
+            "theta_1"                    : 1.0,
+            "delta"                      : 1.0
         }""")
         this_defaults.AddMissingParameters(super().GetDefaultParameters())
         return this_defaults
@@ -58,7 +60,7 @@ class ExplicitUSolver(UPwSolver):
         self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.FACE_LOAD)
         self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.NORMAL_CONTACT_STRESS)
         self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.TANGENTIAL_CONTACT_STRESS)
-        
+
         ## Other variables
         self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.VOLUME_ACCELERATION)
         self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.PERIODIC_PAIR_INDEX)
@@ -71,17 +73,14 @@ class ExplicitUSolver(UPwSolver):
         self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.NODAL_EFFECTIVE_STRESS_TENSOR)
         self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.INITIAL_STRESS_TENSOR)
 
-        scheme_type = self.settings["scheme_type"].GetString()
-        if(scheme_type == "omdp"):
-            self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.INTERNAL_FORCE)
-            self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.EXTERNAL_FORCE)
-        else:
-            self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.FORCE_RESIDUAL)
+        self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.INTERNAL_FORCE)
+        self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.EXTERNAL_FORCE)
+        self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.DAMPING_FORCE)
 
         # TODO: check
         # self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.NODAL_MASS)
         # self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.RESIDUAL_VECTOR)
-        
+
         KratosMultiphysics.Logger.PrintInfo("::[ExplicitUSolver]:: Variables ADDED")
 
     def AddDofs(self):
@@ -105,7 +104,7 @@ class ExplicitUSolver(UPwSolver):
         # Using the base Initialize
         # super().Initialize()
         """Perform initialization after adding nodal variables and dofs to the main model part. """
-       
+
         self.computing_model_part = self.GetComputingModelPart()
 
         # Fill the previous steps of the buffer with the initial conditions
@@ -137,17 +136,23 @@ class ExplicitUSolver(UPwSolver):
         process_info = self.main_model_part.ProcessInfo
         process_info.SetValue(StructuralMechanicsApplication.RAYLEIGH_ALPHA, self.settings["rayleigh_alpha"].GetDouble())
         process_info.SetValue(StructuralMechanicsApplication.RAYLEIGH_BETA, self.settings["rayleigh_beta"].GetDouble())
-        process_info.SetValue(StructuralMechanicsApplication.THETA_1, self.settings["theta_1"].GetDouble())
-        process_info.SetValue(StructuralMechanicsApplication.THETA_2, self.settings["theta_2"].GetDouble())
+        process_info.SetValue(KratosPoro.THETA_1, self.settings["theta_1"].GetDouble())
+        process_info.SetValue(KratosPoro.DELTA, self.settings["delta"].GetDouble())
+        process_info.SetValue(KratosMultiphysics.ERROR_RATIO, self.settings["l2_rel_tolerance"].GetDouble())
+        process_info.SetValue(KratosMultiphysics.ERROR_INTEGRATION_POINT, self.settings["l2_abs_tolerance"].GetDouble())
 
         # Setting the time integration schemes
-        if(scheme_type == "omdp"):
-            scheme = KratosPoro.ExplicitOMDPScheme()
-        elif(scheme_type == "velocity_verlet"):
-            scheme = KratosPoro.ExplicitVelocityVerletScheme()
+        if(scheme_type == "cd"):
+            scheme = KratosPoro.ExplicitCDScheme()
+        elif(scheme_type == "ocd"):
+            scheme = KratosPoro.ExplicitOCDScheme()
+        elif(scheme_type == "vv"):
+            scheme = KratosPoro.ExplicitVVScheme()
+        elif(scheme_type == "ovv"):
+            scheme = KratosPoro.ExplicitOVVScheme()
         else:
             err_msg =  "The requested scheme type \"" + scheme_type + "\" is not available!\n"
-            err_msg += "Available options are: \"omdp\", \"velocity_verlet\""
+            err_msg += "Available options are: \"cd\", \"ocd\", \"vv\", \"ovv\""
             raise Exception(err_msg)
         return scheme
 
