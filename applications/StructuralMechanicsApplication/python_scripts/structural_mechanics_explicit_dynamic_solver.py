@@ -36,14 +36,12 @@ class ExplicitMechanicalSolver(MechanicalSolver):
             "fraction_delta_time"        : 0.333333333333333333333333333333333333,
             "l2_rel_tolerance"           : 1.0e-4,
             "l2_abs_tolerance"           : 1.0e-9,
-            "diagonal_critical_damping"  : false,
-            "xi_damping"                 : 0.0,
             "rayleigh_alpha"             : 0.0,
             "rayleigh_beta"              : 0.0,
-            "theta_1"                    : 0.0,
-            "theta_2"                    : 1.0,
+            "theta_1"                    : 1.0,
+            "theta_2"                    : 0.0,
             "theta_3"                    : 0.0,
-            "gamma"                      : 1.0
+            "delta"                      : 1.0
         }""")
         this_defaults.AddMissingParameters(super().GetDefaultParameters())
         return this_defaults
@@ -61,13 +59,9 @@ class ExplicitMechanicalSolver(MechanicalSolver):
             self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.FRACTIONAL_ACCELERATION)
             if (self.settings["rotation_dofs"].GetBool()):
                 self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.FRACTIONAL_ANGULAR_ACCELERATION)
-        if(scheme_type == "forward_euler_fic"):
-            self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.NODAL_DISPLACEMENT_STIFFNESS)
+        if(scheme_type == "cd" or scheme_type == "ocd" or scheme_type == "vv" or scheme_type == "ovv"):
             self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.NODAL_INERTIA)
-            # self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.MIDDLE_VELOCITY)
-            # self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.FRACTIONAL_ANGULAR_ACCELERATION)
-            # self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.FRACTIONAL_ACCELERATION)
-            # self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.MIDDLE_ANGULAR_VELOCITY)
+            self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.MIDDLE_VELOCITY)
 
         self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.NODAL_MASS)
         self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.FORCE_RESIDUAL)
@@ -121,12 +115,7 @@ class ExplicitMechanicalSolver(MechanicalSolver):
         process_info.SetValue(StructuralMechanicsApplication.THETA_1, self.settings["theta_1"].GetDouble())
         process_info.SetValue(StructuralMechanicsApplication.THETA_2, self.settings["theta_2"].GetDouble())
         process_info.SetValue(StructuralMechanicsApplication.THETA_3, self.settings["theta_3"].GetDouble())
-        process_info.SetValue(StructuralMechanicsApplication.LOAD_FACTOR, self.settings["gamma"].GetDouble())
-        use_rayleigh_damping = True
-        if self.settings["diagonal_critical_damping"].GetBool() == True:
-            use_rayleigh_damping = False
-        process_info.SetValue(StructuralMechanicsApplication.USE_CONSISTENT_MASS_MATRIX, use_rayleigh_damping)
-        process_info.SetValue(StructuralMechanicsApplication.XI_DAMPING, self.settings["xi_damping"].GetDouble())
+        process_info.SetValue(StructuralMechanicsApplication.LOAD_FACTOR, self.settings["delta"].GetDouble())
         process_info.SetValue(KratosMultiphysics.ERROR_RATIO, self.settings["l2_rel_tolerance"].GetDouble())
         process_info.SetValue(KratosMultiphysics.ERROR_INTEGRATION_POINT, self.settings["l2_abs_tolerance"].GetDouble())
         process_info.SetValue(KratosMultiphysics.DELTA_TIME, self.settings["time_stepping"]["time_step"].GetDouble())
@@ -138,16 +127,18 @@ class ExplicitMechanicalSolver(MechanicalSolver):
                                                                              self.settings["time_step_prediction_level"].GetDouble())
         elif(scheme_type == "multi_stage"):
             mechanical_scheme = StructuralMechanicsApplication.ExplicitMultiStageKimScheme(self.settings["fraction_delta_time"].GetDouble())
-        elif(scheme_type == "forward_euler_fic"):
-            mechanical_scheme = StructuralMechanicsApplication.ExplicitForwardEulerFICScheme()
-        elif(scheme_type == "symplectic_euler"):
-            mechanical_scheme = StructuralMechanicsApplication.ExplicitSymplecticEulerScheme()
-        elif(scheme_type == "velocity_verlet"):
-            mechanical_scheme = StructuralMechanicsApplication.ExplicitVelocityVerletScheme()
+        elif(scheme_type == "cd"):
+            mechanical_scheme = StructuralMechanicsApplication.ExplicitCDScheme()
+        elif(scheme_type == "ocd"):
+            mechanical_scheme = StructuralMechanicsApplication.ExplicitOCDScheme()
+        elif(scheme_type == "vv"):
+            mechanical_scheme = StructuralMechanicsApplication.ExplicitVVScheme()
+        elif(scheme_type == "ovv"):
+            mechanical_scheme = StructuralMechanicsApplication.ExplicitOVVScheme()
 
         else:
             err_msg =  "The requested scheme type \"" + scheme_type + "\" is not available!\n"
-            err_msg += "Available options are: \"central_differences\", \"multi_stage\", \"forward_euler_fic\""
+            err_msg += "Available options are: \"central_differences\", \"multi_stage\", \"cd\", \"ocd\", \"vv\", \"ovv\""
             raise Exception(err_msg)
         return mechanical_scheme
 

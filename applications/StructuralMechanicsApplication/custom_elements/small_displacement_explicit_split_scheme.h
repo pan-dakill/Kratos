@@ -239,6 +239,16 @@ protected:
         );
 
     /**
+     * @brief This method computes directly the lumped mass matrix
+     * @param rMassMatrix The lumped mass matrix
+     * @param rCurrentProcessInfo The current process info instance
+     */
+    virtual void CalculateDampingMatrixWithLumpedMass(
+        MatrixType& rDampingMatrix,
+        const ProcessInfo& rCurrentProcessInfo
+        );
+
+    /**
      * @brief This method computes directly the lumped mass vector
      * @param rMassMatrix The lumped mass vector
      */
