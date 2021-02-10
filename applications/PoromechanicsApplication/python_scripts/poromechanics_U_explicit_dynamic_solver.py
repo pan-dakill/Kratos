@@ -207,7 +207,7 @@ class ExplicitUSolver(UPwSolver):
                                                                                reform_step_dofs,
                                                                                move_mesh_flag)
             else:
-                solving_strategy = StructuralMechanicsApplication.MechanicalExplicitStrategy(self.computing_model_part,
+                solving_strategy = KratosPoro.PoromechanicsExplicitStrategy(self.computing_model_part,
                                                                                self.scheme,
                                                                                compute_reactions,
                                                                                reform_step_dofs,

@@ -25,6 +25,10 @@
 #include "custom_strategies/schemes/newmark_quasistatic_U_Pw_scheme.hpp"
 #include "custom_strategies/schemes/newmark_quasistatic_damped_U_Pw_scheme.hpp"
 #include "custom_strategies/schemes/newmark_dynamic_U_Pw_scheme.hpp"
+#include "custom_strategies/schemes/explicit_cd_scheme.hpp"
+#include "custom_strategies/schemes/explicit_ocd_scheme.hpp"
+#include "custom_strategies/schemes/explicit_vv_scheme.hpp"
+#include "custom_strategies/schemes/explicit_ovv_scheme.hpp"
 
 //linear solvers
 #include "linear_solvers/linear_solver.h"
@@ -52,6 +56,10 @@ void  AddCustomStrategiesToPython(pybind11::module& m)
     typedef NewmarkQuasistaticUPwScheme< SparseSpaceType, LocalSpaceType >  NewmarkQuasistaticUPwSchemeType;
     typedef NewmarkQuasistaticDampedUPwScheme< SparseSpaceType, LocalSpaceType >  NewmarkQuasistaticDampedUPwSchemeType;
     typedef NewmarkDynamicUPwScheme< SparseSpaceType, LocalSpaceType >  NewmarkDynamicUPwSchemeType;
+    typedef ExplicitCDScheme< SparseSpaceType, LocalSpaceType >  ExplicitCDSchemeType;
+    typedef ExplicitOCDScheme< SparseSpaceType, LocalSpaceType >  ExplicitOCDSchemeType;
+    typedef ExplicitVVScheme< SparseSpaceType, LocalSpaceType >  ExplicitVVSchemeType;
+    typedef ExplicitOVVScheme< SparseSpaceType, LocalSpaceType >  ExplicitOVVSchemeType;
 
     typedef PoromechanicsNewtonRaphsonStrategy< SparseSpaceType, LocalSpaceType, LinearSolverType > PoromechanicsNewtonRaphsonStrategyType;
     typedef PoromechanicsRammArcLengthStrategy< SparseSpaceType, LocalSpaceType, LinearSolverType > PoromechanicsRammArcLengthStrategyType;
@@ -69,6 +77,18 @@ void  AddCustomStrategiesToPython(pybind11::module& m)
     py::class_< NewmarkDynamicUPwSchemeType,typename NewmarkDynamicUPwSchemeType::Pointer, BaseSchemeType >
     (m, "NewmarkDynamicUPwScheme")
     .def( py::init<  double, double, double >());
+    py::class_< ExplicitCDSchemeType,typename ExplicitCDSchemeType::Pointer, BaseSchemeType >
+    (m,"ExplicitCDScheme")
+    .def(py::init< >());
+    py::class_< ExplicitOCDSchemeType,typename ExplicitOCDSchemeType::Pointer, BaseSchemeType >
+    (m,"ExplicitOCDScheme")
+    .def(py::init< >());
+    py::class_< ExplicitVVSchemeType,typename ExplicitVVSchemeType::Pointer, BaseSchemeType >
+    (m,"ExplicitVVScheme")
+    .def(py::init< >());
+    py::class_< ExplicitOVVSchemeType,typename ExplicitOVVSchemeType::Pointer, BaseSchemeType >
+    (m,"ExplicitOVVScheme")
+    .def(py::init< >());
 
     py::class_< PoromechanicsNewtonRaphsonStrategyType, typename PoromechanicsNewtonRaphsonStrategyType::Pointer, BaseSolvingStrategyType >
     (m, "PoromechanicsNewtonRaphsonStrategy")

@@ -12,8 +12,8 @@
 //
 
 
-#if !defined(KRATOS_POROMECHANICS_EXPLICIT_NONLOCAL_STRATEGY)
-#define KRATOS_POROMECHANICS_EXPLICIT_NONLOCAL_STRATEGY
+#if !defined(KRATOS_POROMECHANICS_EXPLICIT_STRATEGY)
+#define KRATOS_POROMECHANICS_EXPLICIT_STRATEGY
 
 // Project includes
 #include "custom_strategies/custom_strategies/mechanical_explicit_strategy.hpp"
@@ -30,11 +30,11 @@ template <class TSparseSpace,
           class TDenseSpace,
           class TLinearSolver
           >
-class PoromechanicsExplicitNonlocalStrategy 
+class PoromechanicsExplicitStrategy 
     : public MechanicalExplicitStrategy<TSparseSpace, TDenseSpace, TLinearSolver> {
 public:
 
-    KRATOS_CLASS_POINTER_DEFINITION(PoromechanicsExplicitNonlocalStrategy);
+    KRATOS_CLASS_POINTER_DEFINITION(PoromechanicsExplicitStrategy);
 
     typedef SolvingStrategy<TSparseSpace, TDenseSpace, TLinearSolver> BaseType;
     typedef MechanicalExplicitStrategy<TSparseSpace, TDenseSpace, TLinearSolver> MotherType;
@@ -58,7 +58,7 @@ public:
 //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
     ///Constructor
-    PoromechanicsExplicitNonlocalStrategy(
+    PoromechanicsExplicitStrategy(
         ModelPart& model_part,
         typename TSchemeType::Pointer pScheme,
         Parameters& rParameters,
@@ -99,15 +99,12 @@ public:
                     mVariableNames[i] = rParameters["loads_variable_list"][i].GetString();
                 }
             }
-            
-            mNonlocalDamageIsInitialized = false;
-            mSearchNeighboursAtEachStep = rParameters["search_neighbours_step"].GetBool();
         }
 
     //------------------------------------------------------------------------------------
 
     ///Destructor
-    ~PoromechanicsExplicitNonlocalStrategy() override {}
+    ~PoromechanicsExplicitStrategy() override {}
 
 //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -384,8 +381,8 @@ private:
         }
     }
 
-}; // Class PoromechanicsExplicitNonlocalStrategy
+}; // Class PoromechanicsExplicitStrategy
 
 } // namespace Kratos
 
-#endif // KRATOS_POROMECHANICS_EXPLICIT_NONLOCAL_STRATEGY  defined
+#endif // KRATOS_POROMECHANICS_EXPLICIT_STRATEGY  defined
