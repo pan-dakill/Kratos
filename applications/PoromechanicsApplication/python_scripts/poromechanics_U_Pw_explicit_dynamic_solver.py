@@ -10,9 +10,9 @@ import KratosMultiphysics.StructuralMechanicsApplication as StructuralMechanicsA
 from KratosMultiphysics.PoromechanicsApplication.poromechanics_U_Pw_solver import UPwSolver
 
 def CreateSolver(model, custom_settings):
-    return ExplicitUSolver(model, custom_settings)
+    return ExplicitUPwSolver(model, custom_settings)
 
-class ExplicitUSolver(UPwSolver):
+class ExplicitUPwSolver(UPwSolver):
     """The Poromechanics explicit U (displacement) dynamic solver.
 
     This class creates the mechanical solvers for explicit dynamic analysis.
@@ -30,7 +30,7 @@ class ExplicitUSolver(UPwSolver):
 
         # Lumped mass-matrix is necessary for explicit analysis
         self.main_model_part.ProcessInfo[KratosMultiphysics.COMPUTE_LUMPED_MASS_MATRIX] = True
-        KratosMultiphysics.Logger.PrintInfo("::[ExplicitUSolver]:: Construction finished")
+        KratosMultiphysics.Logger.PrintInfo("::[ExplicitUPwSolver]:: Construction finished")
 
     @classmethod
     def GetDefaultParameters(cls):
@@ -45,34 +45,9 @@ class ExplicitUSolver(UPwSolver):
         return this_defaults
 
     def AddVariables(self):
-        # super().AddVariables()
+        super().AddVariables()
 
-        ## Solid Variables
-        # Add displacements
-        self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.DISPLACEMENT)
-        # Add reactions for the displacements
-        self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.REACTION)
-        # Add dynamic variables
-        self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.VELOCITY)
-        self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.ACCELERATION)
-        # Add variables for the solid conditions
-        self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.FORCE)
-        self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.FACE_LOAD)
-        self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.NORMAL_CONTACT_STRESS)
-        self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.TANGENTIAL_CONTACT_STRESS)
-
-        ## Other variables
-        self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.VOLUME_ACCELERATION)
-        self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.PERIODIC_PAIR_INDEX)
-
-        self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.NODAL_DAMAGE_VARIABLE)
-        self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.NODAL_JOINT_AREA)
-        self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.NODAL_JOINT_WIDTH)
-        self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.NODAL_JOINT_DAMAGE)
-        self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.NODAL_AREA)
-        self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.NODAL_EFFECTIVE_STRESS_TENSOR)
-        self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.INITIAL_STRESS_TENSOR)
-
+        self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.FORCE_RESIDUAL)
         self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.INTERNAL_FORCE)
         self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.EXTERNAL_FORCE)
         self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.DAMPING_FORCE)
@@ -81,7 +56,7 @@ class ExplicitUSolver(UPwSolver):
         # self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.NODAL_MASS)
         # self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.RESIDUAL_VECTOR)
 
-        KratosMultiphysics.Logger.PrintInfo("::[ExplicitUSolver]:: Variables ADDED")
+        KratosMultiphysics.Logger.PrintInfo("::[ExplicitUPwSolver]:: Variables ADDED")
 
     def AddDofs(self):
         # super().AddDofs()
@@ -98,7 +73,9 @@ class ExplicitUSolver(UPwSolver):
         KratosMultiphysics.VariableUtils().AddDof(KratosMultiphysics.ACCELERATION_Y,self.main_model_part)
         KratosMultiphysics.VariableUtils().AddDof(KratosMultiphysics.ACCELERATION_Z,self.main_model_part)
 
-        KratosMultiphysics.Logger.PrintInfo("::[ExplicitUSolver]:: DOF's ADDED")
+        KratosMultiphysics.VariableUtils().AddDof(KratosMultiphysics.WATER_PRESSURE, KratosMultiphysics.REACTION_WATER_PRESSURE,self.main_model_part)
+
+        KratosMultiphysics.Logger.PrintInfo("::[ExplicitUPwSolver]:: DOF's ADDED")
 
     def Initialize(self):
         # Using the base Initialize
@@ -166,15 +143,25 @@ class ExplicitUSolver(UPwSolver):
         reform_step_dofs = self.settings["reform_dofs_at_each_step"].GetBool()
         move_mesh_flag = self.settings["move_mesh_flag"].GetBool()
 
+        self.strategy_params = KratosMultiphysics.Parameters("{}")
+        self.strategy_params.AddValue("loads_sub_model_part_list",self.loads_sub_sub_model_part_list)
+        self.strategy_params.AddValue("loads_variable_list",self.settings["loads_variable_list"])
+        # NOTE: A rebuild level of 0 means that the nodal mass is calculated only once at the beginning (Initialize)
+        #       A rebuild level higher than 0 means that the nodal mass can be updated at the beginning of each step (InitializeSolutionStep)
+        self.strategy_params.AddValue("rebuild_level",0)
+
         if strategy_type == "arc_length":
+            # # NOTE: For the arc length solver we need to build the vectors of the system (although we do not solve them as a system of equations)
+            # # Construct the linear solver
+            # self.linear_solver = self._ConstructLinearSolver()
+            # # Builder and solver creation
+            # builder_and_solver = self._ConstructBuilderAndSolver(self.settings["block_builder"].GetBool())
+
             self.main_model_part.ProcessInfo.SetValue(KratosPoro.ARC_LENGTH_LAMBDA,1.0)
             self.main_model_part.ProcessInfo.SetValue(KratosPoro.ARC_LENGTH_RADIUS_FACTOR,1.0)
-            self.strategy_params = KratosMultiphysics.Parameters("{}")
             # self.strategy_params.AddValue("desired_iterations",self.settings["desired_iterations"])
             self.strategy_params.AddValue("max_radius_factor",self.settings["max_radius_factor"])
             self.strategy_params.AddValue("min_radius_factor",self.settings["min_radius_factor"])
-            self.strategy_params.AddValue("loads_sub_model_part_list",self.loads_sub_sub_model_part_list)
-            self.strategy_params.AddValue("loads_variable_list",self.settings["loads_variable_list"])
             if nonlocal_damage:
                 self.strategy_params.AddValue("body_domain_sub_model_part_list",self.body_domain_sub_sub_model_part_list)
                 self.strategy_params.AddValue("characteristic_length",self.settings["characteristic_length"])
@@ -194,9 +181,6 @@ class ExplicitUSolver(UPwSolver):
                                                                                move_mesh_flag)
         else:
             if nonlocal_damage:
-                self.strategy_params = KratosMultiphysics.Parameters("{}")
-                self.strategy_params.AddValue("loads_sub_model_part_list",self.loads_sub_sub_model_part_list)
-                self.strategy_params.AddValue("loads_variable_list",self.settings["loads_variable_list"])
                 self.strategy_params.AddValue("body_domain_sub_model_part_list",self.body_domain_sub_sub_model_part_list)
                 self.strategy_params.AddValue("characteristic_length",self.settings["characteristic_length"])
                 self.strategy_params.AddValue("search_neighbours_step",self.settings["search_neighbours_step"])
@@ -209,11 +193,11 @@ class ExplicitUSolver(UPwSolver):
             else:
                 solving_strategy = KratosPoro.PoromechanicsExplicitStrategy(self.computing_model_part,
                                                                                self.scheme,
+                                                                               self.strategy_params,
                                                                                compute_reactions,
                                                                                reform_step_dofs,
                                                                                move_mesh_flag)
 
-        solving_strategy.SetRebuildLevel(0)
         return solving_strategy
 
     #### Private functions ####

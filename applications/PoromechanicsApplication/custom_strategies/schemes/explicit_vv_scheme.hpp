@@ -188,7 +188,6 @@ public:
 
         BaseType::InitializeSolutionStep(rModelPart, rA, rDx, rb);
 
-        InitializeResidual(rModelPart);
         KRATOS_CATCH("")
     }
 
@@ -292,6 +291,8 @@ public:
     ) override
     {
         KRATOS_TRY;
+
+        InitializeResidual(rModelPart);
 
         this->CalculateAndAddRHS(rModelPart);
 

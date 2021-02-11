@@ -440,10 +440,11 @@ class UPwSolver(PythonSolver):
         reform_step_dofs = self.settings["reform_dofs_at_each_step"].GetBool()
         move_mesh_flag = self.settings["move_mesh_flag"].GetBool()
 
+        self.strategy_params = KratosMultiphysics.Parameters("{}")
+        self.strategy_params.AddValue("loads_sub_model_part_list",self.loads_sub_sub_model_part_list)
+        self.strategy_params.AddValue("loads_variable_list",self.settings["loads_variable_list"])
+
         if strategy_type == "newton_raphson":
-            self.strategy_params = KratosMultiphysics.Parameters("{}")
-            self.strategy_params.AddValue("loads_sub_model_part_list",self.loads_sub_sub_model_part_list)
-            self.strategy_params.AddValue("loads_variable_list",self.settings["loads_variable_list"])
             if nonlocal_damage:
                 self.strategy_params.AddValue("body_domain_sub_model_part_list",self.body_domain_sub_sub_model_part_list)
                 self.strategy_params.AddValue("characteristic_length",self.settings["characteristic_length"])
@@ -472,12 +473,9 @@ class UPwSolver(PythonSolver):
             self.main_model_part.ProcessInfo.SetValue(KratosPoro.ARC_LENGTH_LAMBDA,1.0)
             self.main_model_part.ProcessInfo.SetValue(KratosPoro.ARC_LENGTH_RADIUS_FACTOR,1.0)
 
-            self.strategy_params = KratosMultiphysics.Parameters("{}")
             self.strategy_params.AddValue("desired_iterations",self.settings["desired_iterations"])
             self.strategy_params.AddValue("max_radius_factor",self.settings["max_radius_factor"])
             self.strategy_params.AddValue("min_radius_factor",self.settings["min_radius_factor"])
-            self.strategy_params.AddValue("loads_sub_model_part_list",self.loads_sub_sub_model_part_list)
-            self.strategy_params.AddValue("loads_variable_list",self.settings["loads_variable_list"])
             if nonlocal_damage:
                 self.strategy_params.AddValue("body_domain_sub_model_part_list",self.body_domain_sub_sub_model_part_list)
                 self.strategy_params.AddValue("characteristic_length",self.settings["characteristic_length"])
