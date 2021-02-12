@@ -127,6 +127,8 @@ public:
 
         mDelta = r_current_process_info[LOAD_FACTOR];
 
+        mTheta3 = r_current_process_info[THETA_3]
+
         BaseType::Initialize(rModelPart);
 
         KRATOS_CATCH("")
@@ -163,15 +165,15 @@ public:
             fix_displacements[2] = (itCurrentNode->GetDof(DISPLACEMENT_Z, DisplacementPosition + 2).IsFixed());
 
         // Solution of the explicit equation:
-        if ( (nodal_mass*mDelta*mDelta) > numerical_limit ){
+        if ( (nodal_mass*(mDelta+mAlpha*mTheta3)) > numerical_limit ){
             for (IndexType j = 0; j < DomainSize; j++) {
                 if (fix_displacements[j] == false) {
-                    r_current_displacement[j] = ( (2.0*mDelta*mDelta-mDeltaTime*mAlpha)*nodal_mass*r_current_displacement[j]
-                                                + (mDeltaTime*mAlpha-mDelta*mDelta)*nodal_mass*r_actual_previous_displacement[j]
+                    r_current_displacement[j] = ( (2.0*mDelta+mAlpha*mDeltaTime*(2.0*mTheta3-1.0))*nodal_mass*r_current_displacement[j]
+                                                + (mDeltaTime*mAlpha*(1.0-mTheta3)-mDelta)*nodal_mass*r_actual_previous_displacement[j]
                                                 - mDeltaTime*(mBeta+mTheta1*mDeltaTime)*r_current_internal_force[j]
                                                 + mDeltaTime*(mBeta-(1.0-mTheta1)*mDeltaTime)*r_previous_internal_force[j]
                                                 + mDeltaTime*mDeltaTime*(mTheta1*r_external_forces[j]+(1.0-mTheta1)*r_previous_external_forces[j]) ) /
-                                                (nodal_mass*mDelta*mDelta);
+                                                (nodal_mass*(mDelta+mAlpha*mTheta3));
                 }
             }
         } else{
@@ -244,6 +246,7 @@ protected:
     ///@{
 
     double mDelta;
+    double mTheta3;
 
     ///@}
     ///@name Protected Operators
