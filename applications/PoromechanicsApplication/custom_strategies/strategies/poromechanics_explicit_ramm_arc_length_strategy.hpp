@@ -27,7 +27,7 @@ template <class TSparseSpace,
           class TDenseSpace,
           class TLinearSolver
           >
-class PoromechanicsExplicitRammArcLengthStrategy 
+class PoromechanicsExplicitRammArcLengthStrategy
     : public PoromechanicsExplicitStrategy<TSparseSpace, TDenseSpace, TLinearSolver> {
 public:
 
@@ -51,7 +51,7 @@ public:
     /// DoF types definition
     typedef typename Node<3>::DofType DofType;
     typedef typename DofType::Pointer DofPointerType;
-    
+
     using GrandMotherType::mInitializeWasPerformed;
     using GrandMotherType::mCalculateReactionsFlag;
     using GrandMotherType::mpScheme;
@@ -160,9 +160,11 @@ public:
         this->CalculateNewX();
         this->SaveDxF(r_model_part);
 
+        // Predict Lambda
         double DLambda = mRadius/this->CalculateDxFNorm(r_model_part);
         mLambda += DLambda;
         this->RestoreX(r_model_part);
+        // Predict X
         this->CalculateDxPred(r_model_part,DLambda);
 
         // Update X with prediction
@@ -170,25 +172,27 @@ public:
 
         // ********** Correction phase **********
 
-        // Get DxF
+        // Get Correction DxF
         this->CalculateNewX();
         this->SaveCorrectionDxF(r_model_part);
         this->RestoreX(r_model_part);
         this->UpdateXWithPrediction(r_model_part);
-    
-        // Get DxLF
+
+        // Get Correction DxLF
         this->UpdateF()
         this->CalculateNewX();
         this->SaveCorrectionDxLF(r_model_part);
         this->RestoreX(r_model_part);
         this->UpdateXWithPrediction(r_model_part);
 
+        // Correct Lambda
         DLambda = - this->CalculateDxPDotDxLF(r_model_part)/this->CalculateDxPDotDxF(r_model_part);
         mLambda += DLambda;
 
         // Update X with correction
         this->UpdateXWithCorrection(r_model_part,DLambda);
 
+        // Update Load
         this->RestoreF();
         this->UpdateF()
 
@@ -208,6 +212,7 @@ public:
 
         // Update the radius
         //mRadius = mRadius*sqrt(double(mDesiredIterations)/double(iteration_number));
+        mRadius = mRadius*1.0; // TODO
         if (mRadius > mMaxRadiusFactor*mRadius_0)
             mRadius = mMaxRadiusFactor*mRadius_0;
         else if(mRadius < mMinRadiusFactor*mRadius_0)
@@ -266,6 +271,7 @@ protected:
 //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
     virtual void CalculateNewX() {
+
         KRATOS_TRY
 
         ModelPart& r_model_part = BaseType::GetModelPart();
@@ -312,7 +318,7 @@ protected:
 
         #pragma omp parallel for schedule(guided,512)
         for (int i = 0; i < static_cast<int>(r_nodes.size()); ++i) {
-            
+
             ModelPart::NodeIterator itCurrentNode = it_node_begin + i;
 
             array_1d<double, 3>& r_delta_displacement_f = itCurrentNode->FastGetSolutionStepValue(DELTA_DISPLACEMENT_F);
@@ -359,7 +365,7 @@ protected:
 
         #pragma omp parallel for schedule(guided,512)
         for (int i = 0; i < static_cast<int>(r_nodes.size()); ++i) {
-            
+
             ModelPart::NodeIterator itCurrentNode = it_node_begin + i;
 
             array_1d<double, 3>& r_current_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT);
@@ -416,13 +422,13 @@ protected:
             const double& r_delta_water_pressure_f = itCurrentNode->FastGetSolutionStepValue(DELTA_WATER_PRESSURE_F);
             const double& r_delta_dt_water_pressure_f = itCurrentNode->FastGetSolutionStepValue(DELTA_DT_WATER_PRESSURE_F);
 
-            DxF_norm += r_delta_displacement_f[0]*r_delta_displacement_f[0] 
+            DxF_norm += r_delta_displacement_f[0]*r_delta_displacement_f[0]
                         + r_delta_displacement_f[1]*r_delta_displacement_f[1]
                         + r_delta_displacement_f[2]*r_delta_displacement_f[2]
-                        + r_delta_velocity_f[0]*r_delta_velocity_f[0] 
+                        + r_delta_velocity_f[0]*r_delta_velocity_f[0]
                         + r_delta_velocity_f[1]*r_delta_velocity_f[1]
                         + r_delta_velocity_f[2]*r_delta_velocity_f[2]
-                        + r_delta_acceleration_f[0]*r_delta_acceleration_f[0] 
+                        + r_delta_acceleration_f[0]*r_delta_acceleration_f[0]
                         + r_delta_acceleration_f[1]*r_delta_acceleration_f[1]
                         + r_delta_acceleration_f[2]*r_delta_acceleration_f[2]
                         + r_delta_water_pressure_f*r_delta_water_pressure_f
@@ -448,7 +454,7 @@ protected:
 
         #pragma omp parallel for schedule(guided,512)
         for (int i = 0; i < static_cast<int>(r_nodes.size()); ++i) {
-            
+
             ModelPart::NodeIterator itCurrentNode = it_node_begin + i;
 
             array_1d<double, 3>& r_delta_displacement_p = itCurrentNode->FastGetSolutionStepValue(DELTA_DISPLACEMENT_P);
@@ -492,7 +498,7 @@ protected:
 
         #pragma omp parallel for schedule(guided,512)
         for (int i = 0; i < static_cast<int>(r_nodes.size()); ++i) {
-            
+
             ModelPart::NodeIterator itCurrentNode = it_node_begin + i;
 
             array_1d<double, 3>& r_current_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT);
@@ -538,7 +544,7 @@ protected:
 
         #pragma omp parallel for schedule(guided,512)
         for (int i = 0; i < static_cast<int>(r_nodes.size()); ++i) {
-            
+
             ModelPart::NodeIterator itCurrentNode = it_node_begin + i;
 
             array_1d<double, 3>& r_delta_displacement_f = itCurrentNode->FastGetSolutionStepValue(DELTA_DISPLACEMENT_F);
@@ -587,10 +593,10 @@ protected:
 
         #pragma omp parallel for schedule(guided,512)
         for (int i = 0; i < static_cast<int>(r_nodes.size()); ++i) {
-            
+
             ModelPart::NodeIterator itCurrentNode = it_node_begin + i;
 
-            // TODO: 
+            // TODO:
 
 
         } // for Node parallel
@@ -625,13 +631,13 @@ protected:
             const double& r_delta_water_pressure_f = itCurrentNode->FastGetSolutionStepValue(DELTA_WATER_PRESSURE_F);
             const double& r_delta_dt_water_pressure_f = itCurrentNode->FastGetSolutionStepValue(DELTA_DT_WATER_PRESSURE_F);
 
-            DxP_dot_DxLF += r_delta_displacement_f[0]*r_delta_displacement_f[0] 
+            DxP_dot_DxLF += r_delta_displacement_f[0]*r_delta_displacement_f[0]
                         + r_delta_displacement_f[1]*r_delta_displacement_f[1]
                         + r_delta_displacement_f[2]*r_delta_displacement_f[2]
-                        + r_delta_velocity_f[0]*r_delta_velocity_f[0] 
+                        + r_delta_velocity_f[0]*r_delta_velocity_f[0]
                         + r_delta_velocity_f[1]*r_delta_velocity_f[1]
                         + r_delta_velocity_f[2]*r_delta_velocity_f[2]
-                        + r_delta_acceleration_f[0]*r_delta_acceleration_f[0] 
+                        + r_delta_acceleration_f[0]*r_delta_acceleration_f[0]
                         + r_delta_acceleration_f[1]*r_delta_acceleration_f[1]
                         + r_delta_acceleration_f[2]*r_delta_acceleration_f[2]
                         + r_delta_water_pressure_f*r_delta_water_pressure_f
@@ -670,13 +676,13 @@ protected:
             const double& r_delta_water_pressure_f = itCurrentNode->FastGetSolutionStepValue(DELTA_WATER_PRESSURE_F);
             const double& r_delta_dt_water_pressure_f = itCurrentNode->FastGetSolutionStepValue(DELTA_DT_WATER_PRESSURE_F);
 
-            DxP_dot_DxF += r_delta_displacement_f[0]*r_delta_displacement_f[0] 
+            DxP_dot_DxF += r_delta_displacement_f[0]*r_delta_displacement_f[0]
                         + r_delta_displacement_f[1]*r_delta_displacement_f[1]
                         + r_delta_displacement_f[2]*r_delta_displacement_f[2]
-                        + r_delta_velocity_f[0]*r_delta_velocity_f[0] 
+                        + r_delta_velocity_f[0]*r_delta_velocity_f[0]
                         + r_delta_velocity_f[1]*r_delta_velocity_f[1]
                         + r_delta_velocity_f[2]*r_delta_velocity_f[2]
-                        + r_delta_acceleration_f[0]*r_delta_acceleration_f[0] 
+                        + r_delta_acceleration_f[0]*r_delta_acceleration_f[0]
                         + r_delta_acceleration_f[1]*r_delta_acceleration_f[1]
                         + r_delta_acceleration_f[2]*r_delta_acceleration_f[2]
                         + r_delta_water_pressure_f*r_delta_water_pressure_f
@@ -706,7 +712,7 @@ protected:
 
         #pragma omp parallel for schedule(guided,512)
         for (int i = 0; i < static_cast<int>(r_nodes.size()); ++i) {
-            
+
             ModelPart::NodeIterator itCurrentNode = it_node_begin + i;
 
             array_1d<double, 3>& r_current_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT);

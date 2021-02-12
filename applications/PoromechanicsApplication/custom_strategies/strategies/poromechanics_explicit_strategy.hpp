@@ -27,7 +27,7 @@ template <class TSparseSpace,
           class TDenseSpace,
           class TLinearSolver
           >
-class PoromechanicsExplicitStrategy 
+class PoromechanicsExplicitStrategy
     : public MechanicalExplicitStrategy<TSparseSpace, TDenseSpace, TLinearSolver> {
 public:
 
@@ -49,7 +49,7 @@ public:
     /// DoF types definition
     typedef typename Node<3>::DofType DofType;
     typedef typename DofType::Pointer DofPointerType;
-    
+
     using MotherType::mInitializeWasPerformed;
     using MotherType::mCalculateReactionsFlag;
     using MotherType::mpScheme;
@@ -295,36 +295,41 @@ protected:
         auto& r_nodes = rModelPart.Nodes();
 
         // Auxiliar values
-        const array_1d<double, 3> zero_array = ZeroVector(3);
         array_1d<double, 3> force_residual = ZeroVector(3);
+        double flux_residual = 0.0;
+
+        const ProcessInfo& r_current_process_info = rModelPart.GetProcessInfo();
+        const SizeType dim = r_current_process_info[DOMAIN_SIZE];
 
         // Getting
         const auto it_node_begin = r_nodes.begin();
-        const IndexType disppos = it_node_begin->GetDofPosition(DISPLACEMENT_X);
-        // TODO
-        // const IndexType wppos = it_node_begin->GetDofPosition(WATER_PRESSURE);
 
         // Iterating nodes
-        #pragma omp parallel for firstprivate(force_residual), schedule(guided,512)
+        #pragma omp parallel for firstprivate(force_residual,flux_residual), schedule(guided,512)
         for(int i=0; i<static_cast<int>(r_nodes.size()); ++i) {
             auto it_node = it_node_begin + i;
 
             noalias(force_residual) = it_node->FastGetSolutionStepValue(FORCE_RESIDUAL);
+            flux_residual = it_node->FastGetSolutionStepValue(FLUX_RESIDUAL);
 
-            if (it_node->GetDof(DISPLACEMENT_X, disppos).IsFixed()) {
+            if( it_node->IsFixed(DISPLACEMENT_X) == true ) {
                 double& r_reaction = it_node->FastGetSolutionStepValue(REACTION_X);
                 r_reaction = force_residual[0];
             }
-            if (it_node->GetDof(DISPLACEMENT_Y, disppos + 1).IsFixed()) {
+            if( it_node->IsFixed(DISPLACEMENT_Y) == true ) {
                 double& r_reaction = it_node->FastGetSolutionStepValue(REACTION_Y);
                 r_reaction = force_residual[1];
             }
-            if (it_node->GetDof(DISPLACEMENT_Z, disppos + 2).IsFixed()) {
-                double& r_reaction = it_node->FastGetSolutionStepValue(REACTION_Z);
-                r_reaction = force_residual[2];
+            if( it_node->IsFixed(WATER_PRESSURE) == true ) {
+                double& r_reaction = it_node->FastGetSolutionStepValue(REACTION_WATER_PRESSURE);
+                r_reaction = flux_residual;
             }
-
-            //TODO: REACTION_WATER_PRESSURE
+            if(dim==3) {
+                if( it_node->IsFixed(DISPLACEMENT_Z) == true ) {
+                    double& r_reaction = it_node->FastGetSolutionStepValue(REACTION_Z);
+                    r_reaction = force_residual[2];
+                }
+            }
         }
     }
 

@@ -39,6 +39,7 @@ class ExplicitUPwSolver(UPwSolver):
             "l2_rel_tolerance"           : 1.0e-4,
             "l2_abs_tolerance"           : 1.0e-9,
             "theta_1"                    : 1.0,
+            "theta_3"                    : 1.0,
             "delta"                      : 1.0
         }""")
         this_defaults.AddMissingParameters(super().GetDefaultParameters())
@@ -47,10 +48,11 @@ class ExplicitUPwSolver(UPwSolver):
     def AddVariables(self):
         super().AddVariables()
 
-        self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.FORCE_RESIDUAL)
         self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.INTERNAL_FORCE)
         self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.EXTERNAL_FORCE)
         self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.DAMPING_FORCE)
+        self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.FORCE_RESIDUAL)
+        self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.FLUX_RESIDUAL)
 
         # TODO: check
         # self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.NODAL_MASS)
@@ -114,6 +116,7 @@ class ExplicitUPwSolver(UPwSolver):
         process_info.SetValue(StructuralMechanicsApplication.RAYLEIGH_ALPHA, self.settings["rayleigh_alpha"].GetDouble())
         process_info.SetValue(StructuralMechanicsApplication.RAYLEIGH_BETA, self.settings["rayleigh_beta"].GetDouble())
         process_info.SetValue(KratosPoro.THETA_1, self.settings["theta_1"].GetDouble())
+        process_info.SetValue(KratosPoro.THETA_3, self.settings["theta_3"].GetDouble())
         process_info.SetValue(KratosPoro.DELTA, self.settings["delta"].GetDouble())
         process_info.SetValue(KratosMultiphysics.ERROR_RATIO, self.settings["l2_rel_tolerance"].GetDouble())
         process_info.SetValue(KratosMultiphysics.ERROR_INTEGRATION_POINT, self.settings["l2_abs_tolerance"].GetDouble())
@@ -151,11 +154,6 @@ class ExplicitUPwSolver(UPwSolver):
         self.strategy_params.AddValue("rebuild_level",0)
 
         if strategy_type == "arc_length":
-            # # NOTE: For the arc length solver we need to build the vectors of the system (although we do not solve them as a system of equations)
-            # # Construct the linear solver
-            # self.linear_solver = self._ConstructLinearSolver()
-            # # Builder and solver creation
-            # builder_and_solver = self._ConstructBuilderAndSolver(self.settings["block_builder"].GetBool())
 
             self.main_model_part.ProcessInfo.SetValue(KratosPoro.ARC_LENGTH_LAMBDA,1.0)
             self.main_model_part.ProcessInfo.SetValue(KratosPoro.ARC_LENGTH_RADIUS_FACTOR,1.0)
