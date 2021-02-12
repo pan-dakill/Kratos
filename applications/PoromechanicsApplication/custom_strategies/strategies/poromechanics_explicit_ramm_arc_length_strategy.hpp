@@ -109,6 +109,10 @@ public:
                 this->RestoreX(r_model_part);
 
                 mRadius_0 = this->CalculateDxFNorm(r_model_part);
+                // TODO: the first explicit solution can be 0.0...
+                if(mRadius_0 < 1.0e-12) {
+                    mRadius_0 = 1.0e-12;
+                }
                 mRadius = mRadius_0;
 
                 //Initialize the loading factor Lambda
