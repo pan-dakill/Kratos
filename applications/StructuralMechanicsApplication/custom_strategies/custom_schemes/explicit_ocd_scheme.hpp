@@ -127,7 +127,7 @@ public:
 
         mDelta = r_current_process_info[LOAD_FACTOR];
 
-        mTheta3 = r_current_process_info[THETA_3]
+        mTheta3 = r_current_process_info[THETA_3];
 
         BaseType::Initialize(rModelPart);
 
