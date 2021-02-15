@@ -15,15 +15,14 @@
 #if !defined(KRATOS_EXPLICIT_OCD_SCHEME_HPP_INCLUDED)
 #define KRATOS_EXPLICIT_OCD_SCHEME_HPP_INCLUDED
 
-/* System includes */
-#include <fstream>
-
 /* External includes */
 
 /* Project includes */
 #include "custom_strategies/custom_schemes/explicit_cd_scheme.hpp"
 #include "utilities/variable_utils.h"
-#include "custom_utilities/explicit_integration_utilities.h"
+
+// Application includes
+#include "poromechanics_application_variables.h"
 
 namespace Kratos {
 
@@ -125,7 +124,8 @@ public:
 
         const ProcessInfo& r_current_process_info = rModelPart.GetProcessInfo();
 
-        mDelta = r_current_process_info[LOAD_FACTOR];
+        mDelta = r_current_process_info[DELTA];
+        mTheta3 = r_current_process_info[THETA_3];
 
         BaseType::Initialize(rModelPart);
 
@@ -147,14 +147,18 @@ public:
         array_1d<double, 3>& r_current_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT);
         // const array_1d<double, 3>& r_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,1);
         const array_1d<double, 3>& r_actual_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,2);
+
+        double& r_current_water_pressure = itCurrentNode->FastGetSolutionStepValue(WATER_PRESSURE);
+        double& r_current_dt_water_pressure = itCurrentNode->FastGetSolutionStepValue(DT_WATER_PRESSURE);
+
         const double nodal_mass = itCurrentNode->GetValue(NODAL_MASS);
 
-        const array_1d<double, 3>& r_external_forces = itCurrentNode->FastGetSolutionStepValue(FORCE_RESIDUAL);
-        const array_1d<double, 3>& r_previous_external_forces = itCurrentNode->FastGetSolutionStepValue(FORCE_RESIDUAL,1);
-        // const array_1d<double, 3>& r_actual_previous_external_forces = itCurrentNode->FastGetSolutionStepValue(FORCE_RESIDUAL,2);
-        const array_1d<double, 3>& r_current_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA);
-        const array_1d<double, 3>& r_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA,1);
-        // const array_1d<double, 3>& r_actual_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA,2);
+        const array_1d<double, 3>& r_external_forces = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE);
+        const array_1d<double, 3>& r_previous_external_forces = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE,1);
+        // const array_1d<double, 3>& r_actual_previous_external_forces = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE,2);
+        const array_1d<double, 3>& r_current_internal_force = itCurrentNode->FastGetSolutionStepValue(INTERNAL_FORCE);
+        const array_1d<double, 3>& r_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(INTERNAL_FORCE,1);
+        // const array_1d<double, 3>& r_actual_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(INTERNAL_FORCE,2);
 
         std::array<bool, 3> fix_displacements = {false, false, false};
         fix_displacements[0] = (itCurrentNode->GetDof(DISPLACEMENT_X, DisplacementPosition).IsFixed());
@@ -163,15 +167,15 @@ public:
             fix_displacements[2] = (itCurrentNode->GetDof(DISPLACEMENT_Z, DisplacementPosition + 2).IsFixed());
 
         // Solution of the explicit equation:
-        if ( (nodal_mass*mDelta*mDelta) > numerical_limit ){
+        if ( (nodal_mass*(mDelta+mAlpha*mTheta3*mDeltaTime)) > numerical_limit ){
             for (IndexType j = 0; j < DomainSize; j++) {
                 if (fix_displacements[j] == false) {
-                    r_current_displacement[j] = ( (2.0*mDelta*mDelta-mDeltaTime*mAlpha)*nodal_mass*r_current_displacement[j]
-                                                + (mDeltaTime*mAlpha-mDelta*mDelta)*nodal_mass*r_actual_previous_displacement[j]
+                    r_current_displacement[j] = ( (2.0*mDelta+mAlpha*mDeltaTime*(2.0*mTheta3-1.0))*nodal_mass*r_current_displacement[j]
+                                                + (mDeltaTime*mAlpha*(1.0-mTheta3)-mDelta)*nodal_mass*r_actual_previous_displacement[j]
                                                 - mDeltaTime*(mBeta+mTheta1*mDeltaTime)*r_current_internal_force[j]
                                                 + mDeltaTime*(mBeta-(1.0-mTheta1)*mDeltaTime)*r_previous_internal_force[j]
                                                 + mDeltaTime*mDeltaTime*(mTheta1*r_external_forces[j]+(1.0-mTheta1)*r_previous_external_forces[j]) ) /
-                                                (nodal_mass*mDelta*mDelta);
+                                                (nodal_mass*(mDelta+mAlpha*mTheta3*mDeltaTime));
                 }
             }
         } else{
@@ -180,6 +184,12 @@ public:
                     r_current_displacement[j] = 0.0;
                 }
             }
+        }
+        // Solution of the darcy_equation
+        if( itCurrentNode->IsFixed(WATER_PRESSURE) == false ) {
+            // TODO: this is on standby
+            r_current_water_pressure = 0.0;
+            r_current_dt_water_pressure = 0.0;
         }
 
         const array_1d<double, 3>& r_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,1);
@@ -219,31 +229,20 @@ protected:
     /**
      * @brief This struct contains the information related with the increment od time step
      */
-    // struct DeltaTimeParameters {
-    //     double Maximum;         // Maximum delta time
-    //     double Fraction;        // Fraction of the delta time
-    // };
 
     /**
      * @brief This struct contains the details of the time variables
      */
-    // struct TimeVariables {
-    //     double Current;        // n+1
-
-    //     double Delta;          // Time step
-    // };
 
     ///@name Protected static Member Variables
     ///@{
-
-    // TimeVariables mTime;            /// This struct contains the details of the time variables
-    // DeltaTimeParameters mDeltaTime; /// This struct contains the information related with the increment od time step
 
     ///@}
     ///@name Protected member Variables
     ///@{
 
     double mDelta;
+    double mTheta3;
 
     ///@}
     ///@name Protected Operators

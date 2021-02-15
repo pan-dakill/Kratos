@@ -15,15 +15,14 @@
 #if !defined(KRATOS_EXPLICIT_VV_SCHEME_HPP_INCLUDED)
 #define KRATOS_EXPLICIT_VV_SCHEME_HPP_INCLUDED
 
-/* System includes */
-#include <fstream>
-
 /* External includes */
 
 /* Project includes */
 #include "solving_strategies/schemes/scheme.h"
 #include "utilities/variable_utils.h"
-#include "custom_utilities/explicit_integration_utilities.h"
+
+// Application includes
+#include "poromechanics_application_variables.h"
 
 namespace Kratos {
 
@@ -228,27 +227,6 @@ public:
     }
 
     /**
-     * @brief This method initializes the residual in the nodes of the model part
-     * @param rModelPart The model of the problem to solve
-     */
-    virtual void InitializeResidual(ModelPart& rModelPart)
-    {
-        KRATOS_TRY
-
-        // The array of nodes
-        NodesArrayType& r_nodes = rModelPart.Nodes();
-
-        // Auxiliar values
-        const array_1d<double, 3> zero_array = ZeroVector(3);
-        // Initializing the variables
-        VariableUtils().SetVariable(FORCE_RESIDUAL, zero_array,r_nodes); // f (external_forces)
-        VariableUtils().SetVariable(NODAL_INERTIA, zero_array,r_nodes); // K*a (internal_forces)
-        VariableUtils().SetVariable(MIDDLE_VELOCITY, zero_array,r_nodes); // C*v (damping_forces)
-
-        KRATOS_CATCH("")
-    }
-
-    /**
      * @brief This method initializes some rutines related with the explicit scheme
      * @param rModelPart The model of the problem to solve
      * @param DomainSize The current dimention of the problem
@@ -271,12 +249,17 @@ public:
         for (int i = 0; i < static_cast<int>(r_nodes.size()); ++i) {
             auto it_node = (it_node_begin + i);
             it_node->SetValue(NODAL_MASS, 0.0);
-            array_1d<double, 3>& r_external_forces = it_node->FastGetSolutionStepValue(FORCE_RESIDUAL);
-            array_1d<double, 3>& r_current_internal_force = it_node->FastGetSolutionStepValue(NODAL_INERTIA);
-            array_1d<double, 3>& r_current_damping_force = it_node->FastGetSolutionStepValue(MIDDLE_VELOCITY);
-            noalias(r_external_forces) = ZeroVector(3);
-            noalias(r_current_internal_force) = ZeroVector(3);
-            noalias(r_current_damping_force) = ZeroVector(3);
+            // TODO: Set Nodal AntiCompressibility to zero for mass-balance equation (C=1/Q, with Q being the compressibility coeff.)
+            array_1d<double, 3>& r_force_residual = it_node->FastGetSolutionStepValue(FORCE_RESIDUAL);
+            double& r_flux_residual = it_node->FastGetSolutionStepValue(FLUX_RESIDUAL);
+            array_1d<double, 3>& r_external_force = it_node->FastGetSolutionStepValue(EXTERNAL_FORCE);
+            array_1d<double, 3>& r_internal_force = it_node->FastGetSolutionStepValue(INTERNAL_FORCE);
+            array_1d<double, 3>& r_damping_force = it_node->FastGetSolutionStepValue(DAMPING_FORCE);
+            noalias(r_force_residual) = ZeroVector(3);
+            r_flux_residual = 0.0;
+            noalias(r_external_force) = ZeroVector(3);
+            noalias(r_internal_force) = ZeroVector(3);
+            noalias(r_damping_force) = ZeroVector(3);
         }
 
         KRATOS_CATCH("")
@@ -306,8 +289,6 @@ public:
         const SizeType dim = r_current_process_info[DOMAIN_SIZE];
 
         // Step Update
-        // The first step is time =  initial_time ( 0.0) + delta time
-        // mTime.Current = r_current_process_info[TIME];
         mDeltaTime = r_current_process_info[DELTA_TIME];
 
         // The iterator of the first node
@@ -330,6 +311,30 @@ public:
     }
 
     /**
+     * @brief This method initializes the residual in the nodes of the model part
+     * @param rModelPart The model of the problem to solve
+     */
+    virtual void InitializeResidual(ModelPart& rModelPart)
+    {
+        KRATOS_TRY
+
+        // The array of nodes
+        NodesArrayType& r_nodes = rModelPart.Nodes();
+
+        // Auxiliar values
+        const array_1d<double, 3> zero_array = ZeroVector(3);
+        double zero_double = 0.0;
+        // Initializing the variables
+        VariableUtils().SetVariable(FORCE_RESIDUAL, zero_array,r_nodes);
+        VariableUtils().SetVariable(FLUX_RESIDUAL, zero_double,r_nodes);
+        VariableUtils().SetVariable(EXTERNAL_FORCE, zero_array,r_nodes);
+        VariableUtils().SetVariable(INTERNAL_FORCE, zero_array,r_nodes);
+        VariableUtils().SetVariable(DAMPING_FORCE, zero_array,r_nodes);
+
+        KRATOS_CATCH("")
+    }
+
+    /**
      * @brief This method updates the translation DoF
      * @param itCurrentNode The iterator of the current node
      * @param DisplacementPosition The position of the displacement dof on the database
@@ -341,14 +346,16 @@ public:
         const SizeType DomainSize = 3
         )
     {
-        const double nodal_mass = itCurrentNode->GetValue(NODAL_MASS);
-        const array_1d<double, 3>& r_external_forces = itCurrentNode->FastGetSolutionStepValue(FORCE_RESIDUAL);
-        const array_1d<double, 3>& r_previous_external_forces = itCurrentNode->FastGetSolutionStepValue(FORCE_RESIDUAL,1);
-        const array_1d<double, 3>& r_current_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA);
-        const array_1d<double, 3>& r_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA,1);
-        const array_1d<double, 3>& r_current_damping_force = itCurrentNode->FastGetSolutionStepValue(MIDDLE_VELOCITY);
         array_1d<double, 3>& r_current_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT);
         array_1d<double, 3>& r_current_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY);
+
+        const double nodal_mass = itCurrentNode->GetValue(NODAL_MASS);
+
+        const array_1d<double, 3>& r_external_forces = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE);
+        const array_1d<double, 3>& r_previous_external_forces = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE,1);
+        const array_1d<double, 3>& r_current_internal_force = itCurrentNode->FastGetSolutionStepValue(INTERNAL_FORCE);
+        const array_1d<double, 3>& r_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(INTERNAL_FORCE,1);
+        const array_1d<double, 3>& r_current_damping_force = itCurrentNode->FastGetSolutionStepValue(DAMPING_FORCE);
 
         std::array<bool, 3> fix_displacements = {false, false, false};
         fix_displacements[0] = (itCurrentNode->GetDof(DISPLACEMENT_X, DisplacementPosition).IsFixed());
@@ -402,8 +409,6 @@ public:
         const SizeType dim = r_current_process_info[DOMAIN_SIZE];
 
         // Step Update
-        // The first step is time =  initial_time ( 0.0) + delta time
-        // mTime.Current = r_current_process_info[TIME];
         mDeltaTime = r_current_process_info[DELTA_TIME];
 
         // The iterator of the first node
@@ -417,9 +422,6 @@ public:
             // Current step information "N+1" (before step update).
             this->UpdateTranslationalDegreesOfFreedom(it_node_begin + i, disppos, dim);
         } // for Node parallel
-
-        // TODO: STOP CRITERION
-        this->CheckStopCriterion(rModelPart);
 
         KRATOS_CATCH("")
     }
@@ -436,13 +438,18 @@ public:
         const SizeType DomainSize = 3
         )
     {
-        const double nodal_mass = itCurrentNode->GetValue(NODAL_MASS);
-        const array_1d<double, 3>& r_external_forces = itCurrentNode->FastGetSolutionStepValue(FORCE_RESIDUAL);
-        const array_1d<double, 3>& r_previous_external_forces = itCurrentNode->FastGetSolutionStepValue(FORCE_RESIDUAL,1);
-        const array_1d<double, 3>& r_current_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA);
-        const array_1d<double, 3>& r_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA,1);
-        const array_1d<double, 3>& r_current_damping_force = itCurrentNode->FastGetSolutionStepValue(MIDDLE_VELOCITY);
         array_1d<double, 3>& r_current_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY);
+
+        double& r_current_water_pressure = itCurrentNode->FastGetSolutionStepValue(WATER_PRESSURE);
+        double& r_current_dt_water_pressure = itCurrentNode->FastGetSolutionStepValue(DT_WATER_PRESSURE);
+
+        const double nodal_mass = itCurrentNode->GetValue(NODAL_MASS);
+
+        const array_1d<double, 3>& r_external_forces = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE);
+        const array_1d<double, 3>& r_previous_external_forces = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE,1);
+        const array_1d<double, 3>& r_current_internal_force = itCurrentNode->FastGetSolutionStepValue(INTERNAL_FORCE);
+        const array_1d<double, 3>& r_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(INTERNAL_FORCE,1);
+        const array_1d<double, 3>& r_current_damping_force = itCurrentNode->FastGetSolutionStepValue(DAMPING_FORCE);
 
         std::array<bool, 3> fix_displacements = {false, false, false};
         fix_displacements[0] = (itCurrentNode->GetDof(DISPLACEMENT_X, DisplacementPosition).IsFixed());
@@ -463,53 +470,17 @@ public:
         else {
             noalias(r_current_velocity) = ZeroVector(3);
         }
+        // Solution of the darcy_equation
+        if( itCurrentNode->IsFixed(WATER_PRESSURE) == false ) {
+            // TODO: this is on standby
+            r_current_water_pressure = 0.0;
+            r_current_dt_water_pressure = 0.0;
+        }
 
         const array_1d<double, 3>& r_previous_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY,1);
         array_1d<double, 3>& r_current_acceleration = itCurrentNode->FastGetSolutionStepValue(ACCELERATION);
 
         noalias(r_current_acceleration) = (1.0/mDeltaTime) * (r_current_velocity - r_previous_velocity);
-    }
-
-    void CheckStopCriterion(ModelPart& rModelPart)
-    {
-        const ProcessInfo& r_current_process_info = rModelPart.GetProcessInfo();
-        NodesArrayType& r_nodes = rModelPart.Nodes();
-        const auto it_node_begin = rModelPart.NodesBegin();
-
-        double l2_numerator = 0.0;
-        double l2_denominator = 0.0;
-        #pragma omp parallel for reduction(+:l2_numerator,l2_denominator)
-        for (int i = 0; i < static_cast<int>(r_nodes.size()); ++i) {
-            NodeIterator itCurrentNode = it_node_begin + i;
-            const array_1d<double, 3>& r_current_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT);
-            const array_1d<double, 3>& r_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,1);
-            array_1d<double, 3> delta_displacement;
-            noalias(delta_displacement) = r_current_displacement-r_previous_displacement;
-            const double norm_2_du = inner_prod(delta_displacement,delta_displacement);
-            const double norm_2_u_old = inner_prod(r_previous_displacement,r_previous_displacement);
-
-            l2_numerator += norm_2_du;
-            l2_denominator += norm_2_u_old;
-        }
-        if (l2_denominator > 1.0e-12) {
-            double l2_abs_error = std::sqrt(l2_numerator);
-            double l2_rel_error = l2_abs_error/std::sqrt(l2_denominator);
-
-            // std::fstream l2_error_file;
-            // l2_error_file.open ("l2_error_time.txt", std::fstream::out | std::fstream::app);
-            // l2_error_file.precision(12);
-            // l2_error_file << r_current_process_info[TIME] << " " << l2_error << std::endl;
-            // l2_error_file.close();
-
-            if (l2_rel_error <= r_current_process_info[ERROR_RATIO] && l2_abs_error <= r_current_process_info[ERROR_INTEGRATION_POINT]) {
-            // if (l2_rel_error <= r_current_process_info[ERROR_RATIO]) {
-                KRATOS_INFO("STOP CRITERION") << "The simulation is completed at step: " << r_current_process_info[STEP] << std::endl;
-                KRATOS_INFO("STOP CRITERION") << "L2 Relative Error is: " << l2_rel_error << std::endl;
-                KRATOS_INFO("STOP CRITERION") << "L2 Absolute Error is: " << l2_abs_error << std::endl;
-                KRATOS_INFO("STOP CRITERION") << "L2 denominator is: " << std::sqrt(l2_denominator) << std::endl;
-                // KRATOS_ERROR << "L2 Error is: " << l2_rel_error << " . The simulation is completed at step: " << r_current_process_info[STEP] << std::endl;
-            }
-        }
     }
 
     /**
@@ -526,49 +497,6 @@ public:
 
         KRATOS_CATCH("")
     }
-
-
-    /**
-     * @brief This function is designed to calculate just the RHS contribution
-     * @param rCurrentElement The element to compute
-     * @param RHS_Contribution The RHS vector contribution
-     * @param EquationId The ID's of the element degrees of freedom
-     * @param rCurrentProcessInfo The current process info instance
-     */
-    void CalculateRHSContribution(
-        Element& rCurrentElement,
-        LocalSystemVectorType& RHS_Contribution,
-        Element::EquationIdVectorType& EquationId,
-        const ProcessInfo& rCurrentProcessInfo
-        ) override
-    {
-        KRATOS_TRY
-
-        this->TCalculateRHSContribution(rCurrentElement, RHS_Contribution, rCurrentProcessInfo);
-        KRATOS_CATCH("")
-    }
-
-    /**
-     * @brief Functions that calculates the RHS of a "condition" object
-     * @param rCurrentCondition The condition to compute
-     * @param RHS_Contribution The RHS vector contribution
-     * @param EquationId The ID's of the condition degrees of freedom
-     * @param rCurrentProcessInfo The current process info instance
-     */
-    void CalculateRHSContribution(
-        Condition& rCurrentCondition,
-        LocalSystemVectorType& RHS_Contribution,
-        Element::EquationIdVectorType& EquationId,
-        const ProcessInfo& rCurrentProcessInfo
-        ) override
-    {
-        KRATOS_TRY
-
-        this->TCalculateRHSContribution(rCurrentCondition, RHS_Contribution, rCurrentProcessInfo);
-
-        KRATOS_CATCH("")
-    }
-
 
     void CalculateAndAddRHS(ModelPart& rModelPart)
     {
@@ -591,6 +519,127 @@ public:
         for (int i = 0; i < static_cast<int>(r_elements.size()); ++i) {
             auto it_elem = r_elements.begin() + i;
             CalculateRHSContribution(*it_elem, RHS_Contribution, equation_id_vector_dummy, r_current_process_info);
+        }
+
+        KRATOS_CATCH("")
+    }
+
+    /**
+     * @brief This function is designed to calculate just the RHS contribution
+     * @param rCurrentElement The element to compute
+     * @param RHS_Contribution The RHS vector contribution
+     * @param EquationId The ID's of the element degrees of freedom
+     * @param rCurrentProcessInfo The current process info instance
+     */
+    void CalculateRHSContribution(
+        Element& rCurrentElement,
+        LocalSystemVectorType& RHS_Contribution,
+        Element::EquationIdVectorType& EquationId,
+        const ProcessInfo& rCurrentProcessInfo
+        ) override
+    {
+        KRATOS_TRY
+
+        // this->TCalculateRHSContribution(rCurrentElement, RHS_Contribution, rCurrentProcessInfo);
+        // rCurrentElement.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
+        rCurrentElement.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, DAMPING_FORCE, rCurrentProcessInfo);
+
+        KRATOS_CATCH("")
+    }
+
+    /**
+     * @brief Functions that calculates the RHS of a "condition" object
+     * @param rCurrentCondition The condition to compute
+     * @param RHS_Contribution The RHS vector contribution
+     * @param EquationId The ID's of the condition degrees of freedom
+     * @param rCurrentProcessInfo The current process info instance
+     */
+    void CalculateRHSContribution(
+        Condition& rCurrentCondition,
+        LocalSystemVectorType& RHS_Contribution,
+        Element::EquationIdVectorType& EquationId,
+        const ProcessInfo& rCurrentProcessInfo
+        ) override
+    {
+        KRATOS_TRY
+
+        // this->TCalculateRHSContribution(rCurrentCondition, RHS_Contribution, rCurrentProcessInfo);
+        rCurrentCondition.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
+        rCurrentCondition.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, FORCE_RESIDUAL, rCurrentProcessInfo);
+
+        KRATOS_CATCH("")
+    }
+
+    void FinalizeSolutionStep(
+        ModelPart& rModelPart,
+        TSystemMatrixType& rA,
+        TSystemVectorType& rDx,
+        TSystemVectorType& rb) override
+    {
+        KRATOS_TRY
+
+        if(rModelPart.GetProcessInfo()[NODAL_SMOOTHING] == true)
+        {
+            unsigned int Dim = rModelPart.GetProcessInfo()[DOMAIN_SIZE];
+
+            const int NNodes = static_cast<int>(rModelPart.Nodes().size());
+            ModelPart::NodesContainerType::iterator node_begin = rModelPart.NodesBegin();
+
+            // Clear nodal variables
+            #pragma omp parallel for
+            for(int i = 0; i < NNodes; i++)
+            {
+                ModelPart::NodesContainerType::iterator itNode = node_begin + i;
+
+                itNode->FastGetSolutionStepValue(NODAL_AREA) = 0.0;
+                Matrix& rNodalStress = itNode->FastGetSolutionStepValue(NODAL_EFFECTIVE_STRESS_TENSOR);
+                if(rNodalStress.size1() != Dim)
+                    rNodalStress.resize(Dim,Dim,false);
+                noalias(rNodalStress) = ZeroMatrix(Dim,Dim);
+                itNode->FastGetSolutionStepValue(NODAL_DAMAGE_VARIABLE) = 0.0;
+                itNode->FastGetSolutionStepValue(NODAL_JOINT_AREA) = 0.0;
+                itNode->FastGetSolutionStepValue(NODAL_JOINT_WIDTH) = 0.0;
+                itNode->FastGetSolutionStepValue(NODAL_JOINT_DAMAGE) = 0.0;
+            }
+
+            BaseType::FinalizeSolutionStep(rModelPart, rA, rDx, rb);
+
+            // Compute smoothed nodal variables
+            #pragma omp parallel for
+            for(int n = 0; n < NNodes; n++)
+            {
+                ModelPart::NodesContainerType::iterator itNode = node_begin + n;
+
+                const double& NodalArea = itNode->FastGetSolutionStepValue(NODAL_AREA);
+                if (NodalArea>1.0e-20)
+                {
+                    const double InvNodalArea = 1.0/NodalArea;
+                    Matrix& rNodalStress = itNode->FastGetSolutionStepValue(NODAL_EFFECTIVE_STRESS_TENSOR);
+                    for(unsigned int i = 0; i<Dim; i++)
+                    {
+                        for(unsigned int j = 0; j<Dim; j++)
+                        {
+                            rNodalStress(i,j) *= InvNodalArea;
+                        }
+                    }
+                    double& NodalDamage = itNode->FastGetSolutionStepValue(NODAL_DAMAGE_VARIABLE);
+                    NodalDamage *= InvNodalArea;
+                }
+
+                const double& NodalJointArea = itNode->FastGetSolutionStepValue(NODAL_JOINT_AREA);
+                if (NodalJointArea>1.0e-20)
+                {
+                    const double InvNodalJointArea = 1.0/NodalJointArea;
+                    double& NodalJointWidth = itNode->FastGetSolutionStepValue(NODAL_JOINT_WIDTH);
+                    NodalJointWidth *= InvNodalJointArea;
+                    double& NodalJointDamage = itNode->FastGetSolutionStepValue(NODAL_JOINT_DAMAGE);
+                    NodalJointDamage *= InvNodalJointArea;
+                }
+            }
+        }
+        else
+        {
+            BaseType::FinalizeSolutionStep(rModelPart, rA, rDx, rb);
         }
 
         KRATOS_CATCH("")
@@ -644,17 +693,16 @@ protected:
     * @param RHS_Contribution The RHS vector contribution
     * @param rCurrentProcessInfo The current process info instance
     */
-    template <typename TObjectType>
-    void TCalculateRHSContribution(
-        TObjectType& rCurrentEntity,
-        LocalSystemVectorType& RHS_Contribution,
-        const ProcessInfo& rCurrentProcessInfo
-        )
-    {
-        rCurrentEntity.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
-
-        rCurrentEntity.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, FORCE_RESIDUAL, rCurrentProcessInfo);
-    }
+    // template <typename TObjectType>
+    // void TCalculateRHSContribution(
+    //     TObjectType& rCurrentEntity,
+    //     LocalSystemVectorType& RHS_Contribution,
+    //     const ProcessInfo& rCurrentProcessInfo
+    //     )
+    // {
+    //     rCurrentEntity.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
+    //     rCurrentEntity.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, FORCE_RESIDUAL, rCurrentProcessInfo);
+    // }
 
     ///@}
     ///@name Protected Operations

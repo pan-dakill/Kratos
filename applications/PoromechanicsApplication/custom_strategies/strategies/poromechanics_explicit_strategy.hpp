@@ -15,6 +15,9 @@
 #if !defined(KRATOS_POROMECHANICS_EXPLICIT_STRATEGY)
 #define KRATOS_POROMECHANICS_EXPLICIT_STRATEGY
 
+/* System includes */
+// #include <fstream>
+
 // Project includes
 #include "custom_strategies/custom_strategies/mechanical_explicit_strategy.hpp"
 
@@ -229,6 +232,9 @@ public:
         // Explicitly integrates the equation of motion.
         mpScheme->Update(r_model_part, dof_set_dummy, rA, rDx, rb);
 
+        // CONVERGENCE CHECK
+        this->CheckConvergence(r_model_part);
+
         // Move the mesh if needed
         if (BaseType::MoveMeshFlag())
             BaseType::MoveMesh();
@@ -329,6 +335,48 @@ protected:
                     double& r_reaction = it_node->FastGetSolutionStepValue(REACTION_Z);
                     r_reaction = force_residual[2];
                 }
+            }
+        }
+    }
+
+    virtual void CheckConvergence(ModelPart& rModelPart)
+    {
+        const ProcessInfo& r_current_process_info = rModelPart.GetProcessInfo();
+        NodesArrayType& r_nodes = rModelPart.Nodes();
+        const auto it_node_begin = rModelPart.NodesBegin();
+
+        double l2_numerator = 0.0;
+        double l2_denominator = 0.0;
+        #pragma omp parallel for reduction(+:l2_numerator,l2_denominator)
+        for (int i = 0; i < static_cast<int>(r_nodes.size()); ++i) {
+            NodeIterator itCurrentNode = it_node_begin + i;
+            const array_1d<double, 3>& r_current_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT);
+            const array_1d<double, 3>& r_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,1);
+            const double& r_current_water_pressure = itCurrentNode->FastGetSolutionStepValue(WATER_PRESSURE);
+            const double& r_previous_water_pressure = itCurrentNode->FastGetSolutionStepValue(WATER_PRESSURE,1);
+            array_1d<double, 3> delta_displacement;
+            noalias(delta_displacement) = r_current_displacement - r_previous_displacement;
+            const double delta_water_pressure = r_current_water_pressure - r_previous_water_pressure;
+            const double norm_2_du = inner_prod(delta_displacement,delta_displacement) + delta_water_pressure*delta_water_pressure;
+            const double norm_2_u_old = inner_prod(r_previous_displacement,r_previous_displacement) + r_previous_water_pressure*r_previous_water_pressure;
+
+            l2_numerator += norm_2_du;
+            l2_denominator += norm_2_u_old;
+        }
+        if (l2_denominator > 1.0e-12) {
+            double l2_abs_error = std::sqrt(l2_numerator);
+            double l2_rel_error = l2_abs_error/std::sqrt(l2_denominator);
+
+            // std::fstream l2_error_file;
+            // l2_error_file.open ("l2_error_time.txt", std::fstream::out | std::fstream::app);
+            // l2_error_file.precision(12);
+            // l2_error_file << r_current_process_info[TIME] << " " << l2_rel_error << std::endl;
+            // l2_error_file.close();
+
+            if (l2_rel_error <= r_current_process_info[ERROR_RATIO] && l2_abs_error <= r_current_process_info[ERROR_INTEGRATION_POINT]) {
+                KRATOS_INFO("EXPLICIT CONVERGENCE CHECK") << "The simulation is converging at step: " << r_current_process_info[STEP] << std::endl;
+                KRATOS_INFO("EXPLICIT CONVERGENCE CHECK") << "L2 Relative Error is: " << l2_rel_error << std::endl;
+                KRATOS_INFO("EXPLICIT CONVERGENCE CHECK") << "L2 Absolute Error is: " << l2_abs_error << std::endl;
             }
         }
     }

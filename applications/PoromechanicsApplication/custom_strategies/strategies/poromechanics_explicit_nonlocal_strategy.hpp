@@ -165,10 +165,13 @@ public:
         // Explicitly integrates the equation of motion.
         mpScheme->Update(r_model_part, dof_set_dummy, rA, rDx, rb);
 
+        // CONVERGENCE CHECK
+        this->CheckConvergence(r_model_part);
+
         // Move the mesh if needed
         if (BaseType::MoveMeshFlag())
             BaseType::MoveMesh();
-            
+
         // Finalize the non linear iteration
         mpScheme->FinalizeNonLinIteration(BaseType::GetModelPart(), rA, rDx, rb);
         mpNonlocalDamageUtility->CalculateNonlocalEquivalentStrain(mpParameters,BaseType::GetModelPart().GetProcessInfo());

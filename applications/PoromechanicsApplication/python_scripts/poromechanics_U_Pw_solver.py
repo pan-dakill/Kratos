@@ -60,7 +60,7 @@ class UPwSolver(PythonSolver):
             "move_mesh_flag": false,
             "nodal_smoothing": false,
             "periodic_interface_conditions": false,
-            "solution_type": "quasi_static",
+            "solution_type": "implicit_quasi_static",
             "scheme_type": "Newmark",
             "newmark_beta": 0.25,
             "newmark_gamma": 0.5,
@@ -174,7 +174,7 @@ class UPwSolver(PythonSolver):
         ## Fluid dofs
         KratosMultiphysics.VariableUtils().AddDof(KratosMultiphysics.WATER_PRESSURE, KratosMultiphysics.REACTION_WATER_PRESSURE,self.main_model_part)
 
-        if(self.settings["solution_type"].GetString() == "Dynamic"):
+        if(self.settings["solution_type"].GetString() == "implicit_dynamic"):
             for node in self.main_model_part.Nodes:
                 # adding VELOCITY as dofs
                 node.AddDof(KratosMultiphysics.VELOCITY_X)
@@ -388,7 +388,7 @@ class UPwSolver(PythonSolver):
             rayleigh_beta = self.settings["rayleigh_beta"].GetDouble()
             self.main_model_part.ProcessInfo.SetValue(KratosStructural.RAYLEIGH_ALPHA,rayleigh_alpha)
             self.main_model_part.ProcessInfo.SetValue(KratosStructural.RAYLEIGH_BETA,rayleigh_beta)
-            if(solution_type == "quasi_static"):
+            if(solution_type == "implicit_quasi_static"):
                 if(rayleigh_alpha<1.0e-20 and rayleigh_beta<1.0e-20):
                     scheme = KratosPoro.NewmarkQuasistaticUPwScheme(beta,gamma,theta)
                 else:
