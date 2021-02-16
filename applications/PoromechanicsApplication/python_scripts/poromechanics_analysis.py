@@ -22,7 +22,7 @@ class PoromechanicsAnalysis(AnalysisStage):
         self.initial_time = timer.perf_counter()
 
         # Set number of OMP threads
-        parallel=Kratos.ParallelUtilities()
+        parallel=Kratos.OpenMPUtils()
         parallel.SetNumThreads(parameters["problem_data"]["number_of_threads"].GetInt())
 
         ## Import parallel modules if needed
