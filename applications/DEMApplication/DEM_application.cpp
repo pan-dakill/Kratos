@@ -50,7 +50,6 @@
 #include "custom_strategies/schemes/velocity_verlet_scheme.h"
 #include "custom_strategies/schemes/runge_kutta_scheme.h"
 #include "custom_strategies/schemes/quaternion_integration_scheme.h"
-#include "custom_strategies/schemes/split_forward_euler_scheme.h"
 
 namespace Kratos {
 KRATOS_CREATE_VARIABLE(GlobalPointersVector<Element>, CONTINUUM_INI_NEIGHBOUR_ELEMENTS)
@@ -466,15 +465,11 @@ KRATOS_CREATE_LOCAL_FLAG(DEMFlags, POLYHEDRON_SKIN, 18);
 
 KratosDEMApplication::KratosDEMApplication() : KratosApplication("DEMApplication"),
     mCylinderParticle2D(0, Element::GeometryType::Pointer(new Sphere3D1<Node<3> >(Element::GeometryType::PointsArrayType(1)))),
-    mSplitForwardEulerCylinderParticle2D(0, Element::GeometryType::Pointer(new Sphere3D1<Node<3> >(Element::GeometryType::PointsArrayType(1)))),
     mCylinderContinuumParticle2D(0, Element::GeometryType::Pointer(new Sphere3D1<Node<3> >(Element::GeometryType::PointsArrayType(1)))),
-    mSplitForwardEulerCylinderContinuumParticle2D(0, Element::GeometryType::Pointer(new Sphere3D1<Node<3> >(Element::GeometryType::PointsArrayType(1)))),
     mSphericParticle3D(0, Element::GeometryType::Pointer(new Sphere3D1<Node<3> >(Element::GeometryType::PointsArrayType(1)))),
-    mSplitForwardEulerSphericParticle3D(0, Element::GeometryType::Pointer(new Sphere3D1<Node<3> >(Element::GeometryType::PointsArrayType(1)))),
     mNanoParticle3D(0, Element::GeometryType::Pointer(new Sphere3D1<Node<3> >(Element::GeometryType::PointsArrayType(1)))),
     mAnalyticSphericParticle3D(0, Element::GeometryType::Pointer(new Sphere3D1<Node<3> >(Element::GeometryType::PointsArrayType(1)))),
     mSphericContinuumParticle3D(0, Element::GeometryType::Pointer(new Sphere3D1<Node<3> >(Element::GeometryType::PointsArrayType(1)))),
-    mSplitForwardEulerSphericContinuumParticle3D(0, Element::GeometryType::Pointer(new Sphere3D1<Node<3> >(Element::GeometryType::PointsArrayType(1)))),
     mPolyhedronSkinSphericParticle3D(0, Element::GeometryType::Pointer(new Sphere3D1<Node<3> >(Element::GeometryType::PointsArrayType(1)))),
     mIceContinuumParticle3D(0, Element::GeometryType::Pointer(new Sphere3D1<Node<3> >(Element::GeometryType::PointsArrayType(1)))),
     mBeamParticle3D(0, Element::GeometryType::Pointer(new Sphere3D1<Node<3> >(Element::GeometryType::PointsArrayType(1)))),
@@ -894,15 +889,11 @@ void KratosDEMApplication::Register() {
 
     // ELEMENTS
     KRATOS_REGISTER_ELEMENT("CylinderParticle2D", mCylinderParticle2D)
-    KRATOS_REGISTER_ELEMENT("SplitForwardEulerCylinderParticle2D", mSplitForwardEulerCylinderParticle2D)
     KRATOS_REGISTER_ELEMENT("CylinderContinuumParticle2D", mCylinderContinuumParticle2D)
-    KRATOS_REGISTER_ELEMENT("SplitForwardEulerCylinderContinuumParticle2D", mSplitForwardEulerCylinderContinuumParticle2D)
     KRATOS_REGISTER_ELEMENT("SphericParticle3D", mSphericParticle3D)
-    KRATOS_REGISTER_ELEMENT("SplitForwardEulerSphericParticle3D", mSplitForwardEulerSphericParticle3D)
     KRATOS_REGISTER_ELEMENT("NanoParticle3D", mNanoParticle3D)
     KRATOS_REGISTER_ELEMENT("AnalyticSphericParticle3D", mAnalyticSphericParticle3D)
     KRATOS_REGISTER_ELEMENT("SphericContinuumParticle3D", mSphericContinuumParticle3D)
-    KRATOS_REGISTER_ELEMENT("SplitForwardEulerSphericContinuumParticle3D", mSplitForwardEulerSphericContinuumParticle3D)
     KRATOS_REGISTER_ELEMENT("PolyhedronSkinSphericParticle3D", mPolyhedronSkinSphericParticle3D)
     KRATOS_REGISTER_ELEMENT("IceContinuumParticle3D", mIceContinuumParticle3D)
     KRATOS_REGISTER_ELEMENT("BeamParticle3D", mBeamParticle3D)
@@ -970,7 +961,6 @@ void KratosDEMApplication::Register() {
     Serializer::Register("RungeKuttaScheme", RungeKuttaScheme());
     Serializer::Register("QuaternionIntegrationScheme", QuaternionIntegrationScheme());
     Serializer::Register("DEMIntegrationScheme", DEMIntegrationScheme());
-    Serializer::Register("SplitForwardEulerScheme", SplitForwardEulerScheme());
 
     KRATOS_INFO("") << " done." << std::endl;
 }

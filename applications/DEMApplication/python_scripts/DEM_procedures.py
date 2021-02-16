@@ -371,8 +371,6 @@ class Procedures():
             translational_scheme = TaylorScheme()
         elif self.DEM_parameters["TranslationalIntegrationScheme"].GetString() == 'Velocity_Verlet':
             translational_scheme = VelocityVerletScheme()
-        elif self.DEM_parameters["TranslationalIntegrationScheme"].GetString() == 'Split_Forward_Euler':
-            translational_scheme = SplitForwardEulerScheme()
         else:
             self.KratosPrintWarning('Error: selected translational integration scheme not defined. Please select a different scheme')
             sys.exit("\nExecution was aborted.\n")
@@ -388,8 +386,6 @@ class Procedures():
                 rotational_scheme = TaylorScheme()
             elif self.DEM_parameters["TranslationalIntegrationScheme"].GetString() == 'Velocity_Verlet':
                 rotational_scheme = VelocityVerletScheme()
-            elif self.DEM_parameters["TranslationalIntegrationScheme"].GetString() == 'Split_Forward_Euler':
-                rotational_scheme = SplitForwardEulerScheme()
         elif self.DEM_parameters["RotationalIntegrationScheme"].GetString() == 'Runge_Kutta':
             rotational_scheme = RungeKuttaScheme()
         elif self.DEM_parameters["RotationalIntegrationScheme"].GetString() == 'Quaternion_Integration':

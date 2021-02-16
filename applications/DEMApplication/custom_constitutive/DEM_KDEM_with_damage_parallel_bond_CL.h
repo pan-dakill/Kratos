@@ -102,39 +102,6 @@ namespace Kratos {
         virtual void AdjustTauStrengthAndUpdatedMaxTauStrength(double& tau_strength, double& updated_max_tau_strength, const double internal_friction,
                                                                double contact_sigma, SphericContinuumParticle* element1, SphericContinuumParticle* element2);
 
-        void CalculateForcesRayleigh(const ProcessInfo& r_process_info,
-                                    double OldLocalElasticContactForce[3],
-                                    double LocalElasticContactForce[3],
-                                    double LocalElasticExtraContactForce[3],
-                                    double LocalCoordSystem[3][3],
-                                    double LocalDeltDisp[3],
-                                    const double kn_el,
-                                    const double kt_el,
-                                    double& contact_sigma,
-                                    double& contact_tau,
-                                    double& failure_criterion_state,
-                                    double equiv_young,
-                                    double equiv_shear,
-                                    double indentation,
-                                    double calculation_area,
-                                    double& accumulated_damage,
-                                    SphericContinuumParticle* element1,
-                                    SphericContinuumParticle* element2,
-                                    int i_neighbour_count,
-                                    int time_steps,
-                                    bool& sliding,
-                                    double LocalRelVel[3],
-                                    double ViscoDampingLocalContactForce[3]) override;
-
-        void CalculateViscoDampingRayleigh(double LocalRelVel[3],
-                                            double ViscoDampingLocalContactForce[3],
-                                            double indentation,
-                                            const double kn_el,
-                                            const double kt_el,
-                                            const double beta_rayleigh,
-                                            bool& sliding,
-                                            int failure_id) override;
-
         double mUnbondedLocalElasticContactForce2 = 0.0;
         double mUnbondedNormalElasticConstant;
         double mUnbondedTangentialElasticConstant;

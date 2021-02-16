@@ -647,15 +647,6 @@ namespace Kratos {
         const int number_of_particles       = (int) mListOfSphericParticles.size();
         const int number_of_ghost_particles = (int) mListOfGhostSphericParticles.size();
 
-        // TODO: STOP CRITERION
-        // double l2_denominator = 0.0;
-        // #pragma omp parallel for reduction(+:l2_denominator)
-        // for (int i = 0; i < number_of_particles; i++) {
-        //     const array_1d<double, 3>& previous_displacement = mListOfSphericParticles[i]->GetGeometry()[0].FastGetSolutionStepValue(DISPLACEMENT);
-        //     const double norm_2_u_old = inner_prod(previous_displacement,previous_displacement);
-        //     l2_denominator += norm_2_u_old;
-        // }
-
         ModelPart& r_clusters_model_part  = *mpCluster_model_part;
         ElementsArrayType& pLocalClusters = r_clusters_model_part.GetCommunicator().LocalMesh().Elements();
         ElementsArrayType& pGhostClusters = r_clusters_model_part.GetCommunicator().GhostMesh().Elements();
@@ -698,33 +689,6 @@ namespace Kratos {
 
         //GetScheme()->Calculate(GetModelPart(), StepFlag);
         //GetScheme()->Calculate(*mpCluster_model_part, StepFlag);
-
-        // TODO: STOP CRITERION
-        // double l2_numerator = 0.0;
-        // #pragma omp parallel for reduction(+:l2_numerator)
-        // for (int i = 0; i < number_of_particles; i++) {
-        //     const array_1d<double, 3>& delta_displacement = mListOfSphericParticles[i]->GetGeometry()[0].FastGetSolutionStepValue(DELTA_DISPLACEMENT);
-        //     const double norm_2_du = inner_prod(delta_displacement,delta_displacement);
-        //     l2_numerator += norm_2_du;
-        // }
-
-        // // if (l2_denominator > 1.0e-12 && StepFlag==2) {
-        // if (l2_denominator > 1.0e-12) {
-        //     double l2_error = std::sqrt(l2_numerator)/std::sqrt(l2_denominator);
-
-        //     std::fstream l2_error_file;
-        //     l2_error_file.open ("l2_error_time.txt", std::fstream::out | std::fstream::app);
-        //     l2_error_file.precision(12);
-        //     l2_error_file << r_process_info[TIME] << " " << l2_error << std::endl;
-        //     l2_error_file.close();
-
-        //     if (l2_error < r_process_info[POWER_LAW_TOLERANCE]) {
-        //         KRATOS_INFO("STOP CRITERION") << "L2 Error is: " << l2_error << " . The simulation is completed at step: " << r_process_info[STEP] << std::endl;
-        //         KRATOS_INFO("STOP CRITERION") << "L2 numerator is: " << std::sqrt(l2_numerator) << " . L2 denominator is: " << std::sqrt(l2_denominator) << std::endl;
-        //         // KRATOS_ERROR << "L2 Error is: " << l2_error << " . The simulation is completed at step: " << r_process_info[STEP] << std::endl;
-        //     }
-        // }
-
         KRATOS_CATCH("")
     }
 

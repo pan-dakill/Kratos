@@ -287,18 +287,6 @@ virtual void CalculateOnContactElements(size_t i_neighbour_count, double LocalCo
 
 protected:
 
-// virtual void ComputeBallToBallStiffnessAndDamping(ParticleDataBuffer & data_buffer,
-//                                                     double& r_nodal_stiffness,
-//                                                     double& r_nodal_damping,
-//                                                     double& r_nodal_rotational_stiffness,
-//                                                     double& r_nodal_rotational_damping){}
-
-// virtual void ComputeBallToRigidFaceStiffnessAndDamping(ParticleDataBuffer & data_buffer,
-//                                                         double& r_nodal_stiffness,
-//                                                         double& r_nodal_damping,
-//                                                         double& r_nodal_rotational_stiffness,
-//                                                         double& r_nodal_rotational_damping){}
-
 virtual void ComputeBallToRigidFaceContactForce(ParticleDataBuffer & data_buffer,
                                                 array_1d<double, 3>& rElasticForce,
                                                 array_1d<double, 3>& rContactForce,

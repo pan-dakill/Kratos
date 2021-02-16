@@ -158,20 +158,6 @@ namespace Kratos {
                                         SphericParticle* const element1,
                                         SphericParticle* const element2);
 
-        void CalculateViscoDampingCoeff(double &equiv_visco_damp_coeff_normal,
-                double &equiv_visco_damp_coeff_tangential,
-                SphericParticle* element1,
-                SphericParticle* element2,
-                double kn_el,
-                double kt_el) override;
-
-        void CalculateViscoDampingCoeffWithFEM(double &equiv_visco_damp_coeff_normal,
-                double &equiv_visco_damp_coeff_tangential,
-                SphericParticle* element,
-                Condition* wall,
-                double kn_el,
-                double kt_el) override;
-
         void CalculateViscoDampingForceWithFEM(double LocalRelVel[3],
                                         double ViscoDampingLocalContactForce[3],
                                         SphericParticle* const element,
@@ -201,39 +187,6 @@ namespace Kratos {
                                                      double ViscoDampingLocalContactForce[3],
                                                      double LocalDeltDisp[3]);
 
-        void CalculateForcesRayleigh(const ProcessInfo& r_process_info,
-                                        const double OldLocalElasticContactForce[3],
-                                        double LocalElasticContactForce[3],
-                                        double LocalDeltDisp[3],
-                                        double LocalRelVel[3],
-                                        double indentation,
-                                        double previous_indentation,
-                                        double ViscoDampingLocalContactForce[3],
-                                        double& cohesive_force,
-                                        SphericParticle* element1,
-                                        SphericParticle* element2,
-                                        bool& sliding, double LocalCoordSystem[3][3]) override;
-
-        void CalculateViscoDampingForceRayleigh(double LocalRelVel[3],
-                                                double ViscoDampingLocalContactForce[3],
-                                                const double beta_rayleigh) override;
-
-        void CalculateForcesRayleighWithFEM(const ProcessInfo& r_process_info,
-                                            const double OldLocalElasticContactForce[3],
-                                            double LocalElasticContactForce[3],
-                                            double LocalDeltDisp[3],
-                                            double LocalRelVel[3],
-                                            double indentation,
-                                            double previous_indentation,
-                                            double ViscoDampingLocalContactForce[3],
-                                            double& cohesive_force,
-                                            SphericParticle* const element,
-                                            Condition* const wall,
-                                            bool& sliding) override;
-
-        void CalculateViscoDampingForceRayleighWithFEM(double LocalRelVel[3],
-                                                        double ViscoDampingLocalContactForce[3],
-                                                        const double beta_rayleigh) override;
     protected:
         double GetTgOfDynamicFrictionAngleOfElement(SphericParticle* element);
         double GetTgOfStaticFrictionAngleOfElement(SphericParticle* element);

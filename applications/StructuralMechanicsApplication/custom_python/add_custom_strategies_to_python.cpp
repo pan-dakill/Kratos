@@ -77,6 +77,7 @@ void  AddCustomStrategiesToPython(pybind11::module& m)
     typedef ExplicitCentralDifferencesScheme< SparseSpaceType, LocalSpaceType >  ExplicitCentralDifferencesSchemeType;
     typedef ExplicitMultiStageKimScheme< SparseSpaceType, LocalSpaceType >  ExplicitMultiStageKimSchemeType;
 
+
     // Custom convergence criterion types
     typedef ResidualDisplacementAndOtherDoFCriteria< SparseSpaceType,  LocalSpaceType > ResidualDisplacementAndOtherDoFCriteriaType;
     typedef ErrorMeshCriteria< SparseSpaceType,  LocalSpaceType > ErrorMeshCriteriaType;
@@ -154,6 +155,8 @@ void  AddCustomStrategiesToPython(pybind11::module& m)
         .def(py::init< const double>())
         .def(py::init< Parameters>())
         ;
+
+
 
     //********************************************************************
     //*******************CONVERGENCE CRITERIA CLASSES*********************

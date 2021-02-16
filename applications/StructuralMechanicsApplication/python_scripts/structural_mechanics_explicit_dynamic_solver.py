@@ -94,8 +94,6 @@ class ExplicitMechanicalSolver(MechanicalSolver):
     #### Specific internal functions ####
     def _create_solution_scheme(self):
         scheme_type = self.settings["scheme_type"].GetString()
-        # print(scheme_type)
-        # paraaa
 
         # Setting the Rayleigh damping parameters
         process_info = self.main_model_part.ProcessInfo
