@@ -30,10 +30,6 @@ set(KRATOS_DEM_APPLICATION_CORE
     ${CMAKE_CURRENT_SOURCE_DIR}/custom_elements/contact_info_spheric_particle.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/custom_elements/polyhedron_skin_spheric_particle.cpp
     #${CMAKE_CURRENT_SOURCE_DIR}/custom_elements/analytic_rigid_body_element.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/custom_elements/split_forward_euler_spheric_particle.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/custom_elements/split_forward_euler_cylinder_particle.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/custom_elements/split_forward_euler_spheric_continuum_particle.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/custom_elements/split_forward_euler_cylinder_continuum_particle.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/custom_conditions/RigidFace.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/custom_conditions/analytic_RigidFace.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/custom_conditions/RigidEdge.cpp
@@ -51,7 +47,6 @@ set(KRATOS_DEM_APPLICATION_CORE
     ${CMAKE_CURRENT_SOURCE_DIR}/custom_strategies/schemes/runge_kutta_scheme.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/custom_strategies/schemes/quaternion_integration_scheme.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/custom_strategies/schemes/glued_to_wall_scheme.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/custom_strategies/schemes/split_forward_euler_scheme.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/custom_constitutive/DEM_Dempack_CL.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/custom_constitutive/DEM_Dempack_2D_CL.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/custom_constitutive/DEM_Dempack_torque_CL.cpp
