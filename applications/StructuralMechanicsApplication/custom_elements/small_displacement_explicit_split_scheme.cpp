@@ -300,6 +300,9 @@ void SmallDisplacementExplicitSplitScheme::CalculateLumpedMassVector(VectorType&
     // LUMPED MASS MATRIX
     const double total_mass = GetGeometry().DomainSize() * density * thickness;
 
+    // KRATOS_WATCH(this->Id())
+    // KRATOS_WATCH(total_mass)
+
     Vector lumping_factors;
     lumping_factors = GetGeometry().LumpingFactors( lumping_factors );
 
