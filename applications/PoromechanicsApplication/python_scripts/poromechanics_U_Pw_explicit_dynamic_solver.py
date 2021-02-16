@@ -36,6 +36,7 @@ class ExplicitUPwSolver(UPwSolver):
     def GetDefaultParameters(cls):
         this_defaults = KratosMultiphysics.Parameters("""{
             "scheme_type"                : "ocd",
+            "rebuild_level"              : 0,
             "theta_1"                    : 1.0,
             "theta_3"                    : 1.0,
             "delta"                      : 1.0
@@ -151,7 +152,7 @@ class ExplicitUPwSolver(UPwSolver):
         self.strategy_params.AddValue("loads_variable_list",self.settings["loads_variable_list"])
         # NOTE: A rebuild level of 0 means that the nodal mass is calculated only once at the beginning (Initialize)
         #       A rebuild level higher than 0 means that the nodal mass can be updated at the beginning of each step (InitializeSolutionStep)
-        self.strategy_params.AddValue("rebuild_level",0)
+        self.strategy_params.AddValue("rebuild_level",self.settings["rebuild_level"])
 
         if nonlocal_damage:
             self.strategy_params.AddValue("body_domain_sub_model_part_list",self.body_domain_sub_sub_model_part_list)
