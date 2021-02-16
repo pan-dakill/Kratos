@@ -66,7 +66,7 @@ public:
 
     /// Default Constructor
     NonlocalDamageUtilities() {}
-    
+
     ///------------------------------------------------------------------------------------
 
     /// Destructor
@@ -77,7 +77,7 @@ public:
     }
 
 ///----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    
+
     virtual void SearchGaussPointsNeighbours (Parameters* pParameters, ModelPart& rModelPart)
     {
         KRATOS_ERROR << "Calling the default SearchGaussPointsNeighbours method" << std::endl;
@@ -89,7 +89,7 @@ public:
     {
         int NGPoints = static_cast<int>(mGaussPointList.size());
         double CharacteristicLength = (*pParameters)["characteristic_length"].GetDouble();
-        
+
         // Loop through all Gauss Points
         #pragma omp parallel for
         for(int i = 0; i < NGPoints; i++)
@@ -99,7 +99,7 @@ public:
             LocalEquivalentStrain = ReceiverPoint.pConstitutiveLaw->GetValue(LOCAL_EQUIVALENT_STRAIN,LocalEquivalentStrain);;
             double Numerator = ReceiverPoint.Weight*LocalEquivalentStrain;
             double WeightingFunctionDenominator = ReceiverPoint.Weight;
-            
+
             //Loop through neighbours
             for(unsigned int j = 0; j < ReceiverPoint.NeighbourPoints.size(); j++)
             {
@@ -134,7 +134,7 @@ protected:
     }
 
 ///----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    
+
 }; // Class NonlocalDamageUtilities
 
 } // namespace Kratos.

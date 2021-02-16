@@ -335,7 +335,7 @@ void UPwCondition<TDim,TNumNodes>::CalculateRHS( VectorType& rRightHandSideVecto
 //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 template< unsigned int TDim, unsigned int TNumNodes >
-void UPwCondition<TDim,TNumNodes>::::AddExplicitContribution(
+void UPwCondition<TDim,TNumNodes>::AddExplicitContribution(
     const VectorType& rRHSVector,
     const Variable<VectorType>& rRHSVariable,
     const Variable<array_1d<double,3> >& rDestinationVariable,
@@ -346,7 +346,7 @@ void UPwCondition<TDim,TNumNodes>::::AddExplicitContribution(
 
     if( rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == FORCE_RESIDUAL ) {
 
-        const GeometryType& rGeom = GetGeometry();
+        GeometryType& rGeom = GetGeometry();
 
         for(SizeType i=0; i< TNumNodes; ++i) {
 

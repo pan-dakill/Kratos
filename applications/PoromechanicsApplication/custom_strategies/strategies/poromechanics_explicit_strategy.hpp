@@ -258,7 +258,6 @@ public:
      */
     void FinalizeSolutionStep() override
     {
-        typename TSchemeType::Pointer pScheme = GetScheme();
         ModelPart& r_model_part = BaseType::GetModelPart();
         TSystemMatrixType rA = TSystemMatrixType();
         TSystemVectorType rDx = TSystemVectorType();
@@ -267,10 +266,10 @@ public:
         // operations to be done after achieving convergence, for example the
         // Final Residual Vector (rb) has to be saved in there
         // to avoid error accumulation
-        pScheme->FinalizeSolutionStep(r_model_part, rA, rDx, rb);
+        mpScheme->FinalizeSolutionStep(r_model_part, rA, rDx, rb);
 
         // Cleaning memory after the solution
-        pScheme->Clean();
+        mpScheme->Clean();
     }
 
 //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -305,7 +304,7 @@ protected:
         double flux_residual = 0.0;
 
         const ProcessInfo& r_current_process_info = rModelPart.GetProcessInfo();
-        const SizeType dim = r_current_process_info[DOMAIN_SIZE];
+        const unsigned int dim = r_current_process_info[DOMAIN_SIZE];
 
         // Getting
         const auto it_node_begin = r_nodes.begin();
@@ -349,7 +348,7 @@ protected:
         double l2_denominator = 0.0;
         #pragma omp parallel for reduction(+:l2_numerator,l2_denominator)
         for (int i = 0; i < static_cast<int>(r_nodes.size()); ++i) {
-            NodeIterator itCurrentNode = it_node_begin + i;
+            auto itCurrentNode = it_node_begin + i;
             const array_1d<double, 3>& r_current_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT);
             const array_1d<double, 3>& r_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,1);
             const double& r_current_water_pressure = itCurrentNode->FastGetSolutionStepValue(WATER_PRESSURE);

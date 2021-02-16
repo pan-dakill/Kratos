@@ -73,6 +73,7 @@ public:
 
     /// The arrays of elements and nodes
     typedef ModelPart::ElementsContainerType ElementsArrayType;
+    typedef ModelPart::ConditionsContainerType ConditionsArrayType;
     typedef ModelPart::NodesContainerType NodesArrayType;
 
     /// Definition of the size type

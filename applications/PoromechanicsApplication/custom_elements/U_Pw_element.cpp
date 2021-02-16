@@ -784,7 +784,7 @@ void UPwElement<TDim,TNumNodes>::CalculateInertialForce( VectorType& rRightHandS
     this->CalculateLumpedMassMatrix(MassMatrix,rCurrentProcessInfo);
 
     VectorType AccelerationVector(element_size);
-    this->GetSecondDerivativesVector(AccelerationVector,0)
+    this->GetSecondDerivativesVector(AccelerationVector,0);
 
     noalias(rRightHandSideVector) = prod(MassMatrix,AccelerationVector);
 
@@ -810,7 +810,7 @@ void UPwElement<TDim,TNumNodes>::CalculateDampingForce( VectorType& rRightHandSi
     this->CalculateDampingMatrixWithLumpedMass(DampingMatrix,rCurrentProcessInfo);
 
     VectorType VelocityVector(element_size);
-    this->GetFirstDerivativesVector(VelocityVector,0)
+    this->GetFirstDerivativesVector(VelocityVector,0);
 
     noalias(rRightHandSideVector) = prod(DampingMatrix,VelocityVector);
 
@@ -820,7 +820,7 @@ void UPwElement<TDim,TNumNodes>::CalculateDampingForce( VectorType& rRightHandSi
 //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 template< unsigned int TDim, unsigned int TNumNodes >
-void UPwCondition<TDim,TNumNodes>::::AddExplicitContribution(
+void UPwElement<TDim,TNumNodes>::AddExplicitContribution(
     const VectorType& rRHSVector,
     const Variable<VectorType>& rRHSVariable,
     const Variable<double>& rDestinationVariable,
@@ -831,7 +831,7 @@ void UPwCondition<TDim,TNumNodes>::::AddExplicitContribution(
 
     if( rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == NODAL_MASS ) {
 
-        const GeometryType& rGeom = GetGeometry();
+        GeometryType& rGeom = GetGeometry();
 
         const unsigned int element_size = TNumNodes * (TDim + 1);
 
@@ -853,7 +853,7 @@ void UPwCondition<TDim,TNumNodes>::::AddExplicitContribution(
 //----------------------------------------------------------------------------------------
 
 template< unsigned int TDim, unsigned int TNumNodes >
-void UPwCondition<TDim,TNumNodes>::::AddExplicitContribution(
+void UPwElement<TDim,TNumNodes>::AddExplicitContribution(
     const VectorType& rRHSVector,
     const Variable<VectorType>& rRHSVariable,
     const Variable<array_1d<double,3> >& rDestinationVariable,
@@ -862,7 +862,7 @@ void UPwCondition<TDim,TNumNodes>::::AddExplicitContribution(
 {
     KRATOS_TRY
 
-    const GeometryType& rGeom = GetGeometry();
+    GeometryType& rGeom = GetGeometry();
 
     const unsigned int element_size = TNumNodes * (TDim + 1);
 
@@ -903,12 +903,6 @@ void UPwCondition<TDim,TNumNodes>::::AddExplicitContribution(
             r_flux_residual += flux_residual[index + TDim];
         }
     } else if( rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == DAMPING_FORCE ) {
-        const GeometryType& rGeom = GetGeometry();
-
-        const unsigned int element_size = TNumNodes * (TDim + 1);
-
-        Vector force_residual = ZeroVector(element_size);
-        this->CalculateInternalForce(internal_forces,rCurrentProcessInfo);
 
         for(SizeType i=0; i< TNumNodes; ++i) {
 

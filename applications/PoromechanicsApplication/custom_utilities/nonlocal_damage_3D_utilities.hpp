@@ -39,10 +39,10 @@ private:
         double X_max, X_min, Y_max, Y_min, Z_max, Z_min;
         int NRows, NColumns, NSections;
         double RowSize, ColumnSize, SectionSize;
-        
+
         std::vector< std::vector< std::vector< std::vector<GaussPoint*> > > > GaussPointCellMatrix;
     };
-    
+
 ///----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 public:
@@ -58,11 +58,11 @@ public:
     ~NonlocalDamage3DUtilities() override {}
 
 ///----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    
+
     void SearchGaussPointsNeighbours (Parameters* pParameters, ModelPart& rModelPart) override
     {
         KRATOS_INFO("Nonlocal Damage 3D utility") << "Starting non-local search of neighbours ..." << std::endl;
-        
+
         // Define necessary variables
         Utility3DVariables AuxVariables;
 
@@ -70,7 +70,7 @@ public:
         this->InitializeNonlocalSearch(AuxVariables,pParameters,rModelPart);
 
         this->SearchNeighbours(AuxVariables,pParameters,rModelPart);
-        
+
         KRATOS_INFO("Nonlocal Damage 3D utility") << "... search of neighbours completed." << std::endl;
     }
 
@@ -79,7 +79,7 @@ public:
 protected:
 
     /// Member Variables
-    
+
 ///----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
     void InitializeNonlocalSearch(
@@ -89,7 +89,7 @@ protected:
     {
         // Compute GaussPointsCells dimensions
         this->ComputeCellMatrixDimensions(rAuxVariables,rModelPart);
-        
+
         rAuxVariables.GaussPointCellMatrix.resize(rAuxVariables.NRows);
         for(int i = 0; i < rAuxVariables.NRows; i++)
             rAuxVariables.GaussPointCellMatrix[i].resize(rAuxVariables.NColumns);
@@ -98,14 +98,14 @@ protected:
             for(int j = 0; j < rAuxVariables.NColumns; j++)
                 rAuxVariables.GaussPointCellMatrix[i][j].resize(rAuxVariables.NSections);
         }
-        
+
         // Locate GaussPoints inside CellMatrix
         unsigned int NGPoints = 0;
         GeometryData::IntegrationMethod MyIntegrationMethod;
         const ProcessInfo& CurrentProcessInfo = rModelPart.GetProcessInfo();
         array_1d<double,3> AuxGlobalCoordinates;
         array_1d<double,3> AuxLocalCoordinates;
-        
+
         Parameters& rParameters = *pParameters;
         unsigned int NumBodySubModelParts = rParameters["body_domain_sub_model_part_list"].size();
 
@@ -116,7 +116,7 @@ protected:
 
             int NElems = static_cast<int>(BodySubModelPart.Elements().size());
             ModelPart::ElementsContainerType::iterator el_begin = BodySubModelPart.ElementsBegin();
-            
+
             // Loop through all body elements
             #pragma omp parallel for private(MyIntegrationMethod,AuxGlobalCoordinates,AuxLocalCoordinates)
             for(int j = 0; j < NElems; j++)
@@ -173,7 +173,7 @@ protected:
     {
         int NGPoints = static_cast<int>(mGaussPointList.size());
         double CharacteristicLength = (*pParameters)["characteristic_length"].GetDouble();
-        
+
         // Loop through all Gauss Points
         #pragma omp parallel for
         for(int i = 0; i < NGPoints; i++)
@@ -254,7 +254,7 @@ private:
         ModelPart& rModelPart)
     {
         // Compute X, Y and Z limits of the current geometry
-        unsigned int NumThreads = OpenMPUtils::GetNumThreads();
+        unsigned int NumThreads = ParallelUtilities::GetNumThreads();
         std::vector<double> X_max_partition(NumThreads);
         std::vector<double> X_min_partition(NumThreads);
         std::vector<double> Y_max_partition(NumThreads);
@@ -264,7 +264,7 @@ private:
 
         const int NNodes = static_cast<int>(rModelPart.Nodes().size());
         ModelPart::NodesContainerType::iterator node_begin = rModelPart.NodesBegin();
-        
+
         #pragma omp parallel
         {
             int k = OpenMPUtils::ThisThread();
@@ -342,7 +342,7 @@ private:
         rAuxVariables.ColumnSize = (rAuxVariables.X_max-rAuxVariables.X_min)/rAuxVariables.NColumns;
         rAuxVariables.SectionSize = (rAuxVariables.Z_max-rAuxVariables.Z_min)/rAuxVariables.NSections;
     }
-    
+
 }; // Class NonlocalDamage3DUtilities
 
 } // namespace Kratos.

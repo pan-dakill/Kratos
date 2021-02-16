@@ -18,7 +18,7 @@
 /* External includes */
 
 /* Project includes */
-#include "custom_strategies/custom_schemes/explicit_cd_scheme.hpp"
+#include "custom_strategies/schemes/explicit_cd_scheme.hpp"
 #include "utilities/variable_utils.h"
 
 // Application includes

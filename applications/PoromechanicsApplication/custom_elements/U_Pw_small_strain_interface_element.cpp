@@ -1485,13 +1485,13 @@ void UPwSmallStrainInterfaceElement<TDim,TNumNodes>::CalculateFluxResidual( Vect
     Geom.DeterminantOfJacobian(detJContainer,mThisIntegrationMethod);
 
     //Constitutive Law parameters
-    ConstitutiveLaw::Parameters ConstitutiveParameters(Geom,Prop,CurrentProcessInfo);
+    ConstitutiveLaw::Parameters ConstitutiveParameters(Geom,Prop,rCurrentProcessInfo);
     ConstitutiveParameters.Set(ConstitutiveLaw::COMPUTE_STRESS);
     ConstitutiveParameters.Set(ConstitutiveLaw::USE_ELEMENT_PROVIDED_STRAIN);
 
     //Element variables
     InterfaceElementVariables Variables;
-    this->InitializeElementVariables(Variables,ConstitutiveParameters,Geom,Prop,CurrentProcessInfo);
+    this->InitializeElementVariables(Variables,ConstitutiveParameters,Geom,Prop,rCurrentProcessInfo);
 
     //Auxiliary variables
     const double& MinimumJointWidth = Prop[MINIMUM_JOINT_WIDTH];
@@ -1559,13 +1559,13 @@ void UPwSmallStrainInterfaceElement<TDim,TNumNodes>::CalculateMixBodyForce( Vect
     Geom.DeterminantOfJacobian(detJContainer,mThisIntegrationMethod);
 
     //Constitutive Law parameters
-    ConstitutiveLaw::Parameters ConstitutiveParameters(Geom,Prop,CurrentProcessInfo);
+    ConstitutiveLaw::Parameters ConstitutiveParameters(Geom,Prop,rCurrentProcessInfo);
     ConstitutiveParameters.Set(ConstitutiveLaw::COMPUTE_STRESS);
     ConstitutiveParameters.Set(ConstitutiveLaw::USE_ELEMENT_PROVIDED_STRAIN);
 
     //Element variables
     InterfaceElementVariables Variables;
-    this->InitializeElementVariables(Variables,ConstitutiveParameters,Geom,Prop,CurrentProcessInfo);
+    this->InitializeElementVariables(Variables,ConstitutiveParameters,Geom,Prop,rCurrentProcessInfo);
 
     //Auxiliary variables
     const double& MinimumJointWidth = Prop[MINIMUM_JOINT_WIDTH];
@@ -1615,7 +1615,7 @@ void UPwSmallStrainInterfaceElement<TDim,TNumNodes>::CalculateNegInternalForce( 
     if ( rRightHandSideVector.size() != element_size )
         rRightHandSideVector.resize( element_size, false );
     noalias( rRightHandSideVector ) = ZeroVector( element_size );
-    
+
     //Previous definitions
     const PropertiesType& Prop = this->GetProperties();
     const GeometryType& Geom = this->GetGeometry();
@@ -1631,13 +1631,13 @@ void UPwSmallStrainInterfaceElement<TDim,TNumNodes>::CalculateNegInternalForce( 
     Geom.DeterminantOfJacobian(detJContainer,mThisIntegrationMethod);
 
     //Constitutive Law parameters
-    ConstitutiveLaw::Parameters ConstitutiveParameters(Geom,Prop,CurrentProcessInfo);
+    ConstitutiveLaw::Parameters ConstitutiveParameters(Geom,Prop,rCurrentProcessInfo);
     ConstitutiveParameters.Set(ConstitutiveLaw::COMPUTE_STRESS);
     ConstitutiveParameters.Set(ConstitutiveLaw::USE_ELEMENT_PROVIDED_STRAIN);
 
     //Element variables
     InterfaceElementVariables Variables;
-    this->InitializeElementVariables(Variables,ConstitutiveParameters,Geom,Prop,CurrentProcessInfo);
+    this->InitializeElementVariables(Variables,ConstitutiveParameters,Geom,Prop,rCurrentProcessInfo);
 
     //Auxiliary variables
     const double& MinimumJointWidth = Prop[MINIMUM_JOINT_WIDTH];
@@ -1682,7 +1682,7 @@ void UPwSmallStrainInterfaceElement<TDim,TNumNodes>::CalculateLumpedMassMatrix( 
 {
     KRATOS_TRY
 
-    const SizeType element_size = TNumNodes * (TDim + 1);
+    const unsigned int element_size = TNumNodes * (TDim + 1);
 
     //Resizing mass matrix
     if ( rLeftHandSideMatrix.size1() != element_size )
@@ -1725,7 +1725,7 @@ void UPwSmallStrainInterfaceElement<TDim,TNumNodes>::CalculateLumpedMassMatrix( 
         average_joint_width += JointWidth * integration_points[GPoint].Weight();
     }
 
-    const double thickness = (TDim == 2 && r_prop.Has(THICKNESS)) ? r_prop[THICKNESS] : 1.0;
+    const double thickness = (TDim == 2 && Prop.Has(THICKNESS)) ? Prop[THICKNESS] : 1.0;
 
     // LUMPED MASS MATRIX
     const double total_mass = Geom.DomainSize() * average_joint_width * Density * thickness;
