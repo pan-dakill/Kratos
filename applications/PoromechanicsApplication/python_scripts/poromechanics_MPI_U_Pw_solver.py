@@ -121,7 +121,7 @@ class MPIUPwSolver(UPwSolver):
             rayleigh_k = self.settings["rayleigh_k"].GetDouble()
             self.main_model_part.ProcessInfo.SetValue(KratosStructural.RAYLEIGH_ALPHA,rayleigh_m)
             self.main_model_part.ProcessInfo.SetValue(KratosStructural.RAYLEIGH_BETA,rayleigh_k)
-            if(solution_type == "quasi_static"):
+            if(solution_type == "implicit_quasi_static"):
                 if(rayleigh_m<1.0e-20 and rayleigh_k<1.0e-20):
                     scheme = KratosPoro.TrilinosNewmarkQuasistaticUPwScheme(beta,gamma,theta)
                 else:

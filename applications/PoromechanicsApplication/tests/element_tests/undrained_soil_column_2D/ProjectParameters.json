@@ -30,7 +30,7 @@
         "reform_dofs_at_each_step":           false,
         "nodal_smoothing":                    false,
         "block_builder":                      false,
-        "solution_type":                      "quasi_static",
+        "solution_type":                      "implicit_quasi_static",
         "scheme_type":                        "Newmark",
         "newmark_beta":                       0.25,
         "newmark_gamma":                      0.5,
