@@ -20,6 +20,7 @@
 #include "includes/kratos_application.h"
 #include "includes/variables.h"
 #include "includes/cfd_variables.h"
+#include "includes/mat_variables.h"
 #include "structural_mechanics_application_variables.h"
 
 namespace Kratos
