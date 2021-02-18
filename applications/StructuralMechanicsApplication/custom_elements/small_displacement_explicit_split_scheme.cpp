@@ -155,55 +155,32 @@ void SmallDisplacementExplicitSplitScheme::AddExplicitContribution(
     const SizeType number_of_nodes = r_geom.size();
     const SizeType element_size = dimension * number_of_nodes;
 
-    Vector internal_forces = ZeroVector(element_size);
-    this->CalculateInternalForces(internal_forces,rCurrentProcessInfo);
-
-    Vector damping_residual_contribution = ZeroVector(element_size);
-    Vector current_nodal_velocities = ZeroVector(element_size);
-    this->GetFirstDerivativesVector(current_nodal_velocities);
-    Matrix damping_matrix(element_size, element_size);
-    this->CalculateDampingMatrixWithLumpedMass(damping_matrix, rCurrentProcessInfo);
-    // Current residual contribution due to damping
-    noalias(damping_residual_contribution) = prod(damping_matrix, current_nodal_velocities);
-
     VectorType displacement_vector(element_size);
     GetValuesVector(displacement_vector);
 
     VectorType aux_impulse_vector(element_size);
     GetAuxValuesVector(aux_impulse_vector,0);
 
-    VectorType k_b(element_size);
-    VectorType k_k_a(element_size);
-    MatrixType stiffness_matrix( element_size, element_size );
-    noalias(stiffness_matrix) = ZeroMatrix(element_size,element_size);
-    this->CalculateLeftHandSide(stiffness_matrix, rCurrentProcessInfo);
-    noalias(k_b) = prod(stiffness_matrix,displacement_vector); // this is Ka
-    noalias(k_k_a) = prod(stiffness_matrix,k_b);
-    noalias(k_b) = prod(stiffness_matrix,aux_impulse_vector);
+    Vector internal_forces = ZeroVector(element_size);
+    this->CalculateInternalForces(internal_forces,rCurrentProcessInfo);
 
-    // VectorType k_hat_a(element_size);
-    // MatrixType non_diagonal_stiffness_matrix( element_size, element_size );
-    // noalias(non_diagonal_stiffness_matrix) = ZeroMatrix(element_size,element_size);
-    // this->CalculateLeftHandSide(non_diagonal_stiffness_matrix, rCurrentProcessInfo);
-    // for (IndexType i = 0; i < element_size; ++i)
-    //     non_diagonal_stiffness_matrix(i,i) = 0.0;
-    // noalias(k_hat_a) = prod(non_diagonal_stiffness_matrix,displacement_vector);
+    // Vector damping_residual_contribution = ZeroVector(element_size);
+    // Vector current_nodal_velocities = ZeroVector(element_size);
+    // this->GetFirstDerivativesVector(current_nodal_velocities);
+    Matrix damping_matrix(element_size, element_size);
+    this->CalculateDampingMatrixWithLumpedMass(damping_matrix, rCurrentProcessInfo);
+    // Current residual contribution due to damping
+    // noalias(damping_residual_contribution) = prod(damping_matrix, current_nodal_velocities);
+    Vector C_a = ZeroVector(element_size);
+    noalias(C_a) = prod(damping_matrix, displacement_vector);
 
-    // VectorType element_mass_vector(element_size);
-    // this->CalculateLumpedMassVector(element_mass_vector);
-    // VectorType M_d_a(element_size);
-    // MatrixType diagonal_mass_matrix( element_size, element_size );
-    // noalias(diagonal_mass_matrix) = ZeroMatrix(element_size,element_size);
-    // for (IndexType i = 0; i < element_size; ++i)
-    //     diagonal_mass_matrix(i,i) = element_mass_vector[i];
-    // noalias(M_d_a) = prod(diagonal_mass_matrix,displacement_vector);
-
-    // VectorType k_d_a(element_size);
-    // MatrixType diagonal_stiffness_matrix( element_size, element_size );
-    // noalias(diagonal_stiffness_matrix) = ZeroMatrix(element_size,element_size);
-    // for (IndexType i = 0; i < element_size; ++i)
-    //     diagonal_stiffness_matrix(i,i) = stiffness_matrix(i,i);
-    // noalias(k_d_a) = prod(diagonal_stiffness_matrix,displacement_vector);
+    VectorType D_b(element_size);
+    VectorType C_D_a(element_size);
+    MatrixType frequency_matrix( element_size, element_size );
+    this->CalculateFrequencyMatrix(frequency_matrix, rCurrentProcessInfo);
+    noalias(D_b) = prod(frequency_matrix,displacement_vector); // this is Da
+    noalias(C_D_a) = prod(damping_matrix,D_b);
+    noalias(D_b) = prod(frequency_matrix,aux_impulse_vector);
 
     // Computing the force residual
     if (rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == FORCE_RESIDUAL) {
@@ -211,9 +188,9 @@ void SmallDisplacementExplicitSplitScheme::AddExplicitContribution(
             const IndexType index = dimension * i;
             array_1d<double, 3>& r_external_forces = GetGeometry()[i].FastGetSolutionStepValue(FORCE_RESIDUAL);
             array_1d<double, 3>& r_internal_forces = GetGeometry()[i].FastGetSolutionStepValue(NODAL_INERTIA);
-            array_1d<double, 3>& r_c_v = GetGeometry()[i].FastGetSolutionStepValue(MIDDLE_VELOCITY);
-            array_1d<double, 3>& r_k_k_a = GetGeometry()[i].FastGetSolutionStepValue(MIDDLE_ANGULAR_VELOCITY);
-            array_1d<double, 3>& r_k_b = GetGeometry()[i].FastGetSolutionStepValue(FRACTIONAL_ACCELERATION);
+            array_1d<double, 3>& r_C_a = GetGeometry()[i].FastGetSolutionStepValue(MIDDLE_VELOCITY);
+            array_1d<double, 3>& r_C_D_a = GetGeometry()[i].FastGetSolutionStepValue(MIDDLE_ANGULAR_VELOCITY);
+            array_1d<double, 3>& r_D_b = GetGeometry()[i].FastGetSolutionStepValue(FRACTIONAL_ACCELERATION);
 
             for (IndexType j = 0; j < dimension; ++j) {
                 #pragma omp atomic
@@ -223,13 +200,13 @@ void SmallDisplacementExplicitSplitScheme::AddExplicitContribution(
                 r_internal_forces[j] += internal_forces[index + j];
 
                 #pragma omp atomic
-                r_c_v[j] += damping_residual_contribution[index + j];
+                r_C_a[j] += C_a[index + j];
 
                 #pragma omp atomic
-                r_k_k_a[j] += k_k_a[index + j];
+                r_C_D_a[j] += C_D_a[index + j];
 
                 #pragma omp atomic
-                r_k_b[j] += k_b[index + j];
+                r_D_b[j] += D_b[index + j];
             }
         }
     }
@@ -505,6 +482,54 @@ void SmallDisplacementExplicitSplitScheme::CalculateDampingMatrixWithLumpedMass(
         // KRATOS_WATCH(stiffness_matrix)
         noalias( rDampingMatrix ) += beta  * stiffness_matrix;
     }
+
+    KRATOS_CATCH( "" )
+}
+
+/***********************************************************************************/
+/***********************************************************************************/
+
+void SmallDisplacementExplicitSplitScheme::CalculateFrequencyMatrix(
+    MatrixType& rMatrix,
+    const ProcessInfo& rCurrentProcessInfo
+    )
+{
+    KRATOS_TRY;
+
+    unsigned int number_of_nodes = GetGeometry().size();
+    unsigned int dimension = GetGeometry().WorkingSpaceDimension();
+
+    // Resizing as needed the LHS
+    unsigned int mat_size = number_of_nodes * dimension;
+
+    if ( rMatrix.size1() != mat_size )
+        rMatrix.resize( mat_size, mat_size, false );
+    noalias( rMatrix ) = ZeroMatrix( mat_size, mat_size );
+
+    // Damping matrix
+    Matrix damping_matrix(mat_size, mat_size);
+    this->CalculateDampingMatrixWithLumpedMass(damping_matrix, rCurrentProcessInfo);
+
+    // Stiffness matrix
+    MatrixType stiffness_matrix( mat_size, mat_size );
+    VectorType residual_vector( mat_size );
+    this->CalculateAll(stiffness_matrix, residual_vector, rCurrentProcessInfo, true, false);
+
+    // Inverse of lumped mass matrix
+    VectorType temp_vector(mat_size);
+    CalculateLumpedMassVector(temp_vector);
+    Matrix mass_inverse(mat_size,mat_size);
+    noalias(mass_inverse) = ZeroMatrix(mat_size,mat_size);
+    for (IndexType i = 0; i < mat_size; ++i)
+        mass_inverse(i, i) = 1.0/temp_vector[i];
+
+    const double dt = rCurrentProcessInfo[DELTA_TIME];
+    const double theta = rCurrentProcessInfo[THETA_1];
+
+    Matrix aux_matrix(mat_size,mat_size);
+    noalias(aux_matrix) = (1.0+theta)*damping_matrix - theta*dt*stiffness_matrix;
+
+    noalias( rMatrix ) = prod(mass_inverse,aux_matrix);
 
     KRATOS_CATCH( "" )
 }
