@@ -225,6 +225,23 @@ public:
         const array_1d<double, 3>& r_k_k_a = itCurrentNode->FastGetSolutionStepValue(MIDDLE_ANGULAR_VELOCITY);
         const array_1d<double, 3>& r_k_b = itCurrentNode->FastGetSolutionStepValue(FRACTIONAL_ACCELERATION);
 
+// if (itCurrentNode->Id() == 1){
+//     KRATOS_WATCH(itCurrentNode->Id())
+//     KRATOS_WATCH("Before calculate b")
+//     KRATOS_WATCH(mAlpha)
+//     KRATOS_WATCH(mBeta)
+//     KRATOS_WATCH(mDeltaTime)
+//     KRATOS_WATCH(mTheta1)
+//     KRATOS_WATCH(nodal_mass)
+//     KRATOS_WATCH(r_current_impulse)
+//     KRATOS_WATCH(r_current_displacement)
+//     KRATOS_WATCH(r_external_forces)
+//     KRATOS_WATCH(r_current_internal_force)
+//     KRATOS_WATCH(r_k_k_a)
+//     KRATOS_WATCH(r_k_b)
+// }
+
+
         if ( nodal_mass > numerical_limit ){
             for (IndexType j = 0; j < DomainSize; j++) {
                 r_current_impulse[j] = mBeta*mDeltaTime*mTheta1/nodal_mass*(mDeltaTime*mTheta1-mBeta*(mTheta1+1.0))*r_k_k_a[j]
@@ -241,6 +258,12 @@ public:
         }
 
         const array_1d<double, 3>& r_previous_impulse = itCurrentNode->FastGetSolutionStepValue(NODAL_DISPLACEMENT_STIFFNESS,1);
+
+// if (itCurrentNode->Id() == 1){
+//     KRATOS_WATCH("After calculate b, before calculate a")
+//     KRATOS_WATCH(r_current_impulse)
+//     KRATOS_WATCH(r_previous_impulse)
+// }
 
         std::array<bool, 3> fix_displacements = {false, false, false};
         fix_displacements[0] = (itCurrentNode->GetDof(DISPLACEMENT_X, DisplacementPosition).IsFixed());
@@ -265,6 +288,11 @@ public:
                 }
             }
         }
+
+// if (itCurrentNode->Id() == 1){
+//     KRATOS_WATCH("After calculate a")
+//     KRATOS_WATCH(r_current_displacement)
+// }
 
         const array_1d<double, 3>& r_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,1);
         const array_1d<double, 3>& r_previous_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY,1);
