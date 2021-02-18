@@ -166,14 +166,20 @@ void SmallDisplacementExplicitSplitScheme::AddExplicitContribution(
     // Current residual contribution due to damping
     noalias(damping_residual_contribution) = prod(damping_matrix, current_nodal_velocities);
 
-    // VectorType displacement_vector(element_size);
-    // GetValuesVector(displacement_vector);
+    VectorType displacement_vector(element_size);
+    GetValuesVector(displacement_vector);
 
-    // VectorType k_a(element_size);
-    // MatrixType stiffness_matrix( element_size, element_size );
-    // noalias(stiffness_matrix) = ZeroMatrix(element_size,element_size);
-    // this->CalculateLeftHandSide(stiffness_matrix, rCurrentProcessInfo);
-    // noalias(k_a) = prod(stiffness_matrix,displacement_vector);
+    VectorType aux_impulse_vector(element_size);
+    GetAuxValuesVector(aux_impulse_vector,0);
+
+    VectorType k_b(element_size);
+    VectorType k_k_a(element_size);
+    MatrixType stiffness_matrix( element_size, element_size );
+    noalias(stiffness_matrix) = ZeroMatrix(element_size,element_size);
+    this->CalculateLeftHandSide(stiffness_matrix, rCurrentProcessInfo);
+    noalias(k_b) = prod(stiffness_matrix,displacement_vector); // this is Ka
+    noalias(k_k_a) = prod(stiffness_matrix,k_b);
+    noalias(k_b) = prod(stiffness_matrix,aux_impulse_vector);
 
     // VectorType k_hat_a(element_size);
     // MatrixType non_diagonal_stiffness_matrix( element_size, element_size );
@@ -206,6 +212,8 @@ void SmallDisplacementExplicitSplitScheme::AddExplicitContribution(
             array_1d<double, 3>& r_external_forces = GetGeometry()[i].FastGetSolutionStepValue(FORCE_RESIDUAL);
             array_1d<double, 3>& r_internal_forces = GetGeometry()[i].FastGetSolutionStepValue(NODAL_INERTIA);
             array_1d<double, 3>& r_c_v = GetGeometry()[i].FastGetSolutionStepValue(MIDDLE_VELOCITY);
+            array_1d<double, 3>& r_k_k_a = GetGeometry()[i].FastGetSolutionStepValue(MIDDLE_ANGULAR_VELOCITY);
+            array_1d<double, 3>& r_k_b = GetGeometry()[i].FastGetSolutionStepValue(FRACTIONAL_ACCELERATION);
 
             for (IndexType j = 0; j < dimension; ++j) {
                 #pragma omp atomic
@@ -216,11 +224,41 @@ void SmallDisplacementExplicitSplitScheme::AddExplicitContribution(
 
                 #pragma omp atomic
                 r_c_v[j] += damping_residual_contribution[index + j];
+
+                #pragma omp atomic
+                r_k_k_a[j] += k_k_a[index + j];
+
+                #pragma omp atomic
+                r_k_b[j] += k_b[index + j];
             }
         }
     }
 
     KRATOS_CATCH("")
+}
+
+/***********************************************************************************/
+/***********************************************************************************/
+
+void SmallDisplacementExplicitSplitScheme::GetAuxValuesVector(
+    Vector& rValues,
+    int Step
+    ) const
+{
+    const SizeType number_of_nodes = GetGeometry().size();
+    const SizeType dimension = GetGeometry().WorkingSpaceDimension();
+    const SizeType mat_size = number_of_nodes * dimension;
+    if (rValues.size() != mat_size)
+        rValues.resize(mat_size, false);
+    for (IndexType i = 0; i < number_of_nodes; ++i)
+    {
+        const array_1d<double, 3 >& displacement = GetGeometry()[i].FastGetSolutionStepValue(NODAL_DISPLACEMENT_STIFFNESS, Step);
+        const SizeType index = i * dimension;
+        for(unsigned int k = 0; k < dimension; ++k)
+        {
+            rValues[index + k] = displacement[k];
+        }
+    }
 }
 
 /***********************************************************************************/

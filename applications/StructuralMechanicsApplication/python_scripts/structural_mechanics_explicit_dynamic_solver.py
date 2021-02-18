@@ -59,12 +59,15 @@ class ExplicitMechanicalSolver(MechanicalSolver):
             self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.FRACTIONAL_ACCELERATION)
             if (self.settings["rotation_dofs"].GetBool()):
                 self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.FRACTIONAL_ANGULAR_ACCELERATION)
-        if(scheme_type == "cd" or scheme_type == "ocd" or scheme_type == "vv" or scheme_type == "ovv"):
-            self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.NODAL_INERTIA)
-            self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.MIDDLE_VELOCITY)
+        if(scheme_type == "cd" or scheme_type == "ocd" or scheme_type == "vv" or scheme_type == "ovv" or scheme_type == "omdp"):
+            self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.NODAL_INERTIA) # K*a: internal forces
+            self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.MIDDLE_VELOCITY) # C*v: damping forces
+            self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.NODAL_DISPLACEMENT_STIFFNESS) # b: aux impulse
+            self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.MIDDLE_ANGULAR_VELOCITY) # K*K*a
+            self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.FRACTIONAL_ACCELERATION) # K*b
 
         self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.NODAL_MASS)
-        self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.FORCE_RESIDUAL)
+        self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.FORCE_RESIDUAL) # f: external forces
         self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.RESIDUAL_VECTOR)
 
         if (self.settings["rotation_dofs"].GetBool()):
@@ -131,6 +134,8 @@ class ExplicitMechanicalSolver(MechanicalSolver):
             mechanical_scheme = StructuralMechanicsApplication.ExplicitCDScheme()
         elif(scheme_type == "ocd"):
             mechanical_scheme = StructuralMechanicsApplication.ExplicitOCDScheme()
+        elif(scheme_type == "omdp"):
+            mechanical_scheme = StructuralMechanicsApplication.ExplicitOMDPScheme()
         elif(scheme_type == "vv"):
             mechanical_scheme = StructuralMechanicsApplication.ExplicitVVScheme()
         elif(scheme_type == "ovv"):
@@ -138,7 +143,7 @@ class ExplicitMechanicalSolver(MechanicalSolver):
 
         else:
             err_msg =  "The requested scheme type \"" + scheme_type + "\" is not available!\n"
-            err_msg += "Available options are: \"central_differences\", \"multi_stage\", \"cd\", \"ocd\", \"vv\", \"ovv\""
+            err_msg += "Available options are: \"central_differences\", \"multi_stage\", \"cd\", \"omdp\", \"ocd\", \"vv\", \"ovv\""
             raise Exception(err_msg)
         return mechanical_scheme
 

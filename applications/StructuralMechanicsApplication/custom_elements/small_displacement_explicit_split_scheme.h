@@ -254,6 +254,8 @@ protected:
      */
     virtual void CalculateLumpedMassVector(VectorType& rMassVector) const;
 
+    virtual void GetAuxValuesVector(Vector& rValues,int Step) const;
+
     ///@}
     ///@name Protected Operations
     ///@{
