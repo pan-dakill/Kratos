@@ -127,7 +127,7 @@ public:
     {
         KRATOS_TRY;
 
-        BaseType::Check(rModelPart);
+        Scheme<TSparseSpace, TDenseSpace>::Check(rModelPart);
 
         KRATOS_ERROR_IF(rModelPart.GetBufferSize() < 2) << "Insufficient buffer size for OMDP Scheme. It has to be >= 2" << std::endl;
 
