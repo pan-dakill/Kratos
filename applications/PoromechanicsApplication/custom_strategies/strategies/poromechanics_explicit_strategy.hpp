@@ -319,20 +319,20 @@ protected:
 
             if( it_node->IsFixed(DISPLACEMENT_X) == true ) {
                 double& r_reaction = it_node->FastGetSolutionStepValue(REACTION_X);
-                r_reaction = force_residual[0];
+                r_reaction = -force_residual[0];
             }
             if( it_node->IsFixed(DISPLACEMENT_Y) == true ) {
                 double& r_reaction = it_node->FastGetSolutionStepValue(REACTION_Y);
-                r_reaction = force_residual[1];
+                r_reaction = -force_residual[1];
             }
             if( it_node->IsFixed(WATER_PRESSURE) == true ) {
                 double& r_reaction = it_node->FastGetSolutionStepValue(REACTION_WATER_PRESSURE);
-                r_reaction = flux_residual;
+                r_reaction = -flux_residual;
             }
             if(dim==3) {
                 if( it_node->IsFixed(DISPLACEMENT_Z) == true ) {
                     double& r_reaction = it_node->FastGetSolutionStepValue(REACTION_Z);
-                    r_reaction = force_residual[2];
+                    r_reaction = -force_residual[2];
                 }
             }
         }
