@@ -698,6 +698,18 @@ void UPwElement<TDim,TNumNodes>::CalculateNegInternalForce( VectorType& rRightHa
 //----------------------------------------------------------------------------------------
 
 template< unsigned int TDim, unsigned int TNumNodes >
+void UPwElement<TDim,TNumNodes>::CalculateExplicitContributions (VectorType& rFluxResidual, VectorType& rBodyForce, VectorType& rNegInternalForces, const ProcessInfo& rCurrentProcessInfo )
+{
+    KRATOS_TRY
+
+    KRATOS_THROW_ERROR( std::logic_error, "calling the default CalculateExplicitContributions method for a particular element ... illegal operation!!", "" )
+
+    KRATOS_CATCH( "" )
+}
+
+//----------------------------------------------------------------------------------------
+
+template< unsigned int TDim, unsigned int TNumNodes >
 void UPwElement<TDim,TNumNodes>::CalculateLumpedMassMatrix( MatrixType& rLeftHandSideMatrix, const ProcessInfo& rCurrentProcessInfo )
 {
     KRATOS_TRY
@@ -867,11 +879,13 @@ void UPwElement<TDim,TNumNodes>::AddExplicitContribution(
     const unsigned int element_size = TNumNodes * (TDim + 1);
 
     Vector flux_residual = ZeroVector(element_size);
-    this->CalculateFluxResidual(flux_residual,rCurrentProcessInfo);
+    // this->CalculateFluxResidual(flux_residual,rCurrentProcessInfo);
     Vector body_force = ZeroVector(element_size);
-    this->CalculateMixBodyForce(body_force,rCurrentProcessInfo);
+    // this->CalculateMixBodyForce(body_force,rCurrentProcessInfo);
     Vector neg_internal_force = ZeroVector(element_size);
-    this->CalculateNegInternalForce(neg_internal_force,rCurrentProcessInfo);
+    // this->CalculateNegInternalForce(neg_internal_force,rCurrentProcessInfo);
+    // TODO: is this more efficient?
+    this->CalculateExplicitContributions(flux_residual,body_force,neg_internal_force,rCurrentProcessInfo);
     Vector damping_force = ZeroVector(element_size);
     this->CalculateDampingForce(damping_force,rCurrentProcessInfo);
     Vector inertial_force = ZeroVector(element_size);

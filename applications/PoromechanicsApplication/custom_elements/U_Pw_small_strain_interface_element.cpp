@@ -1675,6 +1675,90 @@ void UPwSmallStrainInterfaceElement<TDim,TNumNodes>::CalculateNegInternalForce( 
 }
 
 //----------------------------------------------------------------------------------------
+
+template< unsigned int TDim, unsigned int TNumNodes >
+void UPwSmallStrainInterfaceElement<TDim,TNumNodes>::CalculateExplicitContributions( VectorType& rFluxResidual, VectorType& rBodyForce, VectorType& rNegInternalForces, const ProcessInfo& rCurrentProcessInfo )
+{
+    KRATOS_TRY
+
+    const unsigned int element_size = TNumNodes * (TDim + 1);
+
+    //Resetting the RHS
+    if ( rFluxResidual.size() != element_size )
+        rFluxResidual.resize( element_size, false );
+    noalias( rFluxResidual ) = ZeroVector( element_size );
+    if ( rBodyForce.size() != element_size )
+        rBodyForce.resize( element_size, false );
+    noalias( rBodyForce ) = ZeroVector( element_size );
+    if ( rNegInternalForces.size() != element_size )
+        rNegInternalForces.resize( element_size, false );
+    noalias( rNegInternalForces ) = ZeroVector( element_size );
+
+    //Previous definitions
+    const PropertiesType& Prop = this->GetProperties();
+    const GeometryType& Geom = this->GetGeometry();
+    const GeometryType::IntegrationPointsArrayType& integration_points = Geom.IntegrationPoints( mThisIntegrationMethod );
+    const unsigned int NumGPoints = integration_points.size();
+
+    //Containers of variables at all integration points
+    const Matrix& NContainer = Geom.ShapeFunctionsValues( mThisIntegrationMethod );
+    const GeometryType::ShapeFunctionsGradientsType& DN_DeContainer = Geom.ShapeFunctionsLocalGradients( mThisIntegrationMethod );
+    GeometryType::JacobiansType JContainer(NumGPoints);
+    Geom.Jacobian( JContainer, mThisIntegrationMethod );
+    Vector detJContainer(NumGPoints);
+    Geom.DeterminantOfJacobian(detJContainer,mThisIntegrationMethod);
+
+    //Constitutive Law parameters
+    ConstitutiveLaw::Parameters ConstitutiveParameters(Geom,Prop,rCurrentProcessInfo);
+    ConstitutiveParameters.Set(ConstitutiveLaw::COMPUTE_STRESS);
+    ConstitutiveParameters.Set(ConstitutiveLaw::USE_ELEMENT_PROVIDED_STRAIN);
+
+    //Element variables
+    InterfaceElementVariables Variables;
+    this->InitializeElementVariables(Variables,ConstitutiveParameters,Geom,Prop,rCurrentProcessInfo);
+
+    //Auxiliary variables
+    const double& MinimumJointWidth = Prop[MINIMUM_JOINT_WIDTH];
+    const double& Transversal_Permeability = Prop[TRANSVERSAL_PERMEABILITY];
+    array_1d<double,TDim> RelDispVector;
+    SFGradAuxVariables SFGradAuxVars;
+
+    //Loop over integration points
+    for( unsigned int GPoint = 0; GPoint < NumGPoints; GPoint++)
+    {
+        //Compute Np, StrainVector, JointWidth, GradNpT
+        noalias(Variables.Np) = row(NContainer,GPoint);
+        InterfaceElementUtilities::CalculateNuMatrix(Variables.Nu,NContainer,GPoint);
+        noalias(RelDispVector) = prod(Variables.Nu,Variables.DisplacementVector);
+        noalias(Variables.StrainVector) = prod(Variables.RotationMatrix,RelDispVector);
+        this->CheckAndCalculateJointWidth(Variables.JointWidth,ConstitutiveParameters,Variables.StrainVector[TDim-1], MinimumJointWidth, GPoint);
+        this->CalculateShapeFunctionsGradients< Matrix >(Variables.GradNpT,SFGradAuxVars,JContainer[GPoint],Variables.RotationMatrix,
+                                                        DN_DeContainer[GPoint],NContainer,Variables.JointWidth,GPoint);
+
+        //Compute BodyAcceleration and Permeability Matrix
+        PoroElementUtilities::InterpolateVariableWithComponents(Variables.BodyAcceleration,NContainer,Variables.VolumeAcceleration,GPoint);
+        InterfaceElementUtilities::CalculatePermeabilityMatrix(Variables.LocalPermeabilityMatrix,Variables.JointWidth,Transversal_Permeability);
+
+        //Compute stresses
+        mConstitutiveLawVector[GPoint]->CalculateMaterialResponseCauchy(ConstitutiveParameters);
+
+        //Compute weighting coefficient for integration
+        this->CalculateIntegrationCoefficient(Variables.IntegrationCoefficient, detJContainer[GPoint], integration_points[GPoint].Weight() );
+
+        //Contributions to the right hand side
+        this->CalculateAndAddCompressibilityFlow(rFluxResidual, Variables);
+        this->CalculateAndAddPermeabilityFlow(rFluxResidual, Variables);
+        this->CalculateAndAddFluidBodyFlow(rFluxResidual, Variables);
+
+        this->CalculateAndAddMixBodyForce(rBodyForce, Variables);
+
+        this->CalculateAndAddStiffnessForce(rNegInternalForces, Variables);
+    }
+
+    KRATOS_CATCH( "" )
+}
+
+//----------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------
 
 template< unsigned int TDim, unsigned int TNumNodes >
