@@ -186,6 +186,12 @@ public:
 
         // ********** Correction phase **********
 
+        // TODO: I think it is necessary to iterate...
+        // while (iteration_number++ < mMaxIterationNumber)
+        // {
+
+        // }
+
         // Get Correction DxF
         this->CalculateNewX();
         this->SaveCorrectionDxF(r_model_part);
@@ -437,22 +443,27 @@ protected:
 
             // TODO: should I calculate the norm taking into account the time derivatives of the unknowns ?
             const array_1d<double, 3>& r_delta_displacement_f = itCurrentNode->FastGetSolutionStepValue(DELTA_DISPLACEMENT_F);
-            const array_1d<double, 3>& r_delta_velocity_f = itCurrentNode->FastGetSolutionStepValue(DELTA_VELOCITY_F);
-            const array_1d<double, 3>& r_delta_acceleration_f = itCurrentNode->FastGetSolutionStepValue(DELTA_ACCELERATION_F);
+            // const array_1d<double, 3>& r_delta_velocity_f = itCurrentNode->FastGetSolutionStepValue(DELTA_VELOCITY_F);
+            // const array_1d<double, 3>& r_delta_acceleration_f = itCurrentNode->FastGetSolutionStepValue(DELTA_ACCELERATION_F);
             const double& r_delta_water_pressure_f = itCurrentNode->FastGetSolutionStepValue(DELTA_WATER_PRESSURE_F);
-            const double& r_delta_dt_water_pressure_f = itCurrentNode->FastGetSolutionStepValue(DELTA_DT_WATER_PRESSURE_F);
+            // const double& r_delta_dt_water_pressure_f = itCurrentNode->FastGetSolutionStepValue(DELTA_DT_WATER_PRESSURE_F);
+
+            // DxF_norm += r_delta_displacement_f[0]*r_delta_displacement_f[0]
+            //             + r_delta_displacement_f[1]*r_delta_displacement_f[1]
+            //             + r_delta_displacement_f[2]*r_delta_displacement_f[2]
+            //             + r_delta_velocity_f[0]*r_delta_velocity_f[0]
+            //             + r_delta_velocity_f[1]*r_delta_velocity_f[1]
+            //             + r_delta_velocity_f[2]*r_delta_velocity_f[2]
+            //             + r_delta_acceleration_f[0]*r_delta_acceleration_f[0]
+            //             + r_delta_acceleration_f[1]*r_delta_acceleration_f[1]
+            //             + r_delta_acceleration_f[2]*r_delta_acceleration_f[2]
+            //             + r_delta_water_pressure_f*r_delta_water_pressure_f
+            //             + r_delta_dt_water_pressure_f*r_delta_dt_water_pressure_f;
 
             DxF_norm += r_delta_displacement_f[0]*r_delta_displacement_f[0]
                         + r_delta_displacement_f[1]*r_delta_displacement_f[1]
                         + r_delta_displacement_f[2]*r_delta_displacement_f[2]
-                        + r_delta_velocity_f[0]*r_delta_velocity_f[0]
-                        + r_delta_velocity_f[1]*r_delta_velocity_f[1]
-                        + r_delta_velocity_f[2]*r_delta_velocity_f[2]
-                        + r_delta_acceleration_f[0]*r_delta_acceleration_f[0]
-                        + r_delta_acceleration_f[1]*r_delta_acceleration_f[1]
-                        + r_delta_acceleration_f[2]*r_delta_acceleration_f[2]
-                        + r_delta_water_pressure_f*r_delta_water_pressure_f
-                        + r_delta_dt_water_pressure_f*r_delta_dt_water_pressure_f;
+                        + r_delta_water_pressure_f*r_delta_water_pressure_f;
 
         }
         return std::sqrt(DxF_norm);
@@ -674,26 +685,31 @@ protected:
 
             const array_1d<double, 3>& r_delta_displacement_p = itCurrentNode->FastGetSolutionStepValue(DELTA_DISPLACEMENT_P);
             const array_1d<double, 3>& r_delta_displacement_lf = itCurrentNode->FastGetSolutionStepValue(DELTA_DISPLACEMENT_LF);
-            const array_1d<double, 3>& r_delta_velocity_p = itCurrentNode->FastGetSolutionStepValue(DELTA_VELOCITY_P);
-            const array_1d<double, 3>& r_delta_velocity_lf = itCurrentNode->FastGetSolutionStepValue(DELTA_VELOCITY_LF);
-            const array_1d<double, 3>& r_delta_acceleration_p = itCurrentNode->FastGetSolutionStepValue(DELTA_ACCELERATION_P);
-            const array_1d<double, 3>& r_delta_acceleration_lf = itCurrentNode->FastGetSolutionStepValue(DELTA_ACCELERATION_LF);
+            // const array_1d<double, 3>& r_delta_velocity_p = itCurrentNode->FastGetSolutionStepValue(DELTA_VELOCITY_P);
+            // const array_1d<double, 3>& r_delta_velocity_lf = itCurrentNode->FastGetSolutionStepValue(DELTA_VELOCITY_LF);
+            // const array_1d<double, 3>& r_delta_acceleration_p = itCurrentNode->FastGetSolutionStepValue(DELTA_ACCELERATION_P);
+            // const array_1d<double, 3>& r_delta_acceleration_lf = itCurrentNode->FastGetSolutionStepValue(DELTA_ACCELERATION_LF);
             const double& r_delta_water_pressure_p = itCurrentNode->FastGetSolutionStepValue(DELTA_WATER_PRESSURE_P);
             const double& r_delta_water_pressure_lf = itCurrentNode->FastGetSolutionStepValue(DELTA_WATER_PRESSURE_LF);
-            const double& r_delta_dt_water_pressure_p = itCurrentNode->FastGetSolutionStepValue(DELTA_DT_WATER_PRESSURE_P);
-            const double& r_delta_dt_water_pressure_lf = itCurrentNode->FastGetSolutionStepValue(DELTA_DT_WATER_PRESSURE_LF);
+            // const double& r_delta_dt_water_pressure_p = itCurrentNode->FastGetSolutionStepValue(DELTA_DT_WATER_PRESSURE_P);
+            // const double& r_delta_dt_water_pressure_lf = itCurrentNode->FastGetSolutionStepValue(DELTA_DT_WATER_PRESSURE_LF);
+
+            // DxP_dot_DxLF += r_delta_displacement_p[0]*r_delta_displacement_lf[0]
+            //             + r_delta_displacement_p[1]*r_delta_displacement_lf[1]
+            //             + r_delta_displacement_p[2]*r_delta_displacement_lf[2]
+            //             + r_delta_velocity_p[0]*r_delta_velocity_lf[0]
+            //             + r_delta_velocity_p[1]*r_delta_velocity_lf[1]
+            //             + r_delta_velocity_p[2]*r_delta_velocity_lf[2]
+            //             + r_delta_acceleration_p[0]*r_delta_acceleration_lf[0]
+            //             + r_delta_acceleration_p[1]*r_delta_acceleration_lf[1]
+            //             + r_delta_acceleration_p[2]*r_delta_acceleration_lf[2]
+            //             + r_delta_water_pressure_p*r_delta_water_pressure_lf
+            //             + r_delta_dt_water_pressure_p*r_delta_dt_water_pressure_lf;
 
             DxP_dot_DxLF += r_delta_displacement_p[0]*r_delta_displacement_lf[0]
                         + r_delta_displacement_p[1]*r_delta_displacement_lf[1]
                         + r_delta_displacement_p[2]*r_delta_displacement_lf[2]
-                        + r_delta_velocity_p[0]*r_delta_velocity_lf[0]
-                        + r_delta_velocity_p[1]*r_delta_velocity_lf[1]
-                        + r_delta_velocity_p[2]*r_delta_velocity_lf[2]
-                        + r_delta_acceleration_p[0]*r_delta_acceleration_lf[0]
-                        + r_delta_acceleration_p[1]*r_delta_acceleration_lf[1]
-                        + r_delta_acceleration_p[2]*r_delta_acceleration_lf[2]
-                        + r_delta_water_pressure_p*r_delta_water_pressure_lf
-                        + r_delta_dt_water_pressure_p*r_delta_dt_water_pressure_lf;
+                        + r_delta_water_pressure_p*r_delta_water_pressure_lf;
 
         }
         return DxP_dot_DxLF;
@@ -721,26 +737,31 @@ protected:
 
             const array_1d<double, 3>& r_delta_displacement_p = itCurrentNode->FastGetSolutionStepValue(DELTA_DISPLACEMENT_P);
             const array_1d<double, 3>& r_delta_displacement_f = itCurrentNode->FastGetSolutionStepValue(DELTA_DISPLACEMENT_F);
-            const array_1d<double, 3>& r_delta_velocity_p = itCurrentNode->FastGetSolutionStepValue(DELTA_VELOCITY_P);
-            const array_1d<double, 3>& r_delta_velocity_f = itCurrentNode->FastGetSolutionStepValue(DELTA_VELOCITY_F);
-            const array_1d<double, 3>& r_delta_acceleration_p = itCurrentNode->FastGetSolutionStepValue(DELTA_ACCELERATION_P);
-            const array_1d<double, 3>& r_delta_acceleration_f = itCurrentNode->FastGetSolutionStepValue(DELTA_ACCELERATION_F);
+            // const array_1d<double, 3>& r_delta_velocity_p = itCurrentNode->FastGetSolutionStepValue(DELTA_VELOCITY_P);
+            // const array_1d<double, 3>& r_delta_velocity_f = itCurrentNode->FastGetSolutionStepValue(DELTA_VELOCITY_F);
+            // const array_1d<double, 3>& r_delta_acceleration_p = itCurrentNode->FastGetSolutionStepValue(DELTA_ACCELERATION_P);
+            // const array_1d<double, 3>& r_delta_acceleration_f = itCurrentNode->FastGetSolutionStepValue(DELTA_ACCELERATION_F);
             const double& r_delta_water_pressure_p = itCurrentNode->FastGetSolutionStepValue(DELTA_WATER_PRESSURE_P);
             const double& r_delta_water_pressure_f = itCurrentNode->FastGetSolutionStepValue(DELTA_WATER_PRESSURE_F);
-            const double& r_delta_dt_water_pressure_p = itCurrentNode->FastGetSolutionStepValue(DELTA_DT_WATER_PRESSURE_P);
-            const double& r_delta_dt_water_pressure_f = itCurrentNode->FastGetSolutionStepValue(DELTA_DT_WATER_PRESSURE_F);
+            // const double& r_delta_dt_water_pressure_p = itCurrentNode->FastGetSolutionStepValue(DELTA_DT_WATER_PRESSURE_P);
+            // const double& r_delta_dt_water_pressure_f = itCurrentNode->FastGetSolutionStepValue(DELTA_DT_WATER_PRESSURE_F);
+
+            // DxP_dot_DxF += r_delta_displacement_p[0]*r_delta_displacement_f[0]
+            //             + r_delta_displacement_p[1]*r_delta_displacement_f[1]
+            //             + r_delta_displacement_p[2]*r_delta_displacement_f[2]
+            //             + r_delta_velocity_p[0]*r_delta_velocity_f[0]
+            //             + r_delta_velocity_p[1]*r_delta_velocity_f[1]
+            //             + r_delta_velocity_p[2]*r_delta_velocity_f[2]
+            //             + r_delta_acceleration_p[0]*r_delta_acceleration_f[0]
+            //             + r_delta_acceleration_p[1]*r_delta_acceleration_f[1]
+            //             + r_delta_acceleration_p[2]*r_delta_acceleration_f[2]
+            //             + r_delta_water_pressure_p*r_delta_water_pressure_f
+            //             + r_delta_dt_water_pressure_p*r_delta_dt_water_pressure_f;
 
             DxP_dot_DxF += r_delta_displacement_p[0]*r_delta_displacement_f[0]
                         + r_delta_displacement_p[1]*r_delta_displacement_f[1]
                         + r_delta_displacement_p[2]*r_delta_displacement_f[2]
-                        + r_delta_velocity_p[0]*r_delta_velocity_f[0]
-                        + r_delta_velocity_p[1]*r_delta_velocity_f[1]
-                        + r_delta_velocity_p[2]*r_delta_velocity_f[2]
-                        + r_delta_acceleration_p[0]*r_delta_acceleration_f[0]
-                        + r_delta_acceleration_p[1]*r_delta_acceleration_f[1]
-                        + r_delta_acceleration_p[2]*r_delta_acceleration_f[2]
-                        + r_delta_water_pressure_p*r_delta_water_pressure_f
-                        + r_delta_dt_water_pressure_p*r_delta_dt_water_pressure_f;
+                        + r_delta_water_pressure_p*r_delta_water_pressure_f;
 
         }
         return DxP_dot_DxF;
