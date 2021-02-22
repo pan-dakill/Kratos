@@ -58,7 +58,7 @@ class ExplicitUPwSolver(UPwSolver):
             self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.DAMPING_FORCE)
 
         strategy_type = self.settings["strategy_type"].GetString()
-        if(scheme_type == "arc_length"):
+        if(strategy_type == "arc_length"):
             self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.DELTA_DISPLACEMENT_F)
             self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.DELTA_DISPLACEMENT_LF)
             self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.DELTA_DISPLACEMENT_P)
