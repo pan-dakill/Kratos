@@ -104,14 +104,14 @@ public:
 
                 this->InitializeSolutionStep();
 
-                // Compute initial radius (radius_0)
+                // Compute initial radius
                 this->CalculateNewX();
                 this->SaveDxF(r_model_part);
                 this->RestoreX(r_model_part);
 
-                double radius_0 = this->CalculateDxFNorm(r_model_part);
-                if(radius_0 > mRadius_0) {
-                    mRadius_0 = radius_0;
+                double dxf_norm = this->CalculateDxFNorm(r_model_part);
+                if(dxf_norm > mRadius_0) {
+                    mRadius_0 = dxf_norm;
                 }
                 mRadius = mRadius_0;
 
@@ -157,7 +157,9 @@ public:
     {
         // ********** Prediction phase **********
 
-        KRATOS_INFO("Ramm's Arc Length Explicit Strategy") << "ARC-LENGTH RADIUS: " << mRadius/mRadius_0 << " X initial radius" << std::endl;
+        // KRATOS_INFO("Ramm's Arc Length Explicit Strategy") << "INITIAL ARC-LENGTH RADIUS: " << mRadius_0 << std::endl;
+
+        // KRATOS_INFO("Ramm's Arc Length Explicit Strategy") << "ARC-LENGTH RADIUS: " << mRadius/mRadius_0 << " X initial radius" << std::endl;
 
         ModelPart& r_model_part = BaseType::GetModelPart();
 
@@ -167,7 +169,13 @@ public:
         this->SaveDxF(r_model_part);
 
         // Predict Lambda
-        double DLambda = mRadius/this->CalculateDxFNorm(r_model_part);
+        const double dxf_norm = this->CalculateDxFNorm(r_model_part);
+        double DLambda;
+        if(dxf_norm > mRadius_0) {
+            DLambda = mRadius/dxf_norm;
+        } else {
+            DLambda = mRadius/mRadius_0;
+        }
         mLambda += DLambda;
         this->RestoreX(r_model_part);
         // Predict X
@@ -192,7 +200,13 @@ public:
         this->UpdateXWithPrediction(r_model_part);
 
         // Correct Lambda
-        DLambda = - this->CalculateDxPDotDxLF(r_model_part)/this->CalculateDxPDotDxF(r_model_part);
+        const double dxp_dot_dxlf = this->CalculateDxPDotDxLF(r_model_part);
+        const double dxp_dot_dxf = this->CalculateDxPDotDxF(r_model_part);
+        if(dxp_dot_dxf > mRadius_0) {
+            DLambda = - dxp_dot_dxlf / dxp_dot_dxf;
+        } else {
+            DLambda = - dxp_dot_dxlf / mRadius_0;
+        }
         mLambda += DLambda;
 
         // Update X with correction

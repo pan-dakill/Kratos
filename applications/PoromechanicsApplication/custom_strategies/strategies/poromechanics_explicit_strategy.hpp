@@ -75,6 +75,7 @@ public:
                     "rebuild_level": 0,
                     "max_radius_factor": 20.0,
                     "min_radius_factor": 0.5,
+                    "initial_radius": 1.0e-12,
                     "characteristic_length": 0.05,
                     "search_neighbours_step": false,
                     "body_domain_sub_model_part_list": [],
