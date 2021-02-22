@@ -39,7 +39,8 @@ class ExplicitUPwSolver(UPwSolver):
             "rebuild_level"              : 0,
             "theta_1"                    : 1.0,
             "theta_3"                    : 1.0,
-            "delta"                      : 1.0
+            "delta"                      : 1.0,
+            "initial_radius"             : 1.0e-12
         }""")
         this_defaults.AddMissingParameters(super().GetDefaultParameters())
         return this_defaults
@@ -154,66 +155,67 @@ class ExplicitUPwSolver(UPwSolver):
         #       A rebuild level higher than 0 means that the nodal mass can be updated at the beginning of each step (InitializeSolutionStep)
         self.strategy_params.AddValue("rebuild_level",self.settings["rebuild_level"])
 
-        if nonlocal_damage:
-            self.strategy_params.AddValue("body_domain_sub_model_part_list",self.body_domain_sub_sub_model_part_list)
-            self.strategy_params.AddValue("characteristic_length",self.settings["characteristic_length"])
-            self.strategy_params.AddValue("search_neighbours_step",self.settings["search_neighbours_step"])
-            solving_strategy = KratosPoro.PoromechanicsExplicitNonlocalStrategy(self.computing_model_part,
-                                                                            self.scheme,
-                                                                            self.strategy_params,
-                                                                            compute_reactions,
-                                                                            reform_step_dofs,
-                                                                            move_mesh_flag)
-        else:
-            solving_strategy = KratosPoro.PoromechanicsExplicitStrategy(self.computing_model_part,
-                                                                            self.scheme,
-                                                                            self.strategy_params,
-                                                                            compute_reactions,
-                                                                            reform_step_dofs,
-                                                                            move_mesh_flag)
-        # TODO: this is on stand-by
-        # if strategy_type == "arc_length":
-
-        #     self.main_model_part.ProcessInfo.SetValue(KratosPoro.ARC_LENGTH_LAMBDA,1.0)
-        #     self.main_model_part.ProcessInfo.SetValue(KratosPoro.ARC_LENGTH_RADIUS_FACTOR,1.0)
-        #     # self.strategy_params.AddValue("desired_iterations",self.settings["desired_iterations"])
-        #     self.strategy_params.AddValue("max_radius_factor",self.settings["max_radius_factor"])
-        #     self.strategy_params.AddValue("min_radius_factor",self.settings["min_radius_factor"])
-        #     if nonlocal_damage:
-        #         self.strategy_params.AddValue("body_domain_sub_model_part_list",self.body_domain_sub_sub_model_part_list)
-        #         self.strategy_params.AddValue("characteristic_length",self.settings["characteristic_length"])
-        #         self.strategy_params.AddValue("search_neighbours_step",self.settings["search_neighbours_step"])
-        #         solving_strategy = KratosPoro.PoromechanicsExplicitArcLengthNonlocalStrategy(self.computing_model_part,
-        #                                                                        self.scheme,
-        #                                                                        self.strategy_params,
-        #                                                                        compute_reactions,
-        #                                                                        reform_step_dofs,
-        #                                                                        move_mesh_flag)
-        #     else:
-        #         solving_strategy = KratosPoro.PoromechanicsExplicitArcLengthStrategy(self.computing_model_part,
-        #                                                                        self.scheme,
-        #                                                                        self.strategy_params,
-        #                                                                        compute_reactions,
-        #                                                                        reform_step_dofs,
-        #                                                                        move_mesh_flag)
+        # if nonlocal_damage:
+        #     self.strategy_params.AddValue("body_domain_sub_model_part_list",self.body_domain_sub_sub_model_part_list)
+        #     self.strategy_params.AddValue("characteristic_length",self.settings["characteristic_length"])
+        #     self.strategy_params.AddValue("search_neighbours_step",self.settings["search_neighbours_step"])
+        #     solving_strategy = KratosPoro.PoromechanicsExplicitNonlocalStrategy(self.computing_model_part,
+        #                                                                     self.scheme,
+        #                                                                     self.strategy_params,
+        #                                                                     compute_reactions,
+        #                                                                     reform_step_dofs,
+        #                                                                     move_mesh_flag)
         # else:
-        #     if nonlocal_damage:
-        #         self.strategy_params.AddValue("body_domain_sub_model_part_list",self.body_domain_sub_sub_model_part_list)
-        #         self.strategy_params.AddValue("characteristic_length",self.settings["characteristic_length"])
-        #         self.strategy_params.AddValue("search_neighbours_step",self.settings["search_neighbours_step"])
-        #         solving_strategy = KratosPoro.PoromechanicsExplicitNonlocalStrategy(self.computing_model_part,
-        #                                                                        self.scheme,
-        #                                                                        self.strategy_params,
-        #                                                                        compute_reactions,
-        #                                                                        reform_step_dofs,
-        #                                                                        move_mesh_flag)
-        #     else:
-        #         solving_strategy = KratosPoro.PoromechanicsExplicitStrategy(self.computing_model_part,
-        #                                                                        self.scheme,
-        #                                                                        self.strategy_params,
-        #                                                                        compute_reactions,
-        #                                                                        reform_step_dofs,
-        #                                                                        move_mesh_flag)
+        #     solving_strategy = KratosPoro.PoromechanicsExplicitStrategy(self.computing_model_part,
+        #                                                                     self.scheme,
+        #                                                                     self.strategy_params,
+        #                                                                     compute_reactions,
+        #                                                                     reform_step_dofs,
+        #                                                                     move_mesh_flag)
+
+        # TODO: this is on stand-by
+        if strategy_type == "arc_length":
+            self.main_model_part.ProcessInfo.SetValue(KratosPoro.ARC_LENGTH_LAMBDA,1.0)
+            self.main_model_part.ProcessInfo.SetValue(KratosPoro.ARC_LENGTH_RADIUS_FACTOR,1.0)
+            # self.strategy_params.AddValue("desired_iterations",self.settings["desired_iterations"])
+            self.strategy_params.AddValue("max_radius_factor",self.settings["max_radius_factor"])
+            self.strategy_params.AddValue("min_radius_factor",self.settings["min_radius_factor"])
+            self.strategy_params.AddValue("initial_radius",self.settings["initial_radius"])
+            if nonlocal_damage:
+                self.strategy_params.AddValue("body_domain_sub_model_part_list",self.body_domain_sub_sub_model_part_list)
+                self.strategy_params.AddValue("characteristic_length",self.settings["characteristic_length"])
+                self.strategy_params.AddValue("search_neighbours_step",self.settings["search_neighbours_step"])
+                solving_strategy = KratosPoro.PoromechanicsExplicitArcLengthNonlocalStrategy(self.computing_model_part,
+                                                                               self.scheme,
+                                                                               self.strategy_params,
+                                                                               compute_reactions,
+                                                                               reform_step_dofs,
+                                                                               move_mesh_flag)
+            else:
+                solving_strategy = KratosPoro.PoromechanicsExplicitArcLengthStrategy(self.computing_model_part,
+                                                                               self.scheme,
+                                                                               self.strategy_params,
+                                                                               compute_reactions,
+                                                                               reform_step_dofs,
+                                                                               move_mesh_flag)
+        else:
+            if nonlocal_damage:
+                self.strategy_params.AddValue("body_domain_sub_model_part_list",self.body_domain_sub_sub_model_part_list)
+                self.strategy_params.AddValue("characteristic_length",self.settings["characteristic_length"])
+                self.strategy_params.AddValue("search_neighbours_step",self.settings["search_neighbours_step"])
+                solving_strategy = KratosPoro.PoromechanicsExplicitNonlocalStrategy(self.computing_model_part,
+                                                                               self.scheme,
+                                                                               self.strategy_params,
+                                                                               compute_reactions,
+                                                                               reform_step_dofs,
+                                                                               move_mesh_flag)
+            else:
+                solving_strategy = KratosPoro.PoromechanicsExplicitStrategy(self.computing_model_part,
+                                                                               self.scheme,
+                                                                               self.strategy_params,
+                                                                               compute_reactions,
+                                                                               reform_step_dofs,
+                                                                               move_mesh_flag)
 
         return solving_strategy
 

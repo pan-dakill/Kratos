@@ -74,6 +74,7 @@ public:
         {
             mMaxRadiusFactor = rParameters["max_radius_factor"].GetDouble();
             mMinRadiusFactor = rParameters["min_radius_factor"].GetDouble();
+            mRadius_0 = rParameters["initial_radius"].GetDouble();
 
             mInitializeArcLengthWasPerformed = false;
             mSolutionStepIsInitialized = false;
@@ -103,15 +104,14 @@ public:
 
                 this->InitializeSolutionStep();
 
-                // Compute initial radius (mRadius_0)
+                // Compute initial radius (radius_0)
                 this->CalculateNewX();
                 this->SaveDxF(r_model_part);
                 this->RestoreX(r_model_part);
 
-                mRadius_0 = this->CalculateDxFNorm(r_model_part);
-                // TODO: the first explicit solution can be 0.0...
-                if(mRadius_0 < 1.0e-12) {
-                    mRadius_0 = 1.0e-12;
+                double radius_0 = this->CalculateDxFNorm(r_model_part);
+                if(radius_0 > mRadius_0) {
+                    mRadius_0 = radius_0;
                 }
                 mRadius = mRadius_0;
 
@@ -159,6 +159,8 @@ public:
 
         KRATOS_INFO("Ramm's Arc Length Explicit Strategy") << "ARC-LENGTH RADIUS: " << mRadius/mRadius_0 << " X initial radius" << std::endl;
 
+        ModelPart& r_model_part = BaseType::GetModelPart();
+
         // Get DxF
         this->RestoreF();
         this->CalculateNewX();
@@ -183,7 +185,7 @@ public:
         this->UpdateXWithPrediction(r_model_part);
 
         // Get Correction DxLF
-        this->UpdateF()
+        this->UpdateF();
         this->CalculateNewX();
         this->SaveCorrectionDxLF(r_model_part);
         this->RestoreX(r_model_part);
@@ -198,7 +200,7 @@ public:
 
         // Update Load
         this->RestoreF();
-        this->UpdateF()
+        this->UpdateF();
 
         // Calculate reactions if required
         if (mCalculateReactionsFlag) {
@@ -557,26 +559,29 @@ protected:
             const array_1d<double, 3>& r_delta_displacement_p = itCurrentNode->FastGetSolutionStepValue(DELTA_DISPLACEMENT_P);
             noalias(r_delta_displacement_f) = r_current_displacement - r_previous_displacement - r_delta_displacement_p;
 
-            // TODO: seguir
             array_1d<double, 3>& r_delta_velocity_f = itCurrentNode->FastGetSolutionStepValue(DELTA_VELOCITY_F);
             const array_1d<double, 3>& r_current_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY);
             const array_1d<double, 3>& r_previous_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY,1);
-            noalias(r_delta_velocity_f) = r_current_velocity - r_previous_velocity;
+            const array_1d<double, 3>& r_delta_velocity_p = itCurrentNode->FastGetSolutionStepValue(DELTA_VELOCITY_P);
+            noalias(r_delta_velocity_f) = r_current_velocity - r_previous_velocity - r_delta_velocity_p;
 
             array_1d<double, 3>& r_delta_acceleration_f = itCurrentNode->FastGetSolutionStepValue(DELTA_ACCELERATION_F);
             const array_1d<double, 3>& r_current_acceleration = itCurrentNode->FastGetSolutionStepValue(ACCELERATION);
             const array_1d<double, 3>& r_previous_acceleration = itCurrentNode->FastGetSolutionStepValue(ACCELERATION,1);
-            noalias(r_delta_acceleration_f) = r_current_acceleration - r_previous_acceleration;
+            const array_1d<double, 3>& r_delta_acceleration_p = itCurrentNode->FastGetSolutionStepValue(DELTA_ACCELERATION_P);
+            noalias(r_delta_acceleration_f) = r_current_acceleration - r_previous_acceleration - r_delta_acceleration_p;
 
             double& r_delta_water_pressure_f = itCurrentNode->FastGetSolutionStepValue(DELTA_WATER_PRESSURE_F);
             const double& r_current_water_pressure = itCurrentNode->FastGetSolutionStepValue(WATER_PRESSURE);
             const double& r_previous_water_pressure = itCurrentNode->FastGetSolutionStepValue(WATER_PRESSURE,1);
-            r_delta_water_pressure_f = r_current_water_pressure - r_previous_water_pressure;
+            const double& r_delta_water_pressure_p = itCurrentNode->FastGetSolutionStepValue(DELTA_WATER_PRESSURE_P);
+            r_delta_water_pressure_f = r_current_water_pressure - r_previous_water_pressure - r_delta_water_pressure_p;
 
             double& r_delta_dt_water_pressure_f = itCurrentNode->FastGetSolutionStepValue(DELTA_DT_WATER_PRESSURE_F);
             const double& r_current_dt_water_pressure = itCurrentNode->FastGetSolutionStepValue(DT_WATER_PRESSURE);
             const double& r_previous_dt_water_pressure = itCurrentNode->FastGetSolutionStepValue(DT_WATER_PRESSURE,1);
-            r_delta_dt_water_pressure_f = r_current_dt_water_pressure - r_previous_dt_water_pressure;
+            const double& r_delta_dt_water_pressure_p = itCurrentNode->FastGetSolutionStepValue(DELTA_DT_WATER_PRESSURE_P);
+            r_delta_dt_water_pressure_f = r_current_dt_water_pressure - r_previous_dt_water_pressure - r_delta_dt_water_pressure_p;
 
         } // for Node parallel
 
@@ -600,8 +605,35 @@ protected:
 
             ModelPart::NodeIterator itCurrentNode = it_node_begin + i;
 
-            // TODO:
+            array_1d<double, 3>& r_delta_displacement_lf = itCurrentNode->FastGetSolutionStepValue(DELTA_DISPLACEMENT_LF);
+            const array_1d<double, 3>& r_current_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT);
+            const array_1d<double, 3>& r_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,1);
+            const array_1d<double, 3>& r_delta_displacement_p = itCurrentNode->FastGetSolutionStepValue(DELTA_DISPLACEMENT_P);
+            noalias(r_delta_displacement_lf) = r_current_displacement - r_previous_displacement - r_delta_displacement_p;
 
+            array_1d<double, 3>& r_delta_velocity_lf = itCurrentNode->FastGetSolutionStepValue(DELTA_VELOCITY_LF);
+            const array_1d<double, 3>& r_current_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY);
+            const array_1d<double, 3>& r_previous_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY,1);
+            const array_1d<double, 3>& r_delta_velocity_p = itCurrentNode->FastGetSolutionStepValue(DELTA_VELOCITY_P);
+            noalias(r_delta_velocity_lf) = r_current_velocity - r_previous_velocity - r_delta_velocity_p;
+
+            array_1d<double, 3>& r_delta_acceleration_lf = itCurrentNode->FastGetSolutionStepValue(DELTA_ACCELERATION_LF);
+            const array_1d<double, 3>& r_current_acceleration = itCurrentNode->FastGetSolutionStepValue(ACCELERATION);
+            const array_1d<double, 3>& r_previous_acceleration = itCurrentNode->FastGetSolutionStepValue(ACCELERATION,1);
+            const array_1d<double, 3>& r_delta_acceleration_p = itCurrentNode->FastGetSolutionStepValue(DELTA_ACCELERATION_P);
+            noalias(r_delta_acceleration_lf) = r_current_acceleration - r_previous_acceleration - r_delta_acceleration_p;
+
+            double& r_delta_water_pressure_lf = itCurrentNode->FastGetSolutionStepValue(DELTA_WATER_PRESSURE_LF);
+            const double& r_current_water_pressure = itCurrentNode->FastGetSolutionStepValue(WATER_PRESSURE);
+            const double& r_previous_water_pressure = itCurrentNode->FastGetSolutionStepValue(WATER_PRESSURE,1);
+            const double& r_delta_water_pressure_p = itCurrentNode->FastGetSolutionStepValue(DELTA_WATER_PRESSURE_P);
+            r_delta_water_pressure_lf = r_current_water_pressure - r_previous_water_pressure - r_delta_water_pressure_p;
+
+            double& r_delta_dt_water_pressure_lf = itCurrentNode->FastGetSolutionStepValue(DELTA_DT_WATER_PRESSURE_LF);
+            const double& r_current_dt_water_pressure = itCurrentNode->FastGetSolutionStepValue(DT_WATER_PRESSURE);
+            const double& r_previous_dt_water_pressure = itCurrentNode->FastGetSolutionStepValue(DT_WATER_PRESSURE,1);
+            const double& r_delta_dt_water_pressure_p = itCurrentNode->FastGetSolutionStepValue(DELTA_DT_WATER_PRESSURE_P);
+            r_delta_dt_water_pressure_lf = r_current_dt_water_pressure - r_previous_dt_water_pressure - r_delta_dt_water_pressure_p;
 
         } // for Node parallel
 
@@ -622,30 +654,32 @@ protected:
         // The iterator of the first node
         const auto it_node_begin = rModelPart.NodesBegin();
 
-        // TODO:
-
         #pragma omp parallel for reduction(+:DxP_dot_DxLF)
         for (int i = 0; i < static_cast<int>(r_nodes.size()); ++i) {
             ModelPart::NodeIterator itCurrentNode = it_node_begin + i;
 
-            // TODO: should I calculate the norm taking into account the time derivatives of the unknowns ?
-            const array_1d<double, 3>& r_delta_displacement_f = itCurrentNode->FastGetSolutionStepValue(DELTA_DISPLACEMENT_F);
-            const array_1d<double, 3>& r_delta_velocity_f = itCurrentNode->FastGetSolutionStepValue(DELTA_VELOCITY_F);
-            const array_1d<double, 3>& r_delta_acceleration_f = itCurrentNode->FastGetSolutionStepValue(DELTA_ACCELERATION_F);
-            const double& r_delta_water_pressure_f = itCurrentNode->FastGetSolutionStepValue(DELTA_WATER_PRESSURE_F);
-            const double& r_delta_dt_water_pressure_f = itCurrentNode->FastGetSolutionStepValue(DELTA_DT_WATER_PRESSURE_F);
+            const array_1d<double, 3>& r_delta_displacement_p = itCurrentNode->FastGetSolutionStepValue(DELTA_DISPLACEMENT_P);
+            const array_1d<double, 3>& r_delta_displacement_lf = itCurrentNode->FastGetSolutionStepValue(DELTA_DISPLACEMENT_LF);
+            const array_1d<double, 3>& r_delta_velocity_p = itCurrentNode->FastGetSolutionStepValue(DELTA_VELOCITY_P);
+            const array_1d<double, 3>& r_delta_velocity_lf = itCurrentNode->FastGetSolutionStepValue(DELTA_VELOCITY_LF);
+            const array_1d<double, 3>& r_delta_acceleration_p = itCurrentNode->FastGetSolutionStepValue(DELTA_ACCELERATION_P);
+            const array_1d<double, 3>& r_delta_acceleration_lf = itCurrentNode->FastGetSolutionStepValue(DELTA_ACCELERATION_LF);
+            const double& r_delta_water_pressure_p = itCurrentNode->FastGetSolutionStepValue(DELTA_WATER_PRESSURE_P);
+            const double& r_delta_water_pressure_lf = itCurrentNode->FastGetSolutionStepValue(DELTA_WATER_PRESSURE_LF);
+            const double& r_delta_dt_water_pressure_p = itCurrentNode->FastGetSolutionStepValue(DELTA_DT_WATER_PRESSURE_P);
+            const double& r_delta_dt_water_pressure_lf = itCurrentNode->FastGetSolutionStepValue(DELTA_DT_WATER_PRESSURE_LF);
 
-            DxP_dot_DxLF += r_delta_displacement_f[0]*r_delta_displacement_f[0]
-                        + r_delta_displacement_f[1]*r_delta_displacement_f[1]
-                        + r_delta_displacement_f[2]*r_delta_displacement_f[2]
-                        + r_delta_velocity_f[0]*r_delta_velocity_f[0]
-                        + r_delta_velocity_f[1]*r_delta_velocity_f[1]
-                        + r_delta_velocity_f[2]*r_delta_velocity_f[2]
-                        + r_delta_acceleration_f[0]*r_delta_acceleration_f[0]
-                        + r_delta_acceleration_f[1]*r_delta_acceleration_f[1]
-                        + r_delta_acceleration_f[2]*r_delta_acceleration_f[2]
-                        + r_delta_water_pressure_f*r_delta_water_pressure_f
-                        + r_delta_dt_water_pressure_f*r_delta_dt_water_pressure_f;
+            DxP_dot_DxLF += r_delta_displacement_p[0]*r_delta_displacement_lf[0]
+                        + r_delta_displacement_p[1]*r_delta_displacement_lf[1]
+                        + r_delta_displacement_p[2]*r_delta_displacement_lf[2]
+                        + r_delta_velocity_p[0]*r_delta_velocity_lf[0]
+                        + r_delta_velocity_p[1]*r_delta_velocity_lf[1]
+                        + r_delta_velocity_p[2]*r_delta_velocity_lf[2]
+                        + r_delta_acceleration_p[0]*r_delta_acceleration_lf[0]
+                        + r_delta_acceleration_p[1]*r_delta_acceleration_lf[1]
+                        + r_delta_acceleration_p[2]*r_delta_acceleration_lf[2]
+                        + r_delta_water_pressure_p*r_delta_water_pressure_lf
+                        + r_delta_dt_water_pressure_p*r_delta_dt_water_pressure_lf;
 
         }
         return DxP_dot_DxLF;
@@ -667,30 +701,32 @@ protected:
         // The iterator of the first node
         const auto it_node_begin = rModelPart.NodesBegin();
 
-        // TODO:
-
         #pragma omp parallel for reduction(+:DxP_dot_DxF)
         for (int i = 0; i < static_cast<int>(r_nodes.size()); ++i) {
             ModelPart::NodeIterator itCurrentNode = it_node_begin + i;
 
-            // TODO: should I calculate the norm taking into account the time derivatives of the unknowns ?
+            const array_1d<double, 3>& r_delta_displacement_p = itCurrentNode->FastGetSolutionStepValue(DELTA_DISPLACEMENT_P);
             const array_1d<double, 3>& r_delta_displacement_f = itCurrentNode->FastGetSolutionStepValue(DELTA_DISPLACEMENT_F);
+            const array_1d<double, 3>& r_delta_velocity_p = itCurrentNode->FastGetSolutionStepValue(DELTA_VELOCITY_P);
             const array_1d<double, 3>& r_delta_velocity_f = itCurrentNode->FastGetSolutionStepValue(DELTA_VELOCITY_F);
+            const array_1d<double, 3>& r_delta_acceleration_p = itCurrentNode->FastGetSolutionStepValue(DELTA_ACCELERATION_P);
             const array_1d<double, 3>& r_delta_acceleration_f = itCurrentNode->FastGetSolutionStepValue(DELTA_ACCELERATION_F);
+            const double& r_delta_water_pressure_p = itCurrentNode->FastGetSolutionStepValue(DELTA_WATER_PRESSURE_P);
             const double& r_delta_water_pressure_f = itCurrentNode->FastGetSolutionStepValue(DELTA_WATER_PRESSURE_F);
+            const double& r_delta_dt_water_pressure_p = itCurrentNode->FastGetSolutionStepValue(DELTA_DT_WATER_PRESSURE_P);
             const double& r_delta_dt_water_pressure_f = itCurrentNode->FastGetSolutionStepValue(DELTA_DT_WATER_PRESSURE_F);
 
-            DxP_dot_DxF += r_delta_displacement_f[0]*r_delta_displacement_f[0]
-                        + r_delta_displacement_f[1]*r_delta_displacement_f[1]
-                        + r_delta_displacement_f[2]*r_delta_displacement_f[2]
-                        + r_delta_velocity_f[0]*r_delta_velocity_f[0]
-                        + r_delta_velocity_f[1]*r_delta_velocity_f[1]
-                        + r_delta_velocity_f[2]*r_delta_velocity_f[2]
-                        + r_delta_acceleration_f[0]*r_delta_acceleration_f[0]
-                        + r_delta_acceleration_f[1]*r_delta_acceleration_f[1]
-                        + r_delta_acceleration_f[2]*r_delta_acceleration_f[2]
-                        + r_delta_water_pressure_f*r_delta_water_pressure_f
-                        + r_delta_dt_water_pressure_f*r_delta_dt_water_pressure_f;
+            DxP_dot_DxF += r_delta_displacement_p[0]*r_delta_displacement_f[0]
+                        + r_delta_displacement_p[1]*r_delta_displacement_f[1]
+                        + r_delta_displacement_p[2]*r_delta_displacement_f[2]
+                        + r_delta_velocity_p[0]*r_delta_velocity_f[0]
+                        + r_delta_velocity_p[1]*r_delta_velocity_f[1]
+                        + r_delta_velocity_p[2]*r_delta_velocity_f[2]
+                        + r_delta_acceleration_p[0]*r_delta_acceleration_f[0]
+                        + r_delta_acceleration_p[1]*r_delta_acceleration_f[1]
+                        + r_delta_acceleration_p[2]*r_delta_acceleration_f[2]
+                        + r_delta_water_pressure_p*r_delta_water_pressure_f
+                        + r_delta_dt_water_pressure_p*r_delta_dt_water_pressure_f;
 
         }
         return DxP_dot_DxF;
@@ -704,7 +740,7 @@ protected:
     {
         KRATOS_TRY
 
-        // Update unknowns from prediction
+        // Update unknowns with correction
 
         // The array of nodes
         NodesArrayType& r_nodes = rModelPart.Nodes();
@@ -712,32 +748,35 @@ protected:
         // The iterator of the first node
         const auto it_node_begin = rModelPart.NodesBegin();
 
-        // TODO: noalias(X) += mDxb + DLambda*mDxf;
-
         #pragma omp parallel for schedule(guided,512)
         for (int i = 0; i < static_cast<int>(r_nodes.size()); ++i) {
 
             ModelPart::NodeIterator itCurrentNode = it_node_begin + i;
 
             array_1d<double, 3>& r_current_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT);
-            const array_1d<double, 3>& r_delta_displacement_p = itCurrentNode->FastGetSolutionStepValue(DELTA_DISPLACEMENT_P);
-            noalias(r_current_displacement) += r_delta_displacement_p;
+            const array_1d<double, 3>& r_delta_displacement_lf = itCurrentNode->FastGetSolutionStepValue(DELTA_DISPLACEMENT_LF);
+            const array_1d<double, 3>& r_delta_displacement_f = itCurrentNode->FastGetSolutionStepValue(DELTA_DISPLACEMENT_F);
+            noalias(r_current_displacement) += r_delta_displacement_lf + DLambda*r_delta_displacement_f;
 
             array_1d<double, 3>& r_current_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY);
-            const array_1d<double, 3>& r_delta_velocity_p = itCurrentNode->FastGetSolutionStepValue(DELTA_VELOCITY_P);
-            noalias(r_current_velocity) += r_delta_velocity_p;
+            const array_1d<double, 3>& r_delta_velocity_lf = itCurrentNode->FastGetSolutionStepValue(DELTA_VELOCITY_LF);
+            const array_1d<double, 3>& r_delta_velocity_f = itCurrentNode->FastGetSolutionStepValue(DELTA_VELOCITY_F);
+            noalias(r_current_velocity) += r_delta_velocity_lf + DLambda*r_delta_velocity_f;
 
             array_1d<double, 3>& r_current_acceleration = itCurrentNode->FastGetSolutionStepValue(ACCELERATION);
-            const array_1d<double, 3>& r_delta_acceleration_p = itCurrentNode->FastGetSolutionStepValue(DELTA_ACCELERATION_P);
-            noalias(r_current_acceleration) += r_delta_acceleration_p;
+            const array_1d<double, 3>& r_delta_acceleration_lf = itCurrentNode->FastGetSolutionStepValue(DELTA_ACCELERATION_LF);
+            const array_1d<double, 3>& r_delta_acceleration_f = itCurrentNode->FastGetSolutionStepValue(DELTA_ACCELERATION_F);
+            noalias(r_current_acceleration) += r_delta_acceleration_lf + DLambda*r_delta_acceleration_f;
 
             double& r_current_water_pressure = itCurrentNode->FastGetSolutionStepValue(WATER_PRESSURE);
-            const double& r_delta_water_pressure_p = itCurrentNode->FastGetSolutionStepValue(DELTA_WATER_PRESSURE_P);
-            r_current_water_pressure += r_delta_water_pressure_p;
+            const double& r_delta_water_pressure_lf = itCurrentNode->FastGetSolutionStepValue(DELTA_WATER_PRESSURE_LF);
+            const double& r_delta_water_pressure_f = itCurrentNode->FastGetSolutionStepValue(DELTA_WATER_PRESSURE_F);
+            r_current_water_pressure += r_delta_water_pressure_lf + DLambda*r_delta_water_pressure_f;
 
             double& r_current_dt_water_pressure = itCurrentNode->FastGetSolutionStepValue(DT_WATER_PRESSURE);
-            const double& r_delta_dt_water_pressure_p = itCurrentNode->FastGetSolutionStepValue(DELTA_DT_WATER_PRESSURE_P);
-            r_current_dt_water_pressure += r_delta_dt_water_pressure_p;
+            const double& r_delta_dt_water_pressure_lf = itCurrentNode->FastGetSolutionStepValue(DELTA_DT_WATER_PRESSURE_LF);
+            const double& r_delta_dt_water_pressure_f = itCurrentNode->FastGetSolutionStepValue(DELTA_DT_WATER_PRESSURE_F);
+            r_current_dt_water_pressure += r_delta_dt_water_pressure_lf + DLambda*r_delta_dt_water_pressure_f;
 
         } // for Node parallel
 

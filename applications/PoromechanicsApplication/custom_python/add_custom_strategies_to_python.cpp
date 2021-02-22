@@ -20,6 +20,8 @@
 #include "custom_strategies/strategies/poromechanics_ramm_arc_length_nonlocal_strategy.hpp"
 #include "custom_strategies/strategies/poromechanics_explicit_strategy.hpp"
 #include "custom_strategies/strategies/poromechanics_explicit_nonlocal_strategy.hpp"
+#include "custom_strategies/strategies/poromechanics_explicit_ramm_arc_length_strategy.hpp"
+#include "custom_strategies/strategies/poromechanics_explicit_ramm_arc_length_nonlocal_strategy.hpp"
 
 //builders and solvers
 
@@ -69,6 +71,8 @@ void  AddCustomStrategiesToPython(pybind11::module& m)
     typedef PoromechanicsRammArcLengthNonlocalStrategy< SparseSpaceType, LocalSpaceType, LinearSolverType > PoromechanicsRammArcLengthNonlocalStrategyType;
     typedef PoromechanicsExplicitStrategy< SparseSpaceType, LocalSpaceType, LinearSolverType > PoromechanicsExplicitStrategyType;
     typedef PoromechanicsExplicitNonlocalStrategy< SparseSpaceType, LocalSpaceType, LinearSolverType > PoromechanicsExplicitNonlocalStrategyType;
+    typedef PoromechanicsExplicitRammArcLengthStrategy< SparseSpaceType, LocalSpaceType, LinearSolverType > PoromechanicsExplicitRammArcLengthStrategyType;
+    typedef PoromechanicsExplicitRammArcLengthNonlocalStrategy< SparseSpaceType, LocalSpaceType, LinearSolverType > PoromechanicsExplicitRammArcLengthNonlocalStrategyType;
 
 //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -116,6 +120,12 @@ void  AddCustomStrategiesToPython(pybind11::module& m)
     .def( py::init< ModelPart&, BaseSchemeType::Pointer, Parameters&, bool, bool, bool >());
     py::class_< PoromechanicsExplicitNonlocalStrategyType, typename PoromechanicsExplicitNonlocalStrategyType::Pointer, BaseSolvingStrategyType >
     (m, "PoromechanicsExplicitNonlocalStrategy")
+    .def( py::init< ModelPart&, BaseSchemeType::Pointer, Parameters&, bool, bool, bool >());
+    py::class_< PoromechanicsExplicitRammArcLengthStrategyType, typename PoromechanicsExplicitRammArcLengthStrategyType::Pointer, BaseSolvingStrategyType >
+    (m, "PoromechanicsExplicitRammArcLengthStrategy")
+    .def( py::init< ModelPart&, BaseSchemeType::Pointer, Parameters&, bool, bool, bool >());
+    py::class_< PoromechanicsExplicitRammArcLengthNonlocalStrategyType, typename PoromechanicsExplicitRammArcLengthNonlocalStrategyType::Pointer, BaseSolvingStrategyType >
+    (m, "PoromechanicsExplicitRammArcLengthNonlocalStrategy")
     .def( py::init< ModelPart&, BaseSchemeType::Pointer, Parameters&, bool, bool, bool >());
 
 }
