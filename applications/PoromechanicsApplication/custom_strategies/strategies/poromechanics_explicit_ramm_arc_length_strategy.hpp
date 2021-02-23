@@ -165,7 +165,7 @@ public:
 
         // Get DxF
         this->RestoreF();
-        this->CalculateNewX();
+        this->CalculateNewX(); // TODO: can I really calculate DxF like this?
         this->SaveDxF(r_model_part);
 
         // Predict Lambda
@@ -186,7 +186,7 @@ public:
 
         // ********** Correction phase **********
 
-        // TODO: I think it is necessary to iterate...
+        // TODO: Is it necessary to iterate ?
         // while (iteration_number++ < mMaxIterationNumber)
         // {
 
