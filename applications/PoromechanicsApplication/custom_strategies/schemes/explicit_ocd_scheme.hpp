@@ -124,8 +124,7 @@ public:
 
         const ProcessInfo& r_current_process_info = rModelPart.GetProcessInfo();
 
-        mDelta = r_current_process_info[DELTA];
-        mTheta3 = r_current_process_info[THETA_3];
+        mg_factor = r_current_process_info[G_FACTOR];
 
         BaseType::Initialize(rModelPart);
 
@@ -168,34 +167,15 @@ public:
 
         for (IndexType j = 0; j < DomainSize; j++) {
             if (fix_displacements[j] == false) {
-                r_current_displacement[j] = ( (2.0*mDelta+mAlpha*mDeltaTime*(2.0*mTheta3-1.0))*nodal_mass*r_current_displacement[j]
-                                            + (mDeltaTime*mAlpha*(1.0-mTheta3)-mDelta)*nodal_mass*r_actual_previous_displacement[j]
+                r_current_displacement[j] = ( (2.0*(1.0+mg_factor*mDeltaTime)-mAlpha*mDeltaTime)*nodal_mass*r_current_displacement[j]
+                                            + (mAlpha*mDeltaTime-(1.0+mg_factor*mDeltaTime))*nodal_mass*r_actual_previous_displacement[j]
                                             - mDeltaTime*(mBeta+mTheta1*mDeltaTime)*r_current_internal_force[j]
-                                            + mDeltaTime*(mBeta-(1.0-mTheta1)*mDeltaTime)*r_previous_internal_force[j]
+                                            + mDeltaTime*(mBeta-mDeltaTime*(1.0-mTheta1))*r_previous_internal_force[j]
                                             + mDeltaTime*mDeltaTime*(mTheta1*r_external_forces[j]+(1.0-mTheta1)*r_previous_external_forces[j]) ) /
-                                            (nodal_mass*(mDelta+mAlpha*mTheta3*mDeltaTime));
+                                            (nodal_mass*(1.0+mg_factor*mDeltaTime));
             }
         }
 
-        // // Solution of the explicit equation:
-        // if ( (nodal_mass*(mDelta+mAlpha*mTheta3*mDeltaTime)) > numerical_limit ){
-        //     for (IndexType j = 0; j < DomainSize; j++) {
-        //         if (fix_displacements[j] == false) {
-        //             r_current_displacement[j] = ( (2.0*mDelta+mAlpha*mDeltaTime*(2.0*mTheta3-1.0))*nodal_mass*r_current_displacement[j]
-        //                                         + (mDeltaTime*mAlpha*(1.0-mTheta3)-mDelta)*nodal_mass*r_actual_previous_displacement[j]
-        //                                         - mDeltaTime*(mBeta+mTheta1*mDeltaTime)*r_current_internal_force[j]
-        //                                         + mDeltaTime*(mBeta-(1.0-mTheta1)*mDeltaTime)*r_previous_internal_force[j]
-        //                                         + mDeltaTime*mDeltaTime*(mTheta1*r_external_forces[j]+(1.0-mTheta1)*r_previous_external_forces[j]) ) /
-        //                                         (nodal_mass*(mDelta+mAlpha*mTheta3*mDeltaTime));
-        //         }
-        //     }
-        // } else{
-        //     for (IndexType j = 0; j < DomainSize; j++) {
-        //         if (fix_displacements[j] == false) {
-        //             r_current_displacement[j] = 0.0;
-        //         }
-        //     }
-        // }
         // Solution of the darcy_equation
         if( itCurrentNode->IsFixed(WATER_PRESSURE) == false ) {
             // TODO: this is on standby
@@ -252,8 +232,7 @@ protected:
     ///@name Protected member Variables
     ///@{
 
-    double mDelta;
-    double mTheta3;
+    double mg_factor;
 
     ///@}
     ///@name Protected Operators

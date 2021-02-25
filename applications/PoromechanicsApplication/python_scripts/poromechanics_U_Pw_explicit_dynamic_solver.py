@@ -37,9 +37,8 @@ class ExplicitUPwSolver(UPwSolver):
         this_defaults = KratosMultiphysics.Parameters("""{
             "scheme_type"                : "ocd",
             "rebuild_level"              : 0,
-            "theta_1"                    : 1.0,
-            "theta_3"                    : 1.0,
-            "delta"                      : 1.0,
+            "theta_1"                    : 0.5,
+            "g_factor"                   : 1.0,
             "initial_radius"             : 1.0e-12
         }""")
         this_defaults.AddMissingParameters(super().GetDefaultParameters())
@@ -137,8 +136,7 @@ class ExplicitUPwSolver(UPwSolver):
         process_info.SetValue(StructuralMechanicsApplication.RAYLEIGH_ALPHA, self.settings["rayleigh_alpha"].GetDouble())
         process_info.SetValue(StructuralMechanicsApplication.RAYLEIGH_BETA, self.settings["rayleigh_beta"].GetDouble())
         process_info.SetValue(KratosPoro.THETA_1, self.settings["theta_1"].GetDouble())
-        process_info.SetValue(KratosPoro.THETA_3, self.settings["theta_3"].GetDouble())
-        process_info.SetValue(KratosPoro.DELTA, self.settings["delta"].GetDouble())
+        process_info.SetValue(KratosPoro.G_FACTOR, self.settings["g_factor"].GetDouble())
 
         # Setting the time integration schemes
         if(scheme_type == "cd"):

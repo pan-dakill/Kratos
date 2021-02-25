@@ -124,8 +124,7 @@ public:
 
         const ProcessInfo& r_current_process_info = rModelPart.GetProcessInfo();
 
-        mDelta = r_current_process_info[DELTA];
-        mTheta3 = r_current_process_info[THETA_3];
+        mg_factor = r_current_process_info[G_FACTOR];
 
         BaseType::Initialize(rModelPart);
 
@@ -162,15 +161,15 @@ public:
             fix_displacements[2] = (itCurrentNode->GetDof(DISPLACEMENT_Z, DisplacementPosition + 2).IsFixed());
 
         // Solution of the explicit equation:
-        if ((nodal_mass*(mDelta+mAlpha*mTheta3*mDeltaTime)) > numerical_limit){
+        if ((nodal_mass*(1.0+mg_factor*mDeltaTime)) > numerical_limit){
             for (IndexType j = 0; j < DomainSize; j++) {
                 if (fix_displacements[j] == false) {
                     r_current_displacement[j] += r_current_velocity[j]*mDeltaTime + 0.5 * (mTheta1*r_external_forces[j]+(1.0-mTheta1)*r_previous_external_forces[j]
                                                                                            - (mTheta1*r_current_internal_force[j]+(1.0-mTheta1)*r_previous_internal_force[j])
-                                                                                           - r_current_damping_force[j])/(nodal_mass*(mDelta+mAlpha*mTheta3*mDeltaTime)) * mDeltaTime * mDeltaTime;
+                                                                                           - r_current_damping_force[j])/(nodal_mass*(1.0+mg_factor*mDeltaTime)) * mDeltaTime * mDeltaTime;
                     r_current_velocity[j] += 0.5 * mDeltaTime * (mTheta1*r_external_forces[j]+(1.0-mTheta1)*r_previous_external_forces[j]
                                                                  - (mTheta1*r_current_internal_force[j]+(1.0-mTheta1)*r_previous_internal_force[j])
-                                                                 - r_current_damping_force[j])/(nodal_mass*(mDelta+mAlpha*mTheta3*mDeltaTime));
+                                                                 - r_current_damping_force[j])/(nodal_mass*(1.0+mg_factor*mDeltaTime));
                 }
             }
         }
@@ -212,12 +211,12 @@ public:
             fix_displacements[2] = (itCurrentNode->GetDof(DISPLACEMENT_Z, DisplacementPosition + 2).IsFixed());
 
         // Solution of the explicit equation:
-        if ((nodal_mass*(mDelta+mAlpha*mTheta3*mDeltaTime)) > numerical_limit){
+        if ((nodal_mass*(1.0+mg_factor*mDeltaTime)) > numerical_limit){
             for (IndexType j = 0; j < DomainSize; j++) {
                 if (fix_displacements[j] == false) {
                     r_current_velocity[j] += 0.5 * mDeltaTime * (mTheta1*r_external_forces[j]+(1.0-mTheta1)*r_previous_external_forces[j]
                                                                  - (mTheta1*r_current_internal_force[j]+(1.0-mTheta1)*r_previous_internal_force[j])
-                                                                 - r_current_damping_force[j])/(nodal_mass*(mDelta+mAlpha*mTheta3*mDeltaTime));
+                                                                 - r_current_damping_force[j])/(nodal_mass*(1.0+mg_factor*mDeltaTime));
                 }
             }
         }
@@ -276,8 +275,7 @@ protected:
     ///@name Protected member Variables
     ///@{
 
-    double mDelta;
-    double mTheta3;
+    double mg_factor;
 
     ///@}
     ///@name Protected Operators
