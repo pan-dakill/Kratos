@@ -151,7 +151,7 @@ namespace Kratos
           }
           else if (dimension == 3)
           {
-            double safetyDistance = 1 * i_node->FastGetSolutionStepValue(NODAL_H);
+            double safetyDistance = 5 * i_node->FastGetSolutionStepValue(NODAL_H);
             // if (i_node->X() < (RefiningBoxMinimumPoint[0] - safetyDistance) || i_node->Y() < (RefiningBoxMinimumPoint[1] - safetyDistance) || i_node->Z() < (RefiningBoxMinimumPoint[2] - safetyDistance) ||
             //     i_node->X() > (RefiningBoxMaximumPoint[0] + safetyDistance) || i_node->Y() > (RefiningBoxMaximumPoint[1] + safetyDistance) || i_node->Z() > (RefiningBoxMaximumPoint[2] + safetyDistance))
             // {
