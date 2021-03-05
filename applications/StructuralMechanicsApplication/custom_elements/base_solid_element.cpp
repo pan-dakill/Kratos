@@ -637,6 +637,13 @@ void BaseSolidElement::CalculateMassMatrix(
                 }
             }
         }
+        // TODO: this is provisional
+        KRATOS_WATCH("TESTING-------------------")
+        MatrixType stiffness_matrix( mat_size, mat_size );
+        VectorType residual_vector( mat_size );
+        this->CalculateAll(stiffness_matrix, residual_vector, rCurrentProcessInfo, true, false);
+        double beta  = rCurrentProcessInfo[RAYLEIGH_BETA];
+        noalias(rMassMatrix) += beta*stiffness_matrix;
     }
 
     KRATOS_CATCH("");

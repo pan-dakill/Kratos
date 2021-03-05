@@ -27,6 +27,10 @@ class EigenSolver(MechanicalSolver):
 
         # Construct the base solver.
         super().__init__(main_model_part, custom_settings)
+
+        # TODO: this is provisional
+        self.main_model_part.ProcessInfo[StructuralMechanicsApplication.RAYLEIGH_BETA] = 1.0
+
         KratosMultiphysics.Logger.PrintInfo("::[EigenSolver]:: ", "Construction finished")
 
     @classmethod
