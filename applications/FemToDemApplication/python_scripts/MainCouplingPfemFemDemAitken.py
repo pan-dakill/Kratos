@@ -126,8 +126,8 @@ class MainCouplingPfemFemDemAitken_Solution(MainCouplingPfemFemDem.MainCouplingP
 
             # Check convergence
             is_converged = self.CheckConvergence(residual_norm, residual_norm_old, aitken_iteration)
-            if (aitken_iteration == 1): # We want at least 2 iterations
-                is_converged = False
+            # if (aitken_iteration == 1): # We want at least 2 iterations
+            #     is_converged = False
 
             aitken_iteration += 1
 
