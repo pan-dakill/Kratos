@@ -1144,11 +1144,11 @@ namespace Kratos
 					baricenterZ > RefiningBoxMinimumPoint[2] && baricenterZ < RefiningBoxMaximumPoint[2])
 				{
 
-					criticalVolume = 0.075 * (pow(meshSizeInsideRefinedZone, 3) / (6.0 * sqrt(2))); //mean Volume of a regular tetrahedral per node with 0.05 of penalization
+					criticalVolume = 0.1 * (pow(meshSizeInsideRefinedZone, 3) / (6.0 * sqrt(2))); //mean Volume of a regular tetrahedral per node with 0.05 of penalization
 				}
 				else
 				{
-					criticalVolume = 0.075 * (pow(meshSizeOutsideRefinedZone, 3) / (6.0 * sqrt(2))); //mean Volume of a regular tetrahedral per node with 0.05 of penalization
+					criticalVolume = 0.1 * (pow(meshSizeOutsideRefinedZone, 3) / (6.0 * sqrt(2))); //mean Volume of a regular tetrahedral per node with 0.05 of penalization
 				}
 
 				if ((baricenterX > (RefiningBoxMinimumPoint[0] - meanSize) && baricenterX < (RefiningBoxMaximumPoint[0] + meanSize)) ||
