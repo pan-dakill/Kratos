@@ -184,6 +184,7 @@ namespace Kratos
                     std::vector<array_1d<double, 3>> nodesVelocities;
                     nodesVelocities.resize(nds);
                     unsigned int isolatedNodesInTheElement = 0;
+                    bool upperFreeSurface = false;
                     for (unsigned int pn = 0; pn < nds; pn++)
                     {
                         if (OutElementList[el * nds + pn] <= 0)
@@ -204,6 +205,10 @@ namespace Kratos
                             // std::cout << el << "node " << vertices.back().Id() << " " << vertices.back().X() << " " << vertices.back().Y() << std::endl;
                         }
                         // check flags on nodes
+                        if (vertices.back().Y() > 0.12)
+                        {
+                            upperFreeSurface = true;
+                        }
                         if (vertices.back().Is(ISOLATED))
                         {
                             numisolated++;
@@ -287,11 +292,14 @@ namespace Kratos
                     if (refiningBox == true)
                     {
 
-                        IncreaseAlphaForRefininedZones(Alpha, increaseAlfa, nds, numfreesurf, numrigid, numisolated);
+                        IncreaseAlphaForRefininedZones(Alpha, increaseAlfa, nds, numfreesurf, numrigid, numisolated, upperFreeSurface);
 
                         if (dimension == 3)
                         {
-                            Alpha *= 1.1;
+                            if (upperFreeSurface == false && numfreesurf == 0)
+                            {
+                                Alpha *= 1.1;
+                            }
                         }
                     }
 
@@ -327,13 +335,13 @@ namespace Kratos
                         {
                             Alpha *= 1.25;
                         }
-                        else if (numisolated == 0 && previouslyIsolatedNodes == 0 && numfreesurf < nds && previouslyFreeSurfaceNodes < nds)
+                        else if (numisolated == 0 && previouslyIsolatedNodes == 0 && numfreesurf < nds && previouslyFreeSurfaceNodes < nds && upperFreeSurface == false)
                         {
                             Alpha *= 1.05;
                         }
                         else
                         {
-                            Alpha *= 0.95;
+                            Alpha *= 0.95; //commented the 11/04/2021
                         }
                         // else if (numfreesurf < nds && numisolated < nds && previouslyIsolatedNodes < 3 && previouslyFreeSurfaceNodes < nds && sumPreviouslyIsolatedFreeSurf < nds && sumIsolatedFreeSurf < nds)
                         // {
@@ -910,7 +918,8 @@ namespace Kratos
                                             unsigned int nds,
                                             unsigned int numfreesurf,
                                             unsigned int numrigid,
-                                            unsigned int numisolated)
+                                            unsigned int numisolated,
+                                            bool upperFreeSurface)
         {
             KRATOS_TRY
 
@@ -943,10 +952,14 @@ namespace Kratos
                 {
                     Alpha *= 1.1;
                 }
-                else
+                else if (upperFreeSurface == false)
                 {
-                    Alpha *= 1.075;
+                    Alpha *= 1.025;
                 }
+                //else //commented for coarser anaysis of 02/04/2021
+                //{
+                //    Alpha *= 1.01;
+                //}
             }
             KRATOS_CATCH("")
         }

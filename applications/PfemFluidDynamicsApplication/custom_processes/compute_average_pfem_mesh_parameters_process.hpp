@@ -151,7 +151,7 @@ namespace Kratos
           }
           else if (dimension == 3)
           {
-            double safetyDistance = 1 * i_node->FastGetSolutionStepValue(NODAL_H);
+            double safetyDistance = 5 * i_node->FastGetSolutionStepValue(NODAL_H);
             // if (i_node->X() < (RefiningBoxMinimumPoint[0] - safetyDistance) || i_node->Y() < (RefiningBoxMinimumPoint[1] - safetyDistance) || i_node->Z() < (RefiningBoxMinimumPoint[2] - safetyDistance) ||
             //     i_node->X() > (RefiningBoxMaximumPoint[0] + safetyDistance) || i_node->Y() > (RefiningBoxMaximumPoint[1] + safetyDistance) || i_node->Z() > (RefiningBoxMaximumPoint[2] + safetyDistance))
             // {
@@ -164,8 +164,8 @@ namespace Kratos
                 refinedMeanNodalSize += i_node->FastGetSolutionStepValue(NODAL_H);
               }
             }
-            else if(!((i_node->X() > (RefiningBoxMinimumPoint[0]) && i_node->Y() > (RefiningBoxMinimumPoint[1]) && i_node->Z() > (RefiningBoxMinimumPoint[2]) &&
-                       i_node->X() < (RefiningBoxMaximumPoint[0]) && i_node->Y() < (RefiningBoxMaximumPoint[1]) && i_node->Z() < (RefiningBoxMaximumPoint[2]))))
+            else if (!((i_node->X() > (RefiningBoxMinimumPoint[0]) && i_node->Y() > (RefiningBoxMinimumPoint[1]) && i_node->Z() > (RefiningBoxMinimumPoint[2]) &&
+                        i_node->X() < (RefiningBoxMaximumPoint[0]) && i_node->Y() < (RefiningBoxMaximumPoint[1]) && i_node->Z() < (RefiningBoxMaximumPoint[2]))))
             {
               if (i_node->Is(FLUID))
               {
@@ -177,16 +177,15 @@ namespace Kratos
         }
       }
       meanNodalSize *= 1.0 / fluidNodes;
-      refinedMeanNodalSize *= 1.0 / refinedFluidNodes;
 
       mrRemesh.Refine->CriticalRadius = meanNodalSize;
       mrRemesh.Refine->InitialRadius = meanNodalSize;
-
-      mrRemesh.RefiningBoxMeshSize = refinedMeanNodalSize;
-      // if (dimension == 3)
-      // {
-      //   mrRemesh.RefiningBoxMeshSize *= 0.8;
-      // }
+      if (dimension == 3)
+      {
+        refinedMeanNodalSize *= 1.0 / refinedFluidNodes;
+        mrRemesh.RefiningBoxMeshSize = refinedMeanNodalSize;
+        // mrRemesh.RefiningBoxMeshSize *= 0.8;
+      }
 
       std::cout << fluidNodes << " nodes in Not Refined area with mean element size: " << mrRemesh.Refine->CriticalRadius << std::endl;
       std::cout << refinedFluidNodes << " nodes in Refined area with mean element size:  " << mrRemesh.RefiningBoxMeshSize << std::endl;
