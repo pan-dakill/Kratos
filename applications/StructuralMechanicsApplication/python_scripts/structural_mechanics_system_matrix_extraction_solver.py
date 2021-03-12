@@ -111,6 +111,6 @@ class SystemMatrixExtractionSolver(MechanicalSolver):
         ## Obtain scipy matrices
         M = self._MatrixComputation("mass")
         K = self._MatrixComputation("stiff")
-        self.GetComputingModelPart().ProcessInfo.Set(StructuralMechanicsApplication.MODAL_MASS_MATRIX, M)     
+        #self.GetComputingModelPart().ProcessInfo.Set(StructuralMechanicsApplication.MODAL_MASS_MATRIX, M)     
         
         return True
