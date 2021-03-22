@@ -33,6 +33,7 @@
 #include "custom_strategies/schemes/explicit_ocd_scheme.hpp"
 #include "custom_strategies/schemes/explicit_vv_scheme.hpp"
 #include "custom_strategies/schemes/explicit_ovv_scheme.hpp"
+#include "custom_strategies/schemes/explicit_cd_fic_scheme.hpp"
 
 //linear solvers
 #include "linear_solvers/linear_solver.h"
@@ -64,6 +65,7 @@ void  AddCustomStrategiesToPython(pybind11::module& m)
     typedef ExplicitOCDScheme< SparseSpaceType, LocalSpaceType >  ExplicitOCDSchemeType;
     typedef ExplicitVVScheme< SparseSpaceType, LocalSpaceType >  ExplicitVVSchemeType;
     typedef ExplicitOVVScheme< SparseSpaceType, LocalSpaceType >  ExplicitOVVSchemeType;
+    typedef ExplicitCDFICScheme< SparseSpaceType, LocalSpaceType >  ExplicitCDFICSchemeType;
 
     typedef PoromechanicsNewtonRaphsonStrategy< SparseSpaceType, LocalSpaceType, LinearSolverType > PoromechanicsNewtonRaphsonStrategyType;
     typedef PoromechanicsRammArcLengthStrategy< SparseSpaceType, LocalSpaceType, LinearSolverType > PoromechanicsRammArcLengthStrategyType;
@@ -96,6 +98,9 @@ void  AddCustomStrategiesToPython(pybind11::module& m)
     .def(py::init< >());
     py::class_< ExplicitOVVSchemeType,typename ExplicitOVVSchemeType::Pointer, BaseSchemeType >
     (m,"ExplicitOVVScheme")
+    .def(py::init< >());
+    py::class_< ExplicitCDFICSchemeType,typename ExplicitCDFICSchemeType::Pointer, BaseSchemeType >
+    (m,"ExplicitCDFICScheme")
     .def(py::init< >());
 
     py::class_< PoromechanicsNewtonRaphsonStrategyType, typename PoromechanicsNewtonRaphsonStrategyType::Pointer, BaseSolvingStrategyType >

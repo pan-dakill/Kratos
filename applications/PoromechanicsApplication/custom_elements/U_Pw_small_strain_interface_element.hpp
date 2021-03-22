@@ -225,6 +225,8 @@ protected:
     void CalculateExplicitContributions (VectorType& rFluxResidual, VectorType& rBodyForce, VectorType& rNegInternalForces, const ProcessInfo& rCurrentProcessInfo) override;
 
     void CalculateLumpedMassMatrix( MatrixType& rLeftHandSideMatrix, const ProcessInfo& rCurrentProcessInfo ) override;
+    
+    void CalculateLumpedMassMatrixInverse( MatrixType& rLeftHandSideMatrix, const ProcessInfo& rCurrentProcessInfo ) override;
 
 
     void InterpolateOutputDoubles( std::vector<double>& rOutput, const std::vector<double>& GPValues );

@@ -39,6 +39,7 @@ class ExplicitUPwSolver(UPwSolver):
             "rebuild_level"              : 0,
             "theta_1"                    : 0.5,
             "g_factor"                   : 1.0,
+            "delta"                      : 1.0,
             "initial_radius"             : 1.0e-12
         }""")
         this_defaults.AddMissingParameters(super().GetDefaultParameters())
@@ -56,6 +57,11 @@ class ExplicitUPwSolver(UPwSolver):
         if(scheme_type == "vv" or scheme_type == "ovv"):
             self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.DAMPING_FORCE)
 
+        if(scheme_type == "cd_fic" or scheme_type == "ocd_fic"):
+            self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.DELTA_DAMPING_FORCE)
+            self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.DELTA_INTERNAL_FORCE)
+            self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.DELTA_EXTERNAL_FORCE)
+        
         strategy_type = self.settings["strategy_type"].GetString()
         if(strategy_type == "arc_length"):
             self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.DELTA_DISPLACEMENT_F)
@@ -137,6 +143,7 @@ class ExplicitUPwSolver(UPwSolver):
         process_info.SetValue(StructuralMechanicsApplication.RAYLEIGH_BETA, self.settings["rayleigh_beta"].GetDouble())
         process_info.SetValue(KratosPoro.THETA_1, self.settings["theta_1"].GetDouble())
         process_info.SetValue(KratosPoro.G_FACTOR, self.settings["g_factor"].GetDouble())
+        process_info.SetValue(KratosPoro.DELTA, self.settings["delta"].GetDouble())
 
         # Setting the time integration schemes
         if(scheme_type == "cd"):
@@ -147,9 +154,11 @@ class ExplicitUPwSolver(UPwSolver):
             scheme = KratosPoro.ExplicitVVScheme()
         elif(scheme_type == "ovv"):
             scheme = KratosPoro.ExplicitOVVScheme()
+        elif(scheme_type == "cd_fic"):
+            scheme = KratosPoro.ExplicitCDFICScheme()
         else:
             err_msg =  "The requested scheme type \"" + scheme_type + "\" is not available!\n"
-            err_msg += "Available options are: \"cd\", \"ocd\", \"vv\", \"ovv\""
+            err_msg += "Available options are: \"cd\", \"ocd\", \"vv\", \"ovv\", \"cd_fic\""
             raise Exception(err_msg)
         return scheme
 

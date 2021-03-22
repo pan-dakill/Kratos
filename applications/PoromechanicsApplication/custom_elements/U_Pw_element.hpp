@@ -157,11 +157,21 @@ protected:
 
     virtual void CalculateLumpedMassMatrix( MatrixType& rLeftHandSideMatrix, const ProcessInfo& rCurrentProcessInfo );
 
+    virtual void CalculateLumpedMassMatrixInverse( MatrixType& rLeftHandSideMatrix, const ProcessInfo& rCurrentProcessInfo );
+
     virtual void CalculateDampingMatrixWithLumpedMass( MatrixType& rLeftHandSideMatrix, const ProcessInfo& rCurrentProcessInfo );
 
     virtual void CalculateInertialForce (VectorType& rRightHandSideVector, const ProcessInfo& rCurrentProcessInfo);
 
     virtual void CalculateDampingForce (VectorType& rRightHandSideVector, const ProcessInfo& rCurrentProcessInfo);
+
+    virtual void CalculateDeltaDampingForce (VectorType& rRightHandSideVector, const ProcessInfo& rCurrentProcessInfo);
+
+    virtual void CalculateDeltaInternalForce (VectorType& rRightHandSideVector,  VectorType& rNegInternalForces, const ProcessInfo& rCurrentProcessInfo);
+
+    virtual void CalculateDeltaBodyForce (VectorType& rRightHandSideVector, VectorType& rBodyForce, const ProcessInfo& rCurrentProcessInfo);
+
+    virtual void CalculateDeltaForceResidualTerms (VectorType& rRightHandSideVector, const ProcessInfo& rCurrentProcessInfo);
 
 ///----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
