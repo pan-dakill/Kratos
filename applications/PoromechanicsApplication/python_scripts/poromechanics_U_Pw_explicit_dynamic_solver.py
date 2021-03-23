@@ -40,6 +40,11 @@ class ExplicitUPwSolver(UPwSolver):
             "theta_1"                    : 0.5,
             "g_factor"                   : 1.0,
             "delta"                      : 1.0,
+            "calculate_alpha_beta"       : false,
+            "xi_1"                       : 1.0,
+            "xi_n"                       : 1.0,
+            "omega_1"                    : 1.0,
+            "omega_n"                    : 1.0,
             "initial_radius"             : 1.0e-12
         }""")
         this_defaults.AddMissingParameters(super().GetDefaultParameters())
@@ -139,8 +144,28 @@ class ExplicitUPwSolver(UPwSolver):
 
         # Setting the Rayleigh damping parameters
         process_info = self.main_model_part.ProcessInfo
-        process_info.SetValue(StructuralMechanicsApplication.RAYLEIGH_ALPHA, self.settings["rayleigh_alpha"].GetDouble())
-        process_info.SetValue(StructuralMechanicsApplication.RAYLEIGH_BETA, self.settings["rayleigh_beta"].GetDouble())
+
+        if self.settings["calculate_alpha_beta"].GetBool():
+            xi_1 = self.settings["xi_1"].GetDouble()
+            xi_n = self.settings["xi_n"].GetDouble()
+            omega_1 = self.settings["omega_1"].GetDouble()
+            omega_n = self.settings["omega_n"].GetDouble()
+            beta = 2.0*(xi_n*omega_n-xi_1*omega_1)/(omega_n*omega_n-omega_1*omega_1)
+            alpha = 2.0*xi_1*omega_1-beta*omega_1*omega_1
+            print('Alpha and Beta input:')
+            print('omega_1: ',omega_1)
+            print('omega_n: ',omega_n)
+            print('xi_1: ',xi_1)
+            print('xi_n: ',xi_n)
+            print('Alpha and Beta output:')
+            print('alpha: ',alpha)
+            print('beta: ',beta)
+        else:
+            alpha = self.settings["rayleigh_alpha"].GetDouble()
+            beta = self.settings["rayleigh_beta"].GetDouble()
+        
+        process_info.SetValue(StructuralMechanicsApplication.RAYLEIGH_ALPHA, alpha)
+        process_info.SetValue(StructuralMechanicsApplication.RAYLEIGH_BETA, beta)
         process_info.SetValue(KratosPoro.THETA_1, self.settings["theta_1"].GetDouble())
         process_info.SetValue(KratosPoro.G_FACTOR, self.settings["g_factor"].GetDouble())
         process_info.SetValue(KratosPoro.DELTA, self.settings["delta"].GetDouble())
