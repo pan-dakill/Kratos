@@ -27,7 +27,6 @@ class EigenSolver(MechanicalSolver):
 
         # Construct the base solver.
         super().__init__(main_model_part, custom_settings)
-
         KratosMultiphysics.Logger.PrintInfo("::[EigenSolver]:: ", "Construction finished")
 
     @classmethod
