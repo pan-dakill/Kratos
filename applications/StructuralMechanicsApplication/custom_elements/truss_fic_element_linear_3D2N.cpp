@@ -107,54 +107,59 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
 
     if (rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == FORCE_RESIDUAL) {
 
+        // Vector current_nodal_velocities = ZeroVector(msLocalSize);
+        // GetFirstDerivativesVector(current_nodal_velocities);
+
+        Vector current_disp = ZeroVector(msLocalSize);
+        GetValuesVector(current_disp);
+
         // internal_forces = Ka
         BoundedVector<double, msLocalSize> internal_forces = ZeroVector(msLocalSize);
         UpdateInternalForces(internal_forces);
 
-        // Vector current_disp = ZeroVector(msLocalSize);
-        // GetValuesVector(current_disp);
-        // Vector k_a(msLocalSize);
-        // Matrix stiffness_matrix( msLocalSize, msLocalSize );
-        // noalias(stiffness_matrix) = CreateElementStiffnessMatrix(rCurrentProcessInfo);
-        // KRATOS_WATCH(this->Id())
-        // KRATOS_WATCH(stiffness_matrix)
-        // noalias(k_a) = prod(stiffness_matrix,current_disp);
-
-        // Vector k_hat_a(msLocalSize);
-        // Matrix non_diagonal_stiffness_matrix( msLocalSize, msLocalSize );
-        // noalias(non_diagonal_stiffness_matrix) = CreateElementStiffnessMatrix(rCurrentProcessInfo);;
-        // for (size_t i = 0; i < msLocalSize; ++i)
-        //     non_diagonal_stiffness_matrix(i,i) = 0.0;
-        // noalias(k_hat_a) = prod(non_diagonal_stiffness_matrix,current_disp);
-
-        BoundedVector<double, msLocalSize> damping_residual_contribution = ZeroVector(msLocalSize);
-        Vector current_nodal_velocities = ZeroVector(msLocalSize);
-        GetFirstDerivativesVector(current_nodal_velocities);
-        Matrix damping_matrix;
+        Matrix damping_matrix(msLocalSize,msLocalSize);
         CalculateDampingMatrix(damping_matrix, rCurrentProcessInfo);
-        // current residual contribution due to damping
-        noalias(damping_residual_contribution) = prod(damping_matrix, current_nodal_velocities);
+
+        MatrixType H1( msLocalSize, msLocalSize );
+        this->CalculateFrequencyMatrix(H1, rCurrentProcessInfo);
+
+        Vector delta_internal_force = ZeroVector(msLocalSize);
+        noalias(delta_internal_force) = prod(H1,internal_forces);
+
+        MatrixType aux_matrix(msLocalSize,msLocalSize);
+        noalias(aux_matrix) = prod(H1,damping_matrix);
+        Vector delta_damping_force = ZeroVector(msLocalSize);
+        noalias(delta_damping_force) = prod(aux_matrix,current_disp);
+
+        Vector external_forces(msLocalSize);
+        noalias(external_forces) = rRHSVector + internal_forces
+        Vector delta_external_force = ZeroVector(msLocalSize);
+        noalias(delta_external_force) = prod(H1,external_forces);
 
         for (size_t i = 0; i < msNumberOfNodes; ++i) {
             size_t index = msDimension * i;
             array_1d<double, 3>& r_external_forces = GetGeometry()[i].FastGetSolutionStepValue(FORCE_RESIDUAL);
             array_1d<double, 3>& r_internal_forces = GetGeometry()[i].FastGetSolutionStepValue(NODAL_INERTIA);
-            array_1d<double, 3>& r_c_v = GetGeometry()[i].FastGetSolutionStepValue(MIDDLE_VELOCITY);
-            // array_1d<double, 3>& r_k_a = GetGeometry()[i].FastGetSolutionStepValue(FRACTIONAL_ANGULAR_ACCELERATION);
+            array_1d<double, 3>& r_delta_external_force = GetGeometry()[i].FastGetSolutionStepValue(FRACTIONAL_ACCELERATION); // H1f
+            array_1d<double, 3>& r_delta_internal_force = GetGeometry()[i].FastGetSolutionStepValue(MIDDLE_VELOCITY); // H1Ka
+            array_1d<double, 3>& r_delta_damping_force = GetGeometry()[i].FastGetSolutionStepValue(MIDDLE_ANGULAR_VELOCITY); // H1Ca
 
             for (size_t j = 0; j < msDimension; ++j) {
                 // rRHSVector = f-Ka
                 #pragma omp atomic
-                r_external_forces[j] += rRHSVector[index + j] + internal_forces[index + j];
+                r_external_forces[j] += external_forces[index + j];
 
                 #pragma omp atomic
                 r_internal_forces[j] += internal_forces[index + j];
 
-                // #pragma omp atomic
-                r_c_v[j] += damping_residual_contribution[index + j];
+                #pragma omp atomic
+                r_delta_external_force[j] += delta_external_force[index + j];
 
-                // #pragma omp atomic
-                // r_k_a[j] += k_a[index + j];
+                #pragma omp atomic
+                r_delta_internal_force[j] += delta_internal_force[index + j];
+
+                #pragma omp atomic
+                r_delta_damping_force[j] += delta_damping_force[index + j];
             }
         }
     }
@@ -282,35 +287,47 @@ void TrussFICElementLinear3D2N::CalculateLumpedDampingVector(
     KRATOS_CATCH( "" )
 }
 
-// void TrussFICElementLinear3D2N::CalculateNoDiagonalDampingMatrix(MatrixType& rDampingMatrix, const ProcessInfo& rCurrentProcessInfo)
-// {
-//     KRATOS_TRY
+void TrussFICElementLinear3D2N::CalculateFrequencyMatrix(MatrixType& rMatrix, const ProcessInfo& rCurrentProcessInfo)
+{
+    KRATOS_TRY
 
-//     // Clear matrix
-//     if (rDampingMatrix.size1() != msLocalSize || rDampingMatrix.size2() != msLocalSize) {
-//         rDampingMatrix.resize(msLocalSize, msLocalSize, false);
-//     }
-//     rDampingMatrix = ZeroMatrix(msLocalSize, msLocalSize);
+    // Clear matrix
+    if (rMatrix.size1() != msLocalSize || rMatrix.size2() != msLocalSize) {
+        rMatrix.resize(msLocalSize, msLocalSize, false);
+    }
+    rMatrix = ZeroMatrix(msLocalSize, msLocalSize);
 
-//     double beta  = 0.0;
-//     if( GetProperties().Has(RAYLEIGH_BETA) )
-//         beta = GetProperties()[RAYLEIGH_BETA];
-//     else if( rCurrentProcessInfo.Has(RAYLEIGH_BETA) )
-//         beta = rCurrentProcessInfo[RAYLEIGH_BETA];
+    // Damping matrix
+    Matrix damping_matrix;
+    CalculateDampingMatrix(damping_matrix, rCurrentProcessInfo);
 
-//     if (beta > std::numeric_limits<double>::epsilon()) {
-//         MatrixType non_diagonal_stiffness_matrix( msLocalSize, msLocalSize );
-//         noalias(non_diagonal_stiffness_matrix) = ZeroMatrix(msLocalSize,msLocalSize);
-//         ProcessInfo temp_process_information = rCurrentProcessInfo;
-//         noalias(non_diagonal_stiffness_matrix) = CreateElementStiffnessMatrix(temp_process_information);
-//         for (IndexType i = 0; i < msLocalSize; ++i) {
-//             non_diagonal_stiffness_matrix(i,i) = 0.0;
-//         }
-//         noalias(rDampingMatrix) = beta * non_diagonal_stiffness_matrix;
-//     }
+    // Inverse of lumped mass matrix
+    VectorType mass_vector(msLocalSize);
+    CalculateLumpedMassVector(mass_vector);
+    Matrix MassMatrixInverse(msLocalSize,msLocalSize);
+    noalias(MassMatrixInverse) = ZeroMatrix(msLocalSize,msLocalSize);
+    for (IndexType i = 0; i < msLocalSize; ++i)
+        MassMatrixInverse(i, i) = 1.0/mass_vector[i];
 
-//     KRATOS_CATCH("")
-// }
+    // Identity matrix
+    MatrixType IdentityMatrix(msLocalSize,msLocalSize);
+    noalias(IdentityMatrix) = ZeroMatrix(msLocalSize,msLocalSize);
+    for(unsigned int i = 0; i<msLocalSize; i++){
+        IdentityMatrix(i,i) = 1.0;
+    }
+
+    const double delta = rCurrentProcessInfo[LOAD_FACTOR];
+    const double delta_time = rCurrentProcessInfo[DELTA_TIME];
+
+    MatrixType aux_matrix(msLocalSize,msLocalSize);
+    noalias(aux_matrix) = prod(damping_matrix,MassMatrixInverse);
+    noalias(rMatrix) = (1.0+delta)*IdentityMatrix - delta*delta_time*aux_matrix;
+
+    KRATOS_CATCH("")
+}
+
+/***********************************************************************************/
+/***********************************************************************************/
 
 // void TrussFICElementLinear3D2N::GetAuxiliaryVelocityVector(Vector& rValues, int Step) const
 // {

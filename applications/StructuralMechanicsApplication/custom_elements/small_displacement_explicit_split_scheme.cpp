@@ -155,32 +155,33 @@ void SmallDisplacementExplicitSplitScheme::AddExplicitContribution(
     const SizeType number_of_nodes = r_geom.size();
     const SizeType element_size = dimension * number_of_nodes;
 
+    // Vector current_nodal_velocities = ZeroVector(element_size);
+    // this->GetFirstDerivativesVector(current_nodal_velocities);
+
     VectorType displacement_vector(element_size);
     GetValuesVector(displacement_vector);
-
-    VectorType aux_impulse_vector(element_size);
-    GetAuxValuesVector(aux_impulse_vector,0);
 
     Vector internal_forces = ZeroVector(element_size);
     this->CalculateInternalForces(internal_forces,rCurrentProcessInfo);
 
-    // Vector damping_residual_contribution = ZeroVector(element_size);
-    // Vector current_nodal_velocities = ZeroVector(element_size);
-    // this->GetFirstDerivativesVector(current_nodal_velocities);
-    Matrix damping_matrix(element_size, element_size);
-    this->CalculateDampingMatrixWithLumpedMass(damping_matrix, rCurrentProcessInfo);
-    // Current residual contribution due to damping
-    // noalias(damping_residual_contribution) = prod(damping_matrix, current_nodal_velocities);
-    Vector C_a = ZeroVector(element_size);
-    noalias(C_a) = prod(damping_matrix, displacement_vector);
+    Matrix DampingMatrix(element_size, element_size);
+    this->CalculateDampingMatrixWithLumpedMass(DampingMatrix, rCurrentProcessInfo);
 
-    VectorType D_b(element_size);
-    VectorType C_D_a(element_size);
-    MatrixType frequency_matrix( element_size, element_size );
-    this->CalculateFrequencyMatrix(frequency_matrix, rCurrentProcessInfo);
-    noalias(D_b) = prod(frequency_matrix,displacement_vector); // this is Da
-    noalias(C_D_a) = prod(damping_matrix,D_b);
-    noalias(D_b) = prod(frequency_matrix,aux_impulse_vector);
+    MatrixType H1( element_size, element_size );
+    this->CalculateFrequencyMatrix(H1, rCurrentProcessInfo);
+
+    Vector delta_internal_force = ZeroVector(element_size);
+    noalias(delta_internal_force) = prod(H1,internal_forces);
+
+    MatrixType aux_matrix(element_size,element_size);
+    noalias(aux_matrix) = prod(H1,DampingMatrix);
+    Vector delta_damping_force = ZeroVector(element_size);
+    noalias(delta_damping_force) = prod(aux_matrix,displacement_vector);
+
+    Vector external_forces(element_size);
+    noalias(external_forces) = rRHSVector + internal_forces
+    Vector delta_external_force = ZeroVector(element_size);
+    noalias(delta_external_force) = prod(H1,external_forces);
 
     // Computing the force residual
     if (rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == FORCE_RESIDUAL) {
@@ -188,25 +189,25 @@ void SmallDisplacementExplicitSplitScheme::AddExplicitContribution(
             const IndexType index = dimension * i;
             array_1d<double, 3>& r_external_forces = GetGeometry()[i].FastGetSolutionStepValue(FORCE_RESIDUAL);
             array_1d<double, 3>& r_internal_forces = GetGeometry()[i].FastGetSolutionStepValue(NODAL_INERTIA);
-            array_1d<double, 3>& r_C_a = GetGeometry()[i].FastGetSolutionStepValue(MIDDLE_VELOCITY);
-            array_1d<double, 3>& r_C_D_a = GetGeometry()[i].FastGetSolutionStepValue(MIDDLE_ANGULAR_VELOCITY);
-            array_1d<double, 3>& r_D_b = GetGeometry()[i].FastGetSolutionStepValue(FRACTIONAL_ACCELERATION);
+            array_1d<double, 3>& r_delta_external_force = GetGeometry()[i].FastGetSolutionStepValue(FRACTIONAL_ACCELERATION); // H1f
+            array_1d<double, 3>& r_delta_internal_force = GetGeometry()[i].FastGetSolutionStepValue(MIDDLE_VELOCITY); // H1Ka
+            array_1d<double, 3>& r_delta_damping_force = GetGeometry()[i].FastGetSolutionStepValue(MIDDLE_ANGULAR_VELOCITY); // H1Ca
 
             for (IndexType j = 0; j < dimension; ++j) {
                 #pragma omp atomic
-                r_external_forces[j] += rRHSVector[index + j] + internal_forces[index + j];
+                r_external_forces[j] += external_forces[index + j];
 
                 #pragma omp atomic
                 r_internal_forces[j] += internal_forces[index + j];
 
                 #pragma omp atomic
-                r_C_a[j] += C_a[index + j];
+                r_delta_external_force[j] += delta_external_force[index + j];
 
                 #pragma omp atomic
-                r_C_D_a[j] += C_D_a[index + j];
+                r_delta_internal_force[j] += delta_internal_force[index + j];
 
                 #pragma omp atomic
-                r_D_b[j] += D_b[index + j];
+                r_delta_damping_force[j] += delta_damping_force[index + j];
             }
         }
     }
@@ -507,29 +508,30 @@ void SmallDisplacementExplicitSplitScheme::CalculateFrequencyMatrix(
     noalias( rMatrix ) = ZeroMatrix( mat_size, mat_size );
 
     // Damping matrix
-    Matrix damping_matrix(mat_size, mat_size);
-    this->CalculateDampingMatrixWithLumpedMass(damping_matrix, rCurrentProcessInfo);
-
-    // Stiffness matrix
-    MatrixType stiffness_matrix( mat_size, mat_size );
-    VectorType residual_vector( mat_size );
-    this->CalculateAll(stiffness_matrix, residual_vector, rCurrentProcessInfo, true, false);
+    Matrix DampingMatrix(mat_size, mat_size);
+    this->CalculateDampingMatrixWithLumpedMass(DampingMatrix, rCurrentProcessInfo);
 
     // Inverse of lumped mass matrix
     VectorType temp_vector(mat_size);
     CalculateLumpedMassVector(temp_vector);
-    Matrix mass_inverse(mat_size,mat_size);
-    noalias(mass_inverse) = ZeroMatrix(mat_size,mat_size);
+    Matrix MassMatrixInverse(mat_size,mat_size);
+    noalias(MassMatrixInverse) = ZeroMatrix(mat_size,mat_size);
     for (IndexType i = 0; i < mat_size; ++i)
-        mass_inverse(i, i) = 1.0/temp_vector[i];
+        MassMatrixInverse(i, i) = 1.0/temp_vector[i];
 
-    const double dt = rCurrentProcessInfo[DELTA_TIME];
-    const double theta = rCurrentProcessInfo[THETA_1];
+    // Identity matrix
+    MatrixType IdentityMatrix(mat_size,mat_size);
+    noalias(IdentityMatrix) = ZeroMatrix(mat_size,mat_size);
+    for(unsigned int i = 0; i<mat_size; i++){
+        IdentityMatrix(i,i) = 1.0;
+    }
 
-    Matrix aux_matrix(mat_size,mat_size);
-    noalias(aux_matrix) = (1.0+theta)*damping_matrix - theta*dt*stiffness_matrix;
+    const double delta = rCurrentProcessInfo[LOAD_FACTOR];
+    const double delta_time = rCurrentProcessInfo[DELTA_TIME];
 
-    noalias( rMatrix ) = prod(mass_inverse,aux_matrix);
+    MatrixType aux_matrix(mat_size,mat_size);
+    noalias(aux_matrix) = prod(DampingMatrix,MassMatrixInverse);
+    noalias(rMatrix) = (1.0+delta)*IdentityMatrix - delta*delta_time*aux_matrix;
 
     KRATOS_CATCH( "" )
 }

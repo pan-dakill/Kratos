@@ -12,20 +12,18 @@
 //
 //
 
-// TODO: check this class. It has to be similar to ocd_scheme...
-// Then modify 1D and 2D/3D elements for this and run linear cases
-
 #if !defined(KRATOS_EXPLICIT_CD_FIC_SCHEME_HPP_INCLUDED)
 #define KRATOS_EXPLICIT_CD_FIC_SCHEME_HPP_INCLUDED
+
+/* System includes */
+#include <fstream>
 
 /* External includes */
 
 /* Project includes */
-#include "custom_strategies/schemes/explicit_cd_scheme.hpp"
+#include "custom_strategies/custom_schemes/explicit_cd_scheme.hpp"
 #include "utilities/variable_utils.h"
-
-// Application includes
-#include "poromechanics_application_variables.h"
+#include "custom_utilities/explicit_integration_utilities.h"
 
 namespace Kratos {
 
@@ -127,7 +125,7 @@ public:
 
         const ProcessInfo& r_current_process_info = rModelPart.GetProcessInfo();
 
-        mDelta = r_current_process_info[DELTA];
+        mDelta = r_current_process_info[LOAD_FACTOR];
 
         BaseType::Initialize(rModelPart);
 
@@ -157,18 +155,14 @@ public:
         for (int i = 0; i < static_cast<int>(r_nodes.size()); ++i) {
             auto it_node = (it_node_begin + i);
             it_node->SetValue(NODAL_MASS, 0.0);
-            // TODO: Set Nodal AntiCompressibility to zero for mass-balance equation (C=1/Q, with Q being the compressibility coeff.)
-            array_1d<double, 3>& r_force_residual = it_node->FastGetSolutionStepValue(FORCE_RESIDUAL);
-            double& r_flux_residual = it_node->FastGetSolutionStepValue(FLUX_RESIDUAL);
-            array_1d<double, 3>& r_external_force = it_node->FastGetSolutionStepValue(EXTERNAL_FORCE);
-            array_1d<double, 3>& r_internal_force = it_node->FastGetSolutionStepValue(INTERNAL_FORCE);
-            array_1d<double, 3>& r_delta_internal_force = it_node->FastGetSolutionStepValue(DELTA_INTERNAL_FORCE);
-            array_1d<double, 3>& r_delta_damping_force = it_node->FastGetSolutionStepValue(DELTA_DAMPING_FORCE);
-            array_1d<double, 3>& r_delta_external_force = it_node->FastGetSolutionStepValue(DELTA_EXTERNAL_FORCE);
-            noalias(r_force_residual) = ZeroVector(3);
-            r_flux_residual = 0.0;
-            noalias(r_external_force) = ZeroVector(3);
-            noalias(r_internal_force) = ZeroVector(3);
+            array_1d<double, 3>& r_external_forces = it_node->FastGetSolutionStepValue(FORCE_RESIDUAL);
+            array_1d<double, 3>& r_current_internal_force = it_node->FastGetSolutionStepValue(NODAL_INERTIA); // K*a (internal_forces)
+            noalias(r_external_forces) = ZeroVector(3);
+            noalias(r_current_internal_force) = ZeroVector(3);
+
+            array_1d<double, 3>& r_delta_internal_force = it_node->FastGetSolutionStepValue(MIDDLE_VELOCITY); // H1Ka
+            array_1d<double, 3>& r_delta_damping_force = it_node->FastGetSolutionStepValue(MIDDLE_ANGULAR_VELOCITY); // H1Ca
+            array_1d<double, 3>& r_delta_external_force = it_node->FastGetSolutionStepValue(FRACTIONAL_ACCELERATION); // H1f
             noalias(r_delta_internal_force) = ZeroVector(3);
             noalias(r_delta_damping_force) = ZeroVector(3);
             noalias(r_delta_external_force) = ZeroVector(3);
@@ -193,9 +187,9 @@ public:
         // Auxiliar values
         const array_1d<double, 3> zero_array = ZeroVector(3);
         // Initializing the variables
-        VariableUtils().SetVariable(DELTA_INTERNAL_FORCE, zero_array,r_nodes);
-        VariableUtils().SetVariable(DELTA_DAMPING_FORCE, zero_array,r_nodes);
-        VariableUtils().SetVariable(DELTA_EXTERNAL_FORCE, zero_array,r_nodes);
+        VariableUtils().SetVariable(MIDDLE_VELOCITY, zero_array,r_nodes);
+        VariableUtils().SetVariable(MIDDLE_ANGULAR_VELOCITY, zero_array,r_nodes);
+        VariableUtils().SetVariable(FRACTIONAL_ACCELERATION, zero_array,r_nodes);
 
         KRATOS_CATCH("")
     }
@@ -216,22 +210,19 @@ public:
         // const array_1d<double, 3>& r_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,1);
         const array_1d<double, 3>& r_actual_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,2);
 
-        double& r_current_water_pressure = itCurrentNode->FastGetSolutionStepValue(WATER_PRESSURE);
-        double& r_current_dt_water_pressure = itCurrentNode->FastGetSolutionStepValue(DT_WATER_PRESSURE);
-
         const double nodal_mass = itCurrentNode->GetValue(NODAL_MASS);
 
-        const array_1d<double, 3>& r_external_force = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE);
-        const array_1d<double, 3>& r_previous_external_force = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE,1);
-        // const array_1d<double, 3>& r_actual_previous_external_forces = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE,2);
-        const array_1d<double, 3>& r_current_internal_force = itCurrentNode->FastGetSolutionStepValue(INTERNAL_FORCE);
-        const array_1d<double, 3>& r_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(INTERNAL_FORCE,1);
-        // const array_1d<double, 3>& r_actual_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(INTERNAL_FORCE,2);
+        const array_1d<double, 3>& r_external_force = itCurrentNode->FastGetSolutionStepValue(FORCE_RESIDUAL);
+        const array_1d<double, 3>& r_previous_external_force = itCurrentNode->FastGetSolutionStepValue(FORCE_RESIDUAL,1);
+        // const array_1d<double, 3>& r_actual_previous_external_forces = itCurrentNode->FastGetSolutionStepValue(FORCE_RESIDUAL,2);
+        const array_1d<double, 3>& r_current_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA);
+        const array_1d<double, 3>& r_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA,1);
+        // const array_1d<double, 3>& r_actual_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA,2);
 
-        const array_1d<double, 3>& r_delta_external_force = itCurrentNode->FastGetSolutionStepValue(DELTA_EXTERNAL_FORCE);
-        const array_1d<double, 3>& r_delta_internal_force = itCurrentNode->FastGetSolutionStepValue(DELTA_INTERNAL_FORCE);
-        const array_1d<double, 3>& r_current_delta_damping_force = itCurrentNode->FastGetSolutionStepValue(DELTA_DAMPING_FORCE);
-        const array_1d<double, 3>& r_previous_delta_damping_force = itCurrentNode->FastGetSolutionStepValue(DELTA_DAMPING_FORCE,1);
+        const array_1d<double, 3>& r_delta_external_force = itCurrentNode->FastGetSolutionStepValue(FRACTIONAL_ACCELERATION);
+        const array_1d<double, 3>& r_delta_internal_force = itCurrentNode->FastGetSolutionStepValue(MIDDLE_VELOCITY);
+        const array_1d<double, 3>& r_current_delta_damping_force = itCurrentNode->FastGetSolutionStepValue(MIDDLE_ANGULAR_VELOCITY);
+        const array_1d<double, 3>& r_previous_delta_damping_force = itCurrentNode->FastGetSolutionStepValue(MIDDLE_ANGULAR_VELOCITY,1);
 
         std::array<bool, 3> fix_displacements = {false, false, false};
         fix_displacements[0] = (itCurrentNode->GetDof(DISPLACEMENT_X, DisplacementPosition).IsFixed());
@@ -254,13 +245,6 @@ public:
             }
         }
 
-        // Solution of the darcy_equation
-        if( itCurrentNode->IsFixed(WATER_PRESSURE) == false ) {
-            // TODO: this is on standby
-            r_current_water_pressure = 0.0;
-            r_current_dt_water_pressure = 0.0;
-        }
-
         const array_1d<double, 3>& r_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,1);
         const array_1d<double, 3>& r_previous_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY,1);
         array_1d<double, 3>& r_current_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY);
@@ -269,52 +253,6 @@ public:
         noalias(r_current_velocity) = (1.0/mDeltaTime) * (r_current_displacement - r_previous_displacement);
         noalias(r_current_acceleration) = (1.0/mDeltaTime) * (r_current_velocity - r_previous_velocity);
 
-    }
-
-    /**
-     * @brief This function is designed to calculate just the RHS contribution
-     * @param rCurrentElement The element to compute
-     * @param RHS_Contribution The RHS vector contribution
-     * @param EquationId The ID's of the element degrees of freedom
-     * @param rCurrentProcessInfo The current process info instance
-     */
-    void CalculateRHSContribution(
-        Element& rCurrentElement,
-        LocalSystemVectorType& RHS_Contribution,
-        Element::EquationIdVectorType& EquationId,
-        const ProcessInfo& rCurrentProcessInfo
-        ) override
-    {
-        KRATOS_TRY
-
-        // this->TCalculateRHSContribution(rCurrentElement, RHS_Contribution, rCurrentProcessInfo);
-        // rCurrentElement.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
-        rCurrentElement.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, DELTA_DAMPING_FORCE, rCurrentProcessInfo);
-
-        KRATOS_CATCH("")
-    }
-
-    /**
-     * @brief Functions that calculates the RHS of a "condition" object
-     * @param rCurrentCondition The condition to compute
-     * @param RHS_Contribution The RHS vector contribution
-     * @param EquationId The ID's of the condition degrees of freedom
-     * @param rCurrentProcessInfo The current process info instance
-     */
-    void CalculateRHSContribution(
-        Condition& rCurrentCondition,
-        LocalSystemVectorType& RHS_Contribution,
-        Element::EquationIdVectorType& EquationId,
-        const ProcessInfo& rCurrentProcessInfo
-        ) override
-    {
-        KRATOS_TRY
-
-        // this->TCalculateRHSContribution(rCurrentCondition, RHS_Contribution, rCurrentProcessInfo);
-        rCurrentCondition.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
-        rCurrentCondition.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, DELTA_DAMPING_FORCE, rCurrentProcessInfo);
-
-        KRATOS_CATCH("")
     }
 
     ///@}

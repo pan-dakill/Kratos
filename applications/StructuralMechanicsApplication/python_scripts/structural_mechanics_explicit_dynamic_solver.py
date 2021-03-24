@@ -41,7 +41,12 @@ class ExplicitMechanicalSolver(MechanicalSolver):
             "theta_1"                    : 1.0,
             "theta_2"                    : 0.0,
             "theta_3"                    : 0.0,
-            "delta"                      : 1.0
+            "delta"                      : 1.0,
+            "calculate_alpha_beta"       : false,
+            "xi_1"                       : 1.0,
+            "xi_n"                       : 1.0,
+            "omega_1"                    : 1.0,
+            "omega_n"                    : 1.0
         }""")
         this_defaults.AddMissingParameters(super().GetDefaultParameters())
         return this_defaults
@@ -59,12 +64,13 @@ class ExplicitMechanicalSolver(MechanicalSolver):
             self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.FRACTIONAL_ACCELERATION)
             if (self.settings["rotation_dofs"].GetBool()):
                 self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.FRACTIONAL_ANGULAR_ACCELERATION)
-        if(scheme_type == "cd" or scheme_type == "ocd" or scheme_type == "vv" or scheme_type == "ovv" or scheme_type == "omdp"):
+        if(scheme_type == "cd" or scheme_type == "ocd" or scheme_type == "vv" or scheme_type == "ovv" or scheme_type == "omdp" or scheme_type == "cd_fic"):
             self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.NODAL_INERTIA) # K*a: internal forces
-            self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.MIDDLE_VELOCITY) # C*a
+            self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.MIDDLE_VELOCITY) # H1Ka
+            self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.MIDDLE_ANGULAR_VELOCITY) # H1Ca
+            self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.FRACTIONAL_ACCELERATION) # H1f
             self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.NODAL_DISPLACEMENT_STIFFNESS) # b: aux impulse
-            self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.MIDDLE_ANGULAR_VELOCITY) # C*D*a
-            self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.FRACTIONAL_ACCELERATION) # D*b
+
 
         self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.NODAL_MASS)
         self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.FORCE_RESIDUAL) # f: external forces
@@ -113,8 +119,27 @@ class ExplicitMechanicalSolver(MechanicalSolver):
         process_info = self.main_model_part.ProcessInfo
         # process_info[StructuralMechanicsApplication.RAYLEIGH_ALPHA] = self.settings["rayleigh_alpha"].GetDouble()
         # process_info[StructuralMechanicsApplication.RAYLEIGH_BETA] = self.settings["rayleigh_beta"].GetDouble()
-        process_info.SetValue(StructuralMechanicsApplication.RAYLEIGH_ALPHA, self.settings["rayleigh_alpha"].GetDouble())
-        process_info.SetValue(StructuralMechanicsApplication.RAYLEIGH_BETA, self.settings["rayleigh_beta"].GetDouble())
+        if self.settings["calculate_alpha_beta"].GetBool():
+            xi_1 = self.settings["xi_1"].GetDouble()
+            xi_n = self.settings["xi_n"].GetDouble()
+            omega_1 = self.settings["omega_1"].GetDouble()
+            omega_n = self.settings["omega_n"].GetDouble()
+            beta = 2.0*(xi_n*omega_n-xi_1*omega_1)/(omega_n*omega_n-omega_1*omega_1)
+            alpha = 2.0*xi_1*omega_1-beta*omega_1*omega_1
+            print('Alpha and Beta input:')
+            print('omega_1: ',omega_1)
+            print('omega_n: ',omega_n)
+            print('xi_1: ',xi_1)
+            print('xi_n: ',xi_n)
+            print('Alpha and Beta output:')
+            print('alpha: ',alpha)
+            print('beta: ',beta)
+        else:
+            alpha = self.settings["rayleigh_alpha"].GetDouble()
+            beta = self.settings["rayleigh_beta"].GetDouble()
+
+        process_info.SetValue(StructuralMechanicsApplication.RAYLEIGH_ALPHA, alpha)
+        process_info.SetValue(StructuralMechanicsApplication.RAYLEIGH_BETA, beta)
         process_info.SetValue(StructuralMechanicsApplication.THETA_1, self.settings["theta_1"].GetDouble())
         process_info.SetValue(StructuralMechanicsApplication.THETA_2, self.settings["theta_2"].GetDouble())
         process_info.SetValue(StructuralMechanicsApplication.THETA_3, self.settings["theta_3"].GetDouble())
@@ -136,6 +161,8 @@ class ExplicitMechanicalSolver(MechanicalSolver):
             mechanical_scheme = StructuralMechanicsApplication.ExplicitOCDScheme()
         elif(scheme_type == "omdp"):
             mechanical_scheme = StructuralMechanicsApplication.ExplicitOMDPScheme()
+        elif(scheme_type == "cd_fic"):
+            mechanical_scheme = StructuralMechanicsApplication.ExplicitCDFICScheme()
         elif(scheme_type == "vv"):
             mechanical_scheme = StructuralMechanicsApplication.ExplicitVVScheme()
         elif(scheme_type == "ovv"):
