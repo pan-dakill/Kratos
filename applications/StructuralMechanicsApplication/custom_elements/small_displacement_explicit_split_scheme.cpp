@@ -179,7 +179,7 @@ void SmallDisplacementExplicitSplitScheme::AddExplicitContribution(
     noalias(delta_damping_force) = prod(aux_matrix,displacement_vector);
 
     Vector external_forces(element_size);
-    noalias(external_forces) = rRHSVector + internal_forces
+    noalias(external_forces) = rRHSVector + internal_forces;
     Vector delta_external_force = ZeroVector(element_size);
     noalias(delta_external_force) = prod(H1,external_forces);
 

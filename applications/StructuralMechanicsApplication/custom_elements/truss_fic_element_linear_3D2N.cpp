@@ -132,7 +132,7 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
         noalias(delta_damping_force) = prod(aux_matrix,current_disp);
 
         Vector external_forces(msLocalSize);
-        noalias(external_forces) = rRHSVector + internal_forces
+        noalias(external_forces) = rRHSVector + internal_forces;
         Vector delta_external_force = ZeroVector(msLocalSize);
         noalias(delta_external_force) = prod(H1,external_forces);
 
