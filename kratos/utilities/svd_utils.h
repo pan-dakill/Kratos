@@ -230,8 +230,6 @@ public:
                 }
 
                 for (IndexType j = n; j < m; j++) {
-                    MatrixType j1(m, m);
-
                     Jacobi(j1, rSMatrix, m, i, j);
 
                     noalias(auxiliar_matrix_mn) = prod(j1, rSMatrix);
@@ -270,7 +268,7 @@ public:
         const TDataType t = (rInputMatrix(0, 1) - rInputMatrix(1, 0))/(rInputMatrix(0, 0) + rInputMatrix(1, 1));
         const TDataType c = 1.0/std::sqrt(1.0 + t*t);
         const TDataType s = t*c;
-        MatrixType r_matrix(2, 2);
+        BoundedMatrix<double, 2, 2> r_matrix;
         r_matrix(0, 0) =  c;
         r_matrix(0, 1) = -s;
         r_matrix(1, 0) =  s;
@@ -333,21 +331,21 @@ public:
             noalias(rSMatrix) = prod(trans(rUMatrix), MatrixType(prod(rInputMatrix, trans(rVMatrix))));
         }
 
-        MatrixType z_matrix(2, 2);
+        BoundedMatrix<double, 2, 2> z_matrix;
         z_matrix(0, 0) = MathUtils<TDataType>::Sign(rSMatrix(0, 0));
         z_matrix(0, 1) = 0.0;
         z_matrix(1, 0) = 0.0;
         z_matrix(1, 1) = MathUtils<TDataType>::Sign(rSMatrix(1, 1));
 
         // Auxiliar matrix for alias operations
-        MatrixType aux_2_2_matrix(2, 2);
+        BoundedMatrix<double, 2, 2> aux_2_2_matrix;
         noalias(aux_2_2_matrix) = prod(rUMatrix, z_matrix);
         noalias(rUMatrix) = aux_2_2_matrix;
         noalias(aux_2_2_matrix) = prod(z_matrix, rSMatrix);
         noalias(rSMatrix) = aux_2_2_matrix;
 
         if (rSMatrix(0, 0) < rSMatrix(1, 1)) {
-            MatrixType p_matrix(2, 2);
+            BoundedMatrix<double, 2, 2> p_matrix;
             p_matrix(0, 0) = 0.0;
             p_matrix(0, 1) = 1.0;
             p_matrix(1, 0) = 1.0;
@@ -382,7 +380,7 @@ public:
         const SizeType Index2
         )
     {
-        MatrixType b_matrix(2,2);
+        BoundedMatrix<double, 2, 2> b_matrix;
         b_matrix(0, 0) = rInputMatrix(Index1, Index1);
         b_matrix(0, 1) = rInputMatrix(Index1, Index2);
         b_matrix(1, 0) = rInputMatrix(Index2, Index1);
@@ -392,13 +390,13 @@ public:
 
         SingularValueDecomposition2x2(b_matrix, u_matrix, s_matrix, v_matrix);
 
-        rJ1 = IdentityMatrix(Size1);
+        noalias(rJ1) = IdentityMatrix(Size1);
         rJ1(Index1, Index1) = u_matrix(0, 0);
         rJ1(Index1, Index2) = u_matrix(1, 0);
         rJ1(Index2, Index1) = u_matrix(0, 1);
         rJ1(Index2, Index2) = u_matrix(1, 1);
 
-        rJ2 = IdentityMatrix(Size2);
+        noalias(rJ2) = IdentityMatrix(Size2);
         rJ2(Index1, Index1) = v_matrix(0, 0);
         rJ2(Index1, Index2) = v_matrix(1, 0);
         rJ2(Index2, Index1) = v_matrix(0, 1);
@@ -422,7 +420,7 @@ public:
         const SizeType Index2
         )
     {
-        MatrixType b_matrix(2,2);
+        BoundedMatrix<double, 2, 2> b_matrix;
         b_matrix(0, 0) = rInputMatrix(Index1, Index1);
         b_matrix(0, 1) = 0.0;
         b_matrix(1, 0) = rInputMatrix(Index2, Index1);
