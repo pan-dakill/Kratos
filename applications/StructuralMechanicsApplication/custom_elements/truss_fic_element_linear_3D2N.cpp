@@ -144,10 +144,6 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
             for (size_t j = 0; j < msDimension; ++j) {
 
                 external_forces[index+j] += r_reaction[j] + r_external_forces[j]; // External Forces coming from conditions
-
-                // We redefine them to avoid repetition of forces
-                #pragma omp atomic
-                r_external_forces[j] = external_forces[index + j];
             }
         }
 
@@ -182,6 +178,9 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
                 #pragma omp atomic
                 r_force_residual[j] += rRHSVector[index + j] - inertial_vector - damping_vector;
 
+                // We redefine them to avoid repetition of forces
+                #pragma omp atomic
+                r_external_forces[j] = external_forces[index + j];
                 // #pragma omp atomic
                 // r_external_forces[j] += external_forces[index + j];
 
