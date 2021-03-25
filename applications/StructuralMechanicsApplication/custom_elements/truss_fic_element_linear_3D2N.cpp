@@ -167,7 +167,7 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
         for (size_t i = 0; i < msNumberOfNodes; ++i) {
             size_t index = msDimension * i;
             array_1d<double, 3>& r_force_residual = GetGeometry()[i].FastGetSolutionStepValue(FORCE_RESIDUAL);
-            // array_1d<double, 3>& r_external_forces = GetGeometry()[i].FastGetSolutionStepValue(EXTERNAL_FORCE);
+            array_1d<double, 3>& r_external_forces = GetGeometry()[i].FastGetSolutionStepValue(EXTERNAL_FORCE);
             array_1d<double, 3>& r_internal_forces = GetGeometry()[i].FastGetSolutionStepValue(NODAL_INERTIA);
             array_1d<double, 3>& r_delta_external_force = GetGeometry()[i].FastGetSolutionStepValue(FRACTIONAL_ACCELERATION); // H1f
             array_1d<double, 3>& r_delta_internal_force = GetGeometry()[i].FastGetSolutionStepValue(MIDDLE_VELOCITY); // H1Ka
@@ -179,7 +179,7 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
                 r_force_residual[j] += rRHSVector[index + j] - inertial_vector[index + j] - damping_vector[index + j];
 
                 // We redefine them to avoid repetition of forces
-                #pragma omp atomic
+                #pragma omp critical
                 r_external_forces[j] = external_forces[index + j];
                 // #pragma omp atomic
                 // r_external_forces[j] += external_forces[index + j];

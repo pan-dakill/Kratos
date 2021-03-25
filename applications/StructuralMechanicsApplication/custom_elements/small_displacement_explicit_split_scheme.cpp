@@ -230,7 +230,7 @@ void SmallDisplacementExplicitSplitScheme::AddExplicitContribution(
                 r_force_residual[j] += rRHSVector[index + j] - inertial_vector[index + j] - damping_vector[index + j];
 
                 // We redefine them to avoid repetition of forces
-                #pragma omp atomic
+                #pragma omp critical
                 r_external_forces[j] = external_forces[index + j];
                 // #pragma omp atomic
                 // r_external_forces[j] += external_forces[index + j];
