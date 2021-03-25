@@ -216,7 +216,8 @@ public:
         MatrixType j2(n, n);
 
         // We compute Jacobi
-        while (LocalSpaceType::JacobiNorm(rSMatrix) > relative_tolerance) {
+        TDataType error = 1.0;
+        while (error > relative_tolerance) {
             for (IndexType i = 0; i < n; i++) {
                 for (IndexType j = i+1; j < n; j++) {
                     Jacobi(j1, j2, rSMatrix, m, n, i, j);
@@ -244,6 +245,9 @@ public:
                 KRATOS_WARNING("JacobiSingularValueDecomposition") << "Maximum number of iterations " << MaxIter << " reached." << std::endl;
                 break;
             }
+
+            // Compute error
+            error = LocalSpaceType::JacobiNorm(rSMatrix);
         }
 
         return iter;
