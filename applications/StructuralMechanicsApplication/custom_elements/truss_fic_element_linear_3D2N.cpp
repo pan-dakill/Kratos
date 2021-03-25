@@ -118,7 +118,7 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
         GetFirstDerivativesVector(current_nodal_velocities);
 
         Vector damping_vector = ZeroVector(msLocalSize);
-        noalias(damping_vector) = prod(damping_matrix,current_nodal_velocities)
+        noalias(damping_vector) = prod(damping_matrix,current_nodal_velocities);
 
         MatrixType H1( msLocalSize, msLocalSize );
         this->CalculateFrequencyMatrix(H1, rCurrentProcessInfo);
@@ -166,7 +166,7 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
         GetSecondDerivativesVector(current_nodal_accelerations);
 
         Vector inertial_vector = ZeroVector(msLocalSize);
-        noalias(inertial_vector) = prod(MassMatrix,current_nodal_accelerations)
+        noalias(inertial_vector) = prod(MassMatrix,current_nodal_accelerations);
 
         for (size_t i = 0; i < msNumberOfNodes; ++i) {
             size_t index = msDimension * i;

@@ -168,7 +168,7 @@ void SmallDisplacementExplicitSplitScheme::AddExplicitContribution(
         this->GetFirstDerivativesVector(current_nodal_velocities);
 
         Vector damping_vector = ZeroVector(element_size);
-        noalias(damping_vector) = prod(DampingMatrix,current_nodal_velocities)
+        noalias(damping_vector) = prod(DampingMatrix,current_nodal_velocities);
 
         MatrixType H1( element_size, element_size );
         this->CalculateFrequencyMatrix(H1, rCurrentProcessInfo);
@@ -216,7 +216,7 @@ void SmallDisplacementExplicitSplitScheme::AddExplicitContribution(
         GetSecondDerivativesVector(current_nodal_accelerations);
 
         Vector inertial_vector = ZeroVector(element_size);
-        noalias(inertial_vector) = prod(MassMatrix,current_nodal_accelerations)
+        noalias(inertial_vector) = prod(MassMatrix,current_nodal_accelerations);
 
         for (IndexType i = 0; i < number_of_nodes; ++i) {
             const IndexType index = dimension * i;
