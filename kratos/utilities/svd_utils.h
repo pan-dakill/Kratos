@@ -102,18 +102,18 @@ public:
      * @details U and V are unitary, and S is a diagonal matrix.
      * Where s_i >= 0, and s_i >= s_i+1 (which means that the biggest number is the first one and the smallest the last one)
      * @todo This version is quite innefficient, look for a real and mathematical implementation (not the algorithm found in Wikipedia!!)
-     * @param InputMatrix The matrix where perform the SVD
-     * @param UMatrix The unitary U matrix
-     * @param SMatrix The diagonal S matrix
-     * @param VMatrix The unitary V matrix
+     * @param rInputMatrix The matrix where perform the SVD
+     * @param rUMatrix The unitary U matrix
+     * @param rSMatrix The diagonal S matrix
+     * @param rVMatrix The unitary V matrix
      * @param ThisParameters The configuration parameters
      * @return iter: The number of iterations
      */
     static inline std::size_t SingularValueDecomposition(
-        const MatrixType& InputMatrix,
-        MatrixType& UMatrix,
-        MatrixType& SMatrix,
-        MatrixType& VMatrix,
+        const MatrixType& rInputMatrix,
+        MatrixType& rUMatrix,
+        MatrixType& rSMatrix,
+        MatrixType& rVMatrix,
         Parameters ThisParameters)
     {
         // Validating defaults
@@ -129,7 +129,7 @@ public:
         const std::string& r_type_svd = ThisParameters["type_svd"].GetString();
         const double tolerance = ThisParameters["tolerance"].GetDouble();
         const double max_iter = ThisParameters["max_iter"].GetInt();
-        return SingularValueDecomposition(InputMatrix, UMatrix, SMatrix, VMatrix, r_type_svd, tolerance, max_iter);
+        return SingularValueDecomposition(rInputMatrix, rUMatrix, rSMatrix, rVMatrix, r_type_svd, tolerance, max_iter);
     }
 
     /**
@@ -137,26 +137,26 @@ public:
      * @details U and V are unitary, and S is a diagonal matrix.
      * Where s_i >= 0, and s_i >= s_i+1 (which means that the biggest number is the first one and the smallest the last one)
      * @todo This version is quite innefficient, look for a real and mathematical implementation (not the algorithm found in Wikipedia!!)
-     * @param InputMatrix The matrix where perform the SVD
-     * @param UMatrix The unitary U matrix
-     * @param SMatrix The diagonal S matrix
-     * @param VMatrix The unitary V matrix
+     * @param rInputMatrix The matrix where perform the SVD
+     * @param rUMatrix The unitary U matrix
+     * @param rSMatrix The diagonal S matrix
+     * @param rVMatrix The unitary V matrix
      * @param TypeSVD The type of SVD algorithm (Jacobi by default)
      * @param Tolerance The tolerance considered
      * @param MaxIter Maximum number of iterations
      * @return iter: The number of iterations
      */
     static inline std::size_t SingularValueDecomposition(
-        const MatrixType& InputMatrix,
-        MatrixType& UMatrix,
-        MatrixType& SMatrix,
-        MatrixType& VMatrix,
+        const MatrixType& rInputMatrix,
+        MatrixType& rUMatrix,
+        MatrixType& rSMatrix,
+        MatrixType& rVMatrix,
         const std::string& TypeSVD = "Jacobi",
         const TDataType Tolerance = std::numeric_limits<double>::epsilon(),
         const IndexType MaxIter = 200)
     {
         if (TypeSVD == "Jacobi") {
-            return JacobiSingularValueDecomposition(InputMatrix, UMatrix, SMatrix, VMatrix, Tolerance, MaxIter);
+            return JacobiSingularValueDecomposition(rInputMatrix, rUMatrix, rSMatrix, rVMatrix, Tolerance, MaxIter);
         } else {
             KRATOS_ERROR << "SVD Type not implemented" << std::endl;
         }
@@ -167,76 +167,77 @@ public:
      * @details U and V are unitary, and S is a diagonal matrix.
      * Where s_i >= 0, and s_i >= s_i+1 (which means that the biggest number is the first one and the smallest the last one)
      * @todo This version is quite innefficient, look for a real and mathematical implementation (not the algorithm found in Wikipedia!!)
-     * @param InputMatrix The matrix where perform the SVD
-     * @param UMatrix The unitary U matrix
-     * @param SMatrix The diagonal S matrix
-     * @param VMatrix The unitary V matrix
+     * @param rInputMatrix The matrix where perform the SVD
+     * @param rUMatrix The unitary U matrix
+     * @param rSMatrix The diagonal S matrix
+     * @param rVMatrix The unitary V matrix
      * @param Tolerance The tolerance considered
      * @param MaxIter Maximum number of iterations
      * @return iter: The number of iterations
      */
 
     static inline std::size_t JacobiSingularValueDecomposition(
-        const MatrixType& InputMatrix,
-        MatrixType& UMatrix,
-        MatrixType& SMatrix,
-        MatrixType& VMatrix,
+        const MatrixType& rInputMatrix,
+        MatrixType& rUMatrix,
+        MatrixType& rSMatrix,
+        MatrixType& rVMatrix,
         const TDataType Tolerance = std::numeric_limits<double>::epsilon(),
         const IndexType MaxIter = 200)
     {
-        const SizeType m = InputMatrix.size1();
-        const SizeType n = InputMatrix.size2();
+        const SizeType m = rInputMatrix.size1();
+        const SizeType n = rInputMatrix.size2();
 
-        if(SMatrix.size1() != m || SMatrix.size2() != n) {
-            SMatrix.resize(m, n, false);
+        if(rSMatrix.size1() != m || rSMatrix.size2() != n) {
+            rSMatrix.resize(m, n, false);
         }
-        noalias(SMatrix) = InputMatrix;
+        noalias(rSMatrix) = rInputMatrix;
 
-        if(UMatrix.size1() != m || UMatrix.size2() != m) {
-            UMatrix.resize(m, m, false);
+        if(rUMatrix.size1() != m || rUMatrix.size2() != m) {
+            rUMatrix.resize(m, m, false);
         }
-        noalias(UMatrix) = IdentityMatrix(m);
+        noalias(rUMatrix) = IdentityMatrix(m);
 
-        if(VMatrix.size1() != n || VMatrix.size2() != n) {
-            VMatrix.resize(n, n, false);
+        if(rVMatrix.size1() != n || rVMatrix.size2() != n) {
+            rVMatrix.resize(n, n, false);
         }
-        noalias(VMatrix) = IdentityMatrix(n);
+        noalias(rVMatrix) = IdentityMatrix(n);
 
-        const TDataType relative_tolerance = Tolerance * LocalSpaceType::TwoNorm(InputMatrix);
+        const TDataType relative_tolerance = Tolerance * LocalSpaceType::TwoNorm(rInputMatrix);
 
         IndexType iter = 0;
 
-        // We create the auxuliar matrices (for aliased operations)
+        // We create the auxiliar matrices (for aliased operations)
         MatrixType auxiliar_matrix_mn(m, n);
         MatrixType auxiliar_matrix_m(m, m);
         MatrixType auxiliar_matrix_n(n, n);
 
+        // More auxiliar operators
+        MatrixType j1(m, m);
+        MatrixType j2(n, n);
+
         // We compute Jacobi
-        while (LocalSpaceType::JacobiNorm(SMatrix) > relative_tolerance) {
+        while (LocalSpaceType::JacobiNorm(rSMatrix) > relative_tolerance) {
             for (IndexType i = 0; i < n; i++) {
                 for (IndexType j = i+1; j < n; j++) {
-                    MatrixType j1(m, m);
-                    MatrixType j2(n, n);
+                    Jacobi(j1, j2, rSMatrix, m, n, i, j);
 
-                    Jacobi(j1, j2, SMatrix, m, n, i, j);
-
-                    const MatrixType aux_matrix = prod(SMatrix, j2);
-                    noalias(SMatrix) = prod(j1, aux_matrix);
-                    noalias(auxiliar_matrix_m) = prod(UMatrix, trans(j1));
-                    noalias(UMatrix) = auxiliar_matrix_m;
-                    noalias(auxiliar_matrix_n) = prod(trans(j2), VMatrix);
-                    noalias(VMatrix) = auxiliar_matrix_n;
+                    const MatrixType aux_matrix = prod(rSMatrix, j2);
+                    noalias(rSMatrix) = prod(j1, aux_matrix);
+                    noalias(auxiliar_matrix_m) = prod(rUMatrix, trans(j1));
+                    noalias(rUMatrix) = auxiliar_matrix_m;
+                    noalias(auxiliar_matrix_n) = prod(trans(j2), rVMatrix);
+                    noalias(rVMatrix) = auxiliar_matrix_n;
                 }
 
                 for (IndexType j = n; j < m; j++) {
                     MatrixType j1(m, m);
 
-                    Jacobi(j1, SMatrix, m, i, j);
+                    Jacobi(j1, rSMatrix, m, i, j);
 
-                    noalias(auxiliar_matrix_mn) = prod(j1, SMatrix);
-                    noalias(SMatrix) = auxiliar_matrix_mn;
-                    noalias(auxiliar_matrix_m) = prod(UMatrix, trans(j1));
-                    noalias(UMatrix) = auxiliar_matrix_m;
+                    noalias(auxiliar_matrix_mn) = prod(j1, rSMatrix);
+                    noalias(rSMatrix) = auxiliar_matrix_mn;
+                    noalias(auxiliar_matrix_m) = prod(rUMatrix, trans(j1));
+                    noalias(rUMatrix) = auxiliar_matrix_m;
                 }
             }
 
@@ -254,19 +255,19 @@ public:
      * @brief This function gives the Jacobi SVD of a given 2x2 matrix, returns U,S; where A=U*S*V
      * @details U and V are unitary, and S is a diagonal matrix.
      * Where s_i >= 0, and s_i >= s_i+1
-     * @param InputMatrix The matrix where perform the SVD
-     * @param UMatrix The unitary U matrix
-     * @param SMatrix The diagonal S matrix
-     * @param VMatrix The unitary V matrix
+     * @param rInputMatrix The matrix where perform the SVD
+     * @param rUMatrix The unitary U matrix
+     * @param rSMatrix The diagonal S matrix
+     * @param rVMatrix The unitary V matrix
      */
     static inline void SingularValueDecomposition2x2(
-        const MatrixType& InputMatrix,
-        MatrixType& UMatrix,
-        MatrixType& SMatrix,
-        MatrixType& VMatrix
+        const MatrixType& rInputMatrix,
+        MatrixType& rUMatrix,
+        MatrixType& rSMatrix,
+        MatrixType& rVMatrix
         )
     {
-        const TDataType t = (InputMatrix(0, 1) - InputMatrix(1, 0))/(InputMatrix(0, 0) + InputMatrix(1, 1));
+        const TDataType t = (rInputMatrix(0, 1) - rInputMatrix(1, 0))/(rInputMatrix(0, 0) + rInputMatrix(1, 1));
         const TDataType c = 1.0/std::sqrt(1.0 + t*t);
         const TDataType s = t*c;
         MatrixType r_matrix(2, 2);
@@ -275,184 +276,184 @@ public:
         r_matrix(1, 0) =  s;
         r_matrix(1, 1) =  c;
 
-        MatrixType m_matrix = prod(r_matrix, InputMatrix);
+        MatrixType m_matrix = prod(r_matrix, rInputMatrix);
 
-        SingularValueDecomposition2x2Symmetric(m_matrix, UMatrix, SMatrix, VMatrix);
+        SingularValueDecomposition2x2Symmetric(m_matrix, rUMatrix, rSMatrix, rVMatrix);
 
-        MatrixType auxiliar_matrix_m(UMatrix.size1(), UMatrix.size2());
-        noalias(auxiliar_matrix_m) = prod(trans(r_matrix), UMatrix);
-        noalias(UMatrix) = auxiliar_matrix_m;
+        MatrixType auxiliar_matrix_m(rUMatrix.size1(), rUMatrix.size2());
+        noalias(auxiliar_matrix_m) = prod(trans(r_matrix), rUMatrix);
+        noalias(rUMatrix) = auxiliar_matrix_m;
     }
 
 	/**
      * This function gives the Jacobi SVD of a given 2x2 matrix, returns U,S; where A=U*S*V
      * U and V are unitary, and S is a diagonal matrix.
      * Where s_i >= 0, and s_i >= s_i+1
-     * @param InputMatrix The matrix where perform the SVD
-     * @param UMatrix The unitary U matrix
-     * @param SMatrix The diagonal S matrix
-     * @param VMatrix The unitary V matrix
+     * @param rInputMatrix The matrix where perform the SVD
+     * @param rUMatrix The unitary U matrix
+     * @param rSMatrix The diagonal S matrix
+     * @param rVMatrix The unitary V matrix
      */
     static inline void SingularValueDecomposition2x2Symmetric(
-        const MatrixType& InputMatrix,
-        MatrixType& UMatrix,
-        MatrixType& SMatrix,
-        MatrixType& VMatrix
+        const MatrixType& rInputMatrix,
+        MatrixType& rUMatrix,
+        MatrixType& rSMatrix,
+        MatrixType& rVMatrix
         )
     {
-        if(SMatrix.size1() != 2 || SMatrix.size2() != 2) {
-            SMatrix.resize(2 ,2, false);
+        if(rSMatrix.size1() != 2 || rSMatrix.size2() != 2) {
+            rSMatrix.resize(2 ,2, false);
         }
-        if(UMatrix.size1() != 2 || UMatrix.size2() != 2) {
-            UMatrix.resize(2, 2, false);
+        if(rUMatrix.size1() != 2 || rUMatrix.size2() != 2) {
+            rUMatrix.resize(2, 2, false);
         }
-        if(VMatrix.size1() != 2 || VMatrix.size2() != 2) {
-            VMatrix.resize(2, 2, false);
+        if(rVMatrix.size1() != 2 || rVMatrix.size2() != 2) {
+            rVMatrix.resize(2, 2, false);
         }
 
-        if (std::abs(InputMatrix(1, 0)) < ZeroTolerance) { // Already symmetric
-            noalias(SMatrix) = InputMatrix;
-            noalias(UMatrix) = IdentityMatrix(2);
-            noalias(VMatrix) = UMatrix;
+        if (std::abs(rInputMatrix(1, 0)) < ZeroTolerance) { // Already symmetric
+            noalias(rSMatrix) = rInputMatrix;
+            noalias(rUMatrix) = IdentityMatrix(2);
+            noalias(rVMatrix) = rUMatrix;
         } else {
-            const TDataType w = InputMatrix(0, 0);
-            const TDataType y = InputMatrix(1, 0);
-            const TDataType z = InputMatrix(1, 1);
+            const TDataType w = rInputMatrix(0, 0);
+            const TDataType y = rInputMatrix(1, 0);
+            const TDataType z = rInputMatrix(1, 1);
             const TDataType ro = (z - w)/(2.0 * y);
             const TDataType t = MathUtils<TDataType>::Sign(ro)/(std::abs(ro) + std::sqrt(1 + ro * ro));
             const TDataType c = 1.0/(std::sqrt(1.0 + t*t));
             const TDataType s = t*c;
 
-            UMatrix(0, 0) =  c;
-            UMatrix(0, 1) =  s;
-            UMatrix(1, 0) = -s;
-            UMatrix(1, 1) =  c;
-            noalias(VMatrix) = trans(UMatrix);
+            rUMatrix(0, 0) =  c;
+            rUMatrix(0, 1) =  s;
+            rUMatrix(1, 0) = -s;
+            rUMatrix(1, 1) =  c;
+            noalias(rVMatrix) = trans(rUMatrix);
 
-            noalias(SMatrix) = prod(trans(UMatrix), MatrixType(prod(InputMatrix, trans(VMatrix))));
+            noalias(rSMatrix) = prod(trans(rUMatrix), MatrixType(prod(rInputMatrix, trans(rVMatrix))));
         }
 
         MatrixType z_matrix(2, 2);
-        z_matrix(0, 0) = MathUtils<TDataType>::Sign(SMatrix(0, 0));
+        z_matrix(0, 0) = MathUtils<TDataType>::Sign(rSMatrix(0, 0));
         z_matrix(0, 1) = 0.0;
         z_matrix(1, 0) = 0.0;
-        z_matrix(1, 1) = MathUtils<TDataType>::Sign(SMatrix(1, 1));
+        z_matrix(1, 1) = MathUtils<TDataType>::Sign(rSMatrix(1, 1));
 
         // Auxiliar matrix for alias operations
         MatrixType aux_2_2_matrix(2, 2);
-        noalias(aux_2_2_matrix) = prod(UMatrix, z_matrix);
-        noalias(UMatrix) = aux_2_2_matrix;
-        noalias(aux_2_2_matrix) = prod(z_matrix, SMatrix);
-        noalias(SMatrix) = aux_2_2_matrix;
+        noalias(aux_2_2_matrix) = prod(rUMatrix, z_matrix);
+        noalias(rUMatrix) = aux_2_2_matrix;
+        noalias(aux_2_2_matrix) = prod(z_matrix, rSMatrix);
+        noalias(rSMatrix) = aux_2_2_matrix;
 
-        if (SMatrix(0, 0) < SMatrix(1, 1)) {
+        if (rSMatrix(0, 0) < rSMatrix(1, 1)) {
             MatrixType p_matrix(2, 2);
             p_matrix(0, 0) = 0.0;
             p_matrix(0, 1) = 1.0;
             p_matrix(1, 0) = 1.0;
             p_matrix(1, 1) = 0.0;
 
-            noalias(aux_2_2_matrix) = prod(UMatrix, p_matrix);
-            noalias(UMatrix) = aux_2_2_matrix;
-            const MatrixType aux_matrix = prod(SMatrix, p_matrix);
-            noalias(SMatrix) = prod(p_matrix, aux_matrix);
-            noalias(aux_2_2_matrix) = prod(p_matrix, VMatrix);
-            noalias(VMatrix) = aux_2_2_matrix;
+            noalias(aux_2_2_matrix) = prod(rUMatrix, p_matrix);
+            noalias(rUMatrix) = aux_2_2_matrix;
+            const MatrixType aux_matrix = prod(rSMatrix, p_matrix);
+            noalias(rSMatrix) = prod(p_matrix, aux_matrix);
+            noalias(aux_2_2_matrix) = prod(p_matrix, rVMatrix);
+            noalias(rVMatrix) = aux_2_2_matrix;
         }
     }
 
     /**
      * @brief This method computes the Jacobi rotation operation
-     * @param J1 First Jacobi matrix
-     * @param J2 Second Jacobi matrix
-     * @param InputMatrix The matrix to compute the Jacobi tolerance
+     * @param rJ1 First Jacobi matrix
+     * @param rJ2 Second Jacobi matrix
+     * @param rInputMatrix The matrix to compute the Jacobi tolerance
      * @param Size1 The size of the matrix (number of rows)
      * @param Size2 The size of the matrix (number of columns)
      * @param Index1 The index to compute (row)
      * @param Index2 The index to compute (column)
      */
     static inline void Jacobi(
-        MatrixType& J1,
-        MatrixType& J2,
-        const MatrixType& InputMatrix,
-        const SizeType& Size1,
-        const SizeType& Size2,
-        const SizeType& Index1,
-        const SizeType& Index2
+        MatrixType& rJ1,
+        MatrixType& rJ2,
+        const MatrixType& rInputMatrix,
+        const SizeType Size1,
+        const SizeType Size2,
+        const SizeType Index1,
+        const SizeType Index2
         )
     {
         MatrixType b_matrix(2,2);
-        b_matrix(0, 0) = InputMatrix(Index1, Index1);
-        b_matrix(0, 1) = InputMatrix(Index1, Index2);
-        b_matrix(1, 0) = InputMatrix(Index2, Index1);
-        b_matrix(1, 1) = InputMatrix(Index2, Index2);
+        b_matrix(0, 0) = rInputMatrix(Index1, Index1);
+        b_matrix(0, 1) = rInputMatrix(Index1, Index2);
+        b_matrix(1, 0) = rInputMatrix(Index2, Index1);
+        b_matrix(1, 1) = rInputMatrix(Index2, Index2);
 
         MatrixType u_matrix, s_matrix, v_matrix;
 
         SingularValueDecomposition2x2(b_matrix, u_matrix, s_matrix, v_matrix);
 
-        J1 = IdentityMatrix(Size1);
-        J1(Index1, Index1) = u_matrix(0, 0);
-        J1(Index1, Index2) = u_matrix(1, 0);
-        J1(Index2, Index1) = u_matrix(0, 1);
-        J1(Index2, Index2) = u_matrix(1, 1);
+        rJ1 = IdentityMatrix(Size1);
+        rJ1(Index1, Index1) = u_matrix(0, 0);
+        rJ1(Index1, Index2) = u_matrix(1, 0);
+        rJ1(Index2, Index1) = u_matrix(0, 1);
+        rJ1(Index2, Index2) = u_matrix(1, 1);
 
-        J2 = IdentityMatrix(Size2);
-        J2(Index1, Index1) = v_matrix(0, 0);
-        J2(Index1, Index2) = v_matrix(1, 0);
-        J2(Index2, Index1) = v_matrix(0, 1);
-        J2(Index2, Index2) = v_matrix(1, 1);
+        rJ2 = IdentityMatrix(Size2);
+        rJ2(Index1, Index1) = v_matrix(0, 0);
+        rJ2(Index1, Index2) = v_matrix(1, 0);
+        rJ2(Index2, Index1) = v_matrix(0, 1);
+        rJ2(Index2, Index2) = v_matrix(1, 1);
     }
 
     /**
      * @brief This method computes the Jacobi rotation operation
-     * @param J1 First Jacobi matrix
-     * @param InputMatrix The matrix to compute the Jacobi tolerance
+     * @param rJ1 First Jacobi matrix
+     * @param rInputMatrix The matrix to compute the Jacobi tolerance
      * @param Size1 The size of the matrix (number of rows)
      * @param Size2 The size of the matrix (number of columns)
      * @param Index1 The index to compute (row)
      * @param Index2 The index to compute (column)
      */
     static inline void Jacobi(
-        MatrixType& J1,
-        const MatrixType& InputMatrix,
-        const SizeType& Size1,
-        const SizeType& Index1,
-        const SizeType& Index2
+        MatrixType& rJ1,
+        const MatrixType& rInputMatrix,
+        const SizeType Size1,
+        const SizeType Index1,
+        const SizeType Index2
         )
     {
         MatrixType b_matrix(2,2);
-        b_matrix(0, 0) = InputMatrix(Index1, Index1);
+        b_matrix(0, 0) = rInputMatrix(Index1, Index1);
         b_matrix(0, 1) = 0.0;
-        b_matrix(1, 0) = InputMatrix(Index2, Index1);
+        b_matrix(1, 0) = rInputMatrix(Index2, Index1);
         b_matrix(1, 1) = 0.0;
 
         MatrixType u_matrix, s_matrix, v_matrix;
 
         SingularValueDecomposition2x2(b_matrix, u_matrix, s_matrix, v_matrix);
 
-        noalias(J1) = IdentityMatrix(Size1);
-        J1(Index1, Index1) = u_matrix(0, 0);
-        J1(Index1, Index2) = u_matrix(1, 0);
-        J1(Index2, Index1) = u_matrix(0, 1);
-        J1(Index2, Index2) = u_matrix(1, 1);
+        noalias(rJ1) = IdentityMatrix(Size1);
+        rJ1(Index1, Index1) = u_matrix(0, 0);
+        rJ1(Index1, Index2) = u_matrix(1, 0);
+        rJ1(Index2, Index1) = u_matrix(0, 1);
+        rJ1(Index2, Index2) = u_matrix(1, 1);
     }
 
     /**
      * @brief This method computes the condition number using the SVD
      * @details The condition number can be estimated as the ratio between the largest singular value and the smallest singular value
-     * @param InputMatrix The matrix to be evaluated
+     * @param rInputMatrix The matrix to be evaluated
      * @param Tolerance The tolerance considered
      * @return condition_number: The ratio between the largest SV and the smallest SV
      */
     static inline TDataType SVDConditionNumber(
-        const MatrixType& InputMatrix,
+        const MatrixType& rInputMatrix,
         const std::string TypeSVD = "Jacobi",
         const TDataType Tolerance = std::numeric_limits<double>::epsilon(),
         const IndexType MaxIter = 200)
     {
         MatrixType u_matrix, s_matrix, v_matrix;
-        SingularValueDecomposition(InputMatrix, u_matrix, s_matrix, v_matrix, TypeSVD, Tolerance, MaxIter);
+        SingularValueDecomposition(rInputMatrix, u_matrix, s_matrix, v_matrix, TypeSVD, Tolerance, MaxIter);
 
         const SizeType size_s = s_matrix.size1();
         const TDataType condition_number = s_matrix(0, 0)/s_matrix(size_s - 1, size_s - 1);
