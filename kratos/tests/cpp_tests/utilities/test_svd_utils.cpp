@@ -81,7 +81,7 @@ namespace Kratos
             SVDUtils<double>::JacobiSingularValueDecomposition(a_matrix, u_matrix, s_matrix, v_matrix);
 
             // Check decomposition is correct
-            Matrix auxmat33 = prod(u_matrix, Matrix(prod(s_matrix,v_matrix)));
+            const Matrix auxmat33 = prod(u_matrix, Matrix(prod(s_matrix,v_matrix)));
 
             for (std::size_t i = 0; i < 3; ++i) {
                 for (std::size_t j = i; j < 3; ++j) {
@@ -93,6 +93,38 @@ namespace Kratos
             KRATOS_CHECK_NEAR(s_matrix(0,0), 1.554701, tolerance);
             KRATOS_CHECK_NEAR(s_matrix(1,1), 0.412674, tolerance);
             KRATOS_CHECK_NEAR(s_matrix(2,2), 0.059198, tolerance);
+        }
+
+        /** Checks if it calculates the SVD of a matrix 2x3
+         * Checks if it calculates the SVD of a matrix 2x3
+         */
+        KRATOS_TEST_CASE_IN_SUITE(SVDUtilsJacobiSVD2x3Test, KratosCoreFastSuite)
+        {
+            constexpr double tolerance = 1e-4;
+
+            Matrix a_matrix, u_matrix, s_matrix, v_matrix;
+
+            a_matrix.resize(2, 3, false);
+            a_matrix(0,0) = 1.0;
+            a_matrix(0,1) = 1.0;
+            a_matrix(0,2) = 2.0;
+            a_matrix(1,1) = 1.0;
+            a_matrix(1,2) = 3.0;
+
+            SVDUtils<double>::JacobiSingularValueDecomposition(a_matrix, u_matrix, s_matrix, v_matrix);
+
+            // Check decomposition is correct
+            const Matrix auxmat23 = prod(u_matrix, Matrix(prod(s_matrix,v_matrix)));
+
+            for (std::size_t i = 0; i < 2; ++i) {
+                for (std::size_t j = i; j < 3; ++j) {
+                    KRATOS_CHECK_NEAR(auxmat23(i,j), a_matrix(i,j), tolerance);
+                }
+            }
+
+            // Check SV are correct (value and order)
+            KRATOS_CHECK_NEAR(s_matrix(0,0), 3.90898, tolerance);
+            KRATOS_CHECK_NEAR(s_matrix(1,1), 0.84846, tolerance);
         }
 
         /** Checks if it calculates the condition number of a matrix
