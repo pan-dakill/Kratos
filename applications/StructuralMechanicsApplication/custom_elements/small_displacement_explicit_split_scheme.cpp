@@ -155,47 +155,86 @@ void SmallDisplacementExplicitSplitScheme::AddExplicitContribution(
     const SizeType number_of_nodes = r_geom.size();
     const SizeType element_size = dimension * number_of_nodes;
 
-    // Vector current_nodal_velocities = ZeroVector(element_size);
-    // this->GetFirstDerivativesVector(current_nodal_velocities);
-
-    VectorType displacement_vector(element_size);
-    GetValuesVector(displacement_vector);
-
-    Vector internal_forces = ZeroVector(element_size);
-    this->CalculateInternalForces(internal_forces,rCurrentProcessInfo);
-
-    Matrix DampingMatrix(element_size, element_size);
-    this->CalculateDampingMatrixWithLumpedMass(DampingMatrix, rCurrentProcessInfo);
-
-    MatrixType H1( element_size, element_size );
-    this->CalculateFrequencyMatrix(H1, rCurrentProcessInfo);
-
-    Vector delta_internal_force = ZeroVector(element_size);
-    noalias(delta_internal_force) = prod(H1,internal_forces);
-
-    MatrixType aux_matrix(element_size,element_size);
-    noalias(aux_matrix) = prod(H1,DampingMatrix);
-    Vector delta_damping_force = ZeroVector(element_size);
-    noalias(delta_damping_force) = prod(aux_matrix,displacement_vector);
-
-    Vector external_forces(element_size);
-    noalias(external_forces) = rRHSVector + internal_forces;
-    Vector delta_external_force = ZeroVector(element_size);
-    noalias(delta_external_force) = prod(H1,external_forces);
-
     // Computing the force residual
     if (rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == FORCE_RESIDUAL) {
+
+        Vector internal_forces = ZeroVector(element_size);
+        this->CalculateInternalForces(internal_forces,rCurrentProcessInfo);
+
+        Matrix DampingMatrix(element_size, element_size);
+        this->CalculateDampingMatrixWithLumpedMass(DampingMatrix, rCurrentProcessInfo);
+
+        Vector current_nodal_velocities = ZeroVector(element_size);
+        this->GetFirstDerivativesVector(current_nodal_velocities);
+
+        Vector damping_vector = ZeroVector(element_size);
+        noalias(damping_vector) = prod(DampingMatrix,current_nodal_velocities)
+
+        MatrixType H1( element_size, element_size );
+        this->CalculateFrequencyMatrix(H1, rCurrentProcessInfo);
+
+        Vector delta_internal_force = ZeroVector(element_size);
+        noalias(delta_internal_force) = prod(H1,internal_forces);
+
+        VectorType displacement_vector(element_size);
+        GetValuesVector(displacement_vector);
+
+        MatrixType aux_matrix(element_size,element_size);
+        noalias(aux_matrix) = prod(H1,DampingMatrix);
+        Vector delta_damping_force = ZeroVector(element_size);
+        noalias(delta_damping_force) = prod(aux_matrix,displacement_vector);
+
+        Vector external_forces(element_size);
+        noalias(external_forces) = rRHSVector + internal_forces;
+
         for (IndexType i = 0; i < number_of_nodes; ++i) {
             const IndexType index = dimension * i;
-            array_1d<double, 3>& r_external_forces = GetGeometry()[i].FastGetSolutionStepValue(FORCE_RESIDUAL);
+            array_1d<double, 3>& r_reaction = GetGeometry()[i].FastGetSolutionStepValue(REACTION);
+            array_1d<double, 3>& r_external_forces = GetGeometry()[i].FastGetSolutionStepValue(EXTERNAL_FORCE);
+            for (IndexType j = 0; j < dimension; ++j) {
+
+                external_forces[index+j] += r_reaction[j] + r_external_forces[j]; // External Forces coming from conditions
+
+                // We redefine them to avoid repetition of forces
+                #pragma omp atomic
+                r_external_forces[j] = external_forces[index + j];
+            }
+        }
+
+        Vector delta_external_force = ZeroVector(element_size);
+        noalias(delta_external_force) = prod(H1,external_forces);
+
+        // Lumped mass matrix
+        VectorType temp_vector(element_size);
+        CalculateLumpedMassVector(temp_vector);
+        Matrix MassMatrix(element_size,element_size);
+        noalias(MassMatrix) = ZeroMatrix(element_size,element_size);
+        for (IndexType i = 0; i < element_size; ++i)
+            MassMatrix(i, i) = temp_vector[i];
+
+        Vector current_nodal_accelerations = ZeroVector(element_size);
+        GetSecondDerivativesVector(current_nodal_accelerations);
+
+        Vector inertial_vector = ZeroVector(element_size);
+        noalias(inertial_vector) = prod(MassMatrix,current_nodal_accelerations)
+
+        for (IndexType i = 0; i < number_of_nodes; ++i) {
+            const IndexType index = dimension * i;
+            array_1d<double, 3>& r_force_residual = GetGeometry()[i].FastGetSolutionStepValue(FORCE_RESIDUAL);
+            // array_1d<double, 3>& r_external_forces = GetGeometry()[i].FastGetSolutionStepValue(EXTERNAL_FORCE);
             array_1d<double, 3>& r_internal_forces = GetGeometry()[i].FastGetSolutionStepValue(NODAL_INERTIA);
             array_1d<double, 3>& r_delta_external_force = GetGeometry()[i].FastGetSolutionStepValue(FRACTIONAL_ACCELERATION); // H1f
             array_1d<double, 3>& r_delta_internal_force = GetGeometry()[i].FastGetSolutionStepValue(MIDDLE_VELOCITY); // H1Ka
             array_1d<double, 3>& r_delta_damping_force = GetGeometry()[i].FastGetSolutionStepValue(MIDDLE_ANGULAR_VELOCITY); // H1Ca
 
             for (IndexType j = 0; j < dimension; ++j) {
+                // rRHSVector = f-Ka
+                // TODO: is this right for CD-FIC?
                 #pragma omp atomic
-                r_external_forces[j] += external_forces[index + j];
+                r_force_residual[j] += rRHSVector[index + j] - inertial_vector - damping_vector;
+
+                // #pragma omp atomic
+                // r_external_forces[j] += external_forces[index + j];
 
                 #pragma omp atomic
                 r_internal_forces[j] += internal_forces[index + j];

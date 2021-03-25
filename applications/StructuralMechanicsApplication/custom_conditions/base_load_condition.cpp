@@ -353,9 +353,13 @@ void BaseLoadCondition::AddExplicitContribution(
             SizeType index = dimension * i;
 
             array_1d<double, 3 >& r_force_residual = GetGeometry()[i].FastGetSolutionStepValue(FORCE_RESIDUAL);
+            array_1d<double, 3 >& r_external_force = GetGeometry()[i].FastGetSolutionStepValue(EXTERNAL_FORCE);
             for(SizeType j=0; j<dimension; ++j) {
                 #pragma omp atomic
                 r_force_residual[j] += rRHS[index + j];
+
+                #pragma omp atomic
+                r_external_force[j] += rRHS[index + j];
             }
         }
     }

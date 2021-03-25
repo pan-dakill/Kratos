@@ -107,12 +107,6 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
 
     if (rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == FORCE_RESIDUAL) {
 
-        // Vector current_nodal_velocities = ZeroVector(msLocalSize);
-        // GetFirstDerivativesVector(current_nodal_velocities);
-
-        Vector current_disp = ZeroVector(msLocalSize);
-        GetValuesVector(current_disp);
-
         // internal_forces = Ka
         BoundedVector<double, msLocalSize> internal_forces = ZeroVector(msLocalSize);
         UpdateInternalForces(internal_forces);
@@ -120,11 +114,20 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
         Matrix damping_matrix(msLocalSize,msLocalSize);
         CalculateDampingMatrix(damping_matrix, rCurrentProcessInfo);
 
+        Vector current_nodal_velocities = ZeroVector(msLocalSize);
+        GetFirstDerivativesVector(current_nodal_velocities);
+
+        Vector damping_vector = ZeroVector(msLocalSize);
+        noalias(damping_vector) = prod(damping_matrix,current_nodal_velocities)
+
         MatrixType H1( msLocalSize, msLocalSize );
         this->CalculateFrequencyMatrix(H1, rCurrentProcessInfo);
 
         Vector delta_internal_force = ZeroVector(msLocalSize);
         noalias(delta_internal_force) = prod(H1,internal_forces);
+
+        Vector current_disp = ZeroVector(msLocalSize);
+        GetValuesVector(current_disp);
 
         MatrixType aux_matrix(msLocalSize,msLocalSize);
         noalias(aux_matrix) = prod(H1,damping_matrix);
@@ -133,12 +136,42 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
 
         Vector external_forces(msLocalSize);
         noalias(external_forces) = rRHSVector + internal_forces;
-        Vector delta_external_force = ZeroVector(msLocalSize);
-        noalias(delta_external_force) = prod(H1,external_forces);
 
         for (size_t i = 0; i < msNumberOfNodes; ++i) {
             size_t index = msDimension * i;
-            array_1d<double, 3>& r_external_forces = GetGeometry()[i].FastGetSolutionStepValue(FORCE_RESIDUAL);
+            array_1d<double, 3>& r_reaction = GetGeometry()[i].FastGetSolutionStepValue(REACTION);
+            array_1d<double, 3>& r_external_forces = GetGeometry()[i].FastGetSolutionStepValue(EXTERNAL_FORCE);
+            for (size_t j = 0; j < msDimension; ++j) {
+
+                external_forces[index+j] += r_reaction[j] + r_external_forces[j]; // External Forces coming from conditions
+
+                // We redefine them to avoid repetition of forces
+                #pragma omp atomic
+                r_external_forces[j] = external_forces[index + j];
+            }
+        }
+
+        Vector delta_external_force = ZeroVector(msLocalSize);
+        noalias(delta_external_force) = prod(H1,external_forces);
+
+        // Lumped mass matrix
+        VectorType mass_vector(msLocalSize);
+        CalculateLumpedMassVector(mass_vector);
+        Matrix MassMatrix(msLocalSize,msLocalSize);
+        noalias(MassMatrix) = ZeroMatrix(msLocalSize,msLocalSize);
+        for (IndexType i = 0; i < msLocalSize; ++i)
+            MassMatrix(i, i) = mass_vector[i];
+
+        Vector current_nodal_accelerations = ZeroVector(msLocalSize);
+        GetSecondDerivativesVector(current_nodal_accelerations);
+
+        Vector inertial_vector = ZeroVector(msLocalSize);
+        noalias(inertial_vector) = prod(MassMatrix,current_nodal_accelerations)
+
+        for (size_t i = 0; i < msNumberOfNodes; ++i) {
+            size_t index = msDimension * i;
+            array_1d<double, 3>& r_force_residual = GetGeometry()[i].FastGetSolutionStepValue(FORCE_RESIDUAL);
+            // array_1d<double, 3>& r_external_forces = GetGeometry()[i].FastGetSolutionStepValue(EXTERNAL_FORCE);
             array_1d<double, 3>& r_internal_forces = GetGeometry()[i].FastGetSolutionStepValue(NODAL_INERTIA);
             array_1d<double, 3>& r_delta_external_force = GetGeometry()[i].FastGetSolutionStepValue(FRACTIONAL_ACCELERATION); // H1f
             array_1d<double, 3>& r_delta_internal_force = GetGeometry()[i].FastGetSolutionStepValue(MIDDLE_VELOCITY); // H1Ka
@@ -147,7 +180,10 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
             for (size_t j = 0; j < msDimension; ++j) {
                 // rRHSVector = f-Ka
                 #pragma omp atomic
-                r_external_forces[j] += external_forces[index + j];
+                r_force_residual[j] += rRHSVector[index + j] - inertial_vector - damping_vector;
+
+                // #pragma omp atomic
+                // r_external_forces[j] += external_forces[index + j];
 
                 #pragma omp atomic
                 r_internal_forces[j] += internal_forces[index + j];
