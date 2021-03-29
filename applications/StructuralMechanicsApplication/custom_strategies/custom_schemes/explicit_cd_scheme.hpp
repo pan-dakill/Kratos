@@ -503,7 +503,7 @@ public:
     }
 
 
-    void CalculateAndAddRHS(ModelPart& rModelPart)
+    virtual void CalculateAndAddRHS(ModelPart& rModelPart)
     {
         KRATOS_TRY
 

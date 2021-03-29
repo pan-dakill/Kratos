@@ -165,9 +165,11 @@ public:
             array_1d<double, 3>& r_delta_internal_force = it_node->FastGetSolutionStepValue(MIDDLE_VELOCITY); // H1Ka
             array_1d<double, 3>& r_delta_damping_force = it_node->FastGetSolutionStepValue(MIDDLE_ANGULAR_VELOCITY); // H1Ca
             array_1d<double, 3>& r_delta_external_force = it_node->FastGetSolutionStepValue(FRACTIONAL_ACCELERATION); // H1f
+            array_1d<double, 3>& r_damping_force = it_node->FastGetSolutionStepValue(NODAL_DISPLACEMENT_STIFFNESS); // C*a
             noalias(r_delta_internal_force) = ZeroVector(3);
             noalias(r_delta_damping_force) = ZeroVector(3);
             noalias(r_delta_external_force) = ZeroVector(3);
+            noalias(r_damping_force) = ZeroVector(3);
         }
 
         KRATOS_CATCH("")
@@ -192,6 +194,7 @@ public:
         VariableUtils().SetVariable(MIDDLE_VELOCITY, zero_array,r_nodes);
         VariableUtils().SetVariable(MIDDLE_ANGULAR_VELOCITY, zero_array,r_nodes);
         VariableUtils().SetVariable(FRACTIONAL_ACCELERATION, zero_array,r_nodes);
+        VariableUtils().SetVariable(NODAL_DISPLACEMENT_STIFFNESS, zero_array,r_nodes);
 
         KRATOS_CATCH("")
     }
@@ -282,6 +285,105 @@ public:
         // KRATOS_WATCH(r_current_velocity)
         // KRATOS_WATCH(r_current_acceleration)
 
+    }
+
+    void CalculateAndAddRHS(ModelPart& rModelPart) override
+    {
+        KRATOS_TRY
+
+        const ProcessInfo& r_current_process_info = rModelPart.GetProcessInfo();
+        ConditionsArrayType& r_conditions = rModelPart.Conditions();
+        ElementsArrayType& r_elements = rModelPart.Elements();
+
+        LocalSystemVectorType RHS_Contribution = LocalSystemVectorType(0);
+        Element::EquationIdVectorType equation_id_vector_dummy; // Dummy
+
+        #pragma omp parallel for firstprivate(RHS_Contribution, equation_id_vector_dummy), schedule(guided,512)
+        for (int i = 0; i < static_cast<int>(r_conditions.size()); ++i) {
+            auto it_cond = r_conditions.begin() + i;
+            CalculateRHSContribution(*it_cond, RHS_Contribution, equation_id_vector_dummy, r_current_process_info);
+        }
+
+        #pragma omp parallel for firstprivate(RHS_Contribution, equation_id_vector_dummy), schedule(guided,512)
+        for (int i = 0; i < static_cast<int>(r_elements.size()); ++i) {
+            auto it_elem = r_elements.begin() + i;
+            CalculateRHSContribution(*it_elem, RHS_Contribution, equation_id_vector_dummy, r_current_process_info);
+        }
+
+        #pragma omp parallel for firstprivate(RHS_Contribution, equation_id_vector_dummy), schedule(guided,512)
+        for (int i = 0; i < static_cast<int>(r_elements.size()); ++i) {
+            auto it_elem = r_elements.begin() + i;
+            CalculateRHSContributionFinal(*it_elem, RHS_Contribution, equation_id_vector_dummy, r_current_process_info);
+        }
+
+        KRATOS_CATCH("")
+    }
+
+    /**
+     * @brief This function is designed to calculate just the RHS contribution
+     * @param rCurrentElement The element to compute
+     * @param RHS_Contribution The RHS vector contribution
+     * @param EquationId The ID's of the element degrees of freedom
+     * @param rCurrentProcessInfo The current process info instance
+     */
+    void CalculateRHSContribution(
+        Element& rCurrentElement,
+        LocalSystemVectorType& RHS_Contribution,
+        Element::EquationIdVectorType& EquationId,
+        const ProcessInfo& rCurrentProcessInfo
+        ) override
+    {
+        KRATOS_TRY
+
+        rCurrentElement.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
+
+        rCurrentElement.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, FORCE_RESIDUAL, rCurrentProcessInfo);
+        KRATOS_CATCH("")
+    }
+
+    /**
+     * @brief Functions that calculates the RHS of a "condition" object
+     * @param rCurrentCondition The condition to compute
+     * @param RHS_Contribution The RHS vector contribution
+     * @param EquationId The ID's of the condition degrees of freedom
+     * @param rCurrentProcessInfo The current process info instance
+     */
+    void CalculateRHSContribution(
+        Condition& rCurrentCondition,
+        LocalSystemVectorType& RHS_Contribution,
+        Element::EquationIdVectorType& EquationId,
+        const ProcessInfo& rCurrentProcessInfo
+        ) override
+    {
+        KRATOS_TRY
+
+        rCurrentCondition.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
+
+        rCurrentCondition.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, MIDDLE_VELOCITY, rCurrentProcessInfo);
+
+        KRATOS_CATCH("")
+    }
+
+    /**
+     * @brief This function is designed to calculate just the RHS contribution
+     * @param rCurrentElement The element to compute
+     * @param RHS_Contribution The RHS vector contribution
+     * @param EquationId The ID's of the element degrees of freedom
+     * @param rCurrentProcessInfo The current process info instance
+     */
+    void CalculateRHSContributionFinal(
+        Element& rCurrentElement,
+        LocalSystemVectorType& RHS_Contribution,
+        Element::EquationIdVectorType& EquationId,
+        const ProcessInfo& rCurrentProcessInfo
+        )
+    {
+        KRATOS_TRY
+
+        rCurrentElement.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
+
+        rCurrentElement.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, FORCE_RESIDUAL, rCurrentProcessInfo);
+        KRATOS_CATCH("")
     }
 
     ///@}
