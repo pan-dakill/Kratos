@@ -130,17 +130,15 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
         GetValuesVector(current_disp);
 
         // TODO:
-        MatrixType stiffness_matrix( msLocalSize, msLocalSize );
-        noalias(stiffness_matrix) = ZeroMatrix(msLocalSize,msLocalSize);
-        noalias(stiffness_matrix) = CreateElementStiffnessMatrix(rCurrentProcessInfo);
-
-        MatrixType H1K(msLocalSize,msLocalSize);
-        noalias(H1K) = prod(H1,stiffness_matrix);
-
-        KRATOS_WATCH(current_disp)
-        KRATOS_WATCH(stiffness_matrix)
-        KRATOS_WATCH(H1)
-        KRATOS_WATCH(H1K)
+        // MatrixType stiffness_matrix( msLocalSize, msLocalSize );
+        // noalias(stiffness_matrix) = ZeroMatrix(msLocalSize,msLocalSize);
+        // noalias(stiffness_matrix) = CreateElementStiffnessMatrix(rCurrentProcessInfo);
+        // MatrixType H1K(msLocalSize,msLocalSize);
+        // noalias(H1K) = prod(H1,stiffness_matrix);
+        // KRATOS_WATCH(current_disp)
+        // KRATOS_WATCH(stiffness_matrix)
+        // KRATOS_WATCH(H1)
+        // KRATOS_WATCH(H1K)
 
         MatrixType aux_matrix(msLocalSize,msLocalSize);
         noalias(aux_matrix) = prod(H1,damping_matrix);
