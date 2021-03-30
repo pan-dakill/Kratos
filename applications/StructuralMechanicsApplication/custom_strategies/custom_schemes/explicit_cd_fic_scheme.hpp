@@ -315,7 +315,7 @@ public:
         // Adding previous reactions to external forces
         auto& r_nodes = rModelPart.Nodes();
         const auto it_node_begin = r_nodes.begin();
-        #pragma omp parallel for, schedule(guided,512)
+        #pragma omp parallel for schedule(guided,512)
         for(int i=0; i<static_cast<int>(r_nodes.size()); ++i) {
             auto it_node = it_node_begin + i;
             array_1d<double, 3>& r_external_force = it_node->FastGetSolutionStepValue(EXTERNAL_FORCE);
