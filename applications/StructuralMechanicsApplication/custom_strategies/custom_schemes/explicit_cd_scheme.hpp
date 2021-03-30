@@ -240,7 +240,7 @@ public:
     {
         KRATOS_TRY
 
-        BaseType::FinalizeNonLinIteration(rModelPart, rA, rDx, rb);
+        BaseType::FinalizeNonLinIteration(rModelPart, A, Dx, b);
         
         InitializeResidual(rModelPart);
 

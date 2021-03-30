@@ -175,7 +175,7 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
 
                 // rRHSVector = f-Ka
                 #pragma omp atomic
-                r_force_residual[j] += rRHSVector[index + j] - inertial_vector[index + j] - damping_vector[index + j];
+                r_force_residual[j] += rRHSVector[index + j];// - inertial_vector[index + j] - damping_vector[index + j];
 
                 #pragma omp atomic
                 r_internal_force[j] += element_internal_forces[index + j];
