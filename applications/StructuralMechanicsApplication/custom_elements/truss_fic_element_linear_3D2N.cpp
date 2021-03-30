@@ -153,15 +153,15 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
         // noalias(damping_vector) = prod(damping_matrix,current_nodal_velocities);
 
         // TODO
-        KRATOS_WATCH("BEFORE ASSEMBLING ANYTHING")
-        KRATOS_WATCH(this->Id())
-        KRATOS_WATCH(stiffness_matrix)
-        KRATOS_WATCH(MassMatrix)
-        KRATOS_WATCH(damping_matrix)
-        KRATOS_WATCH(current_disp)
-        KRATOS_WATCH(element_internal_forces)
-        KRATOS_WATCH(damping_force)
-        KRATOS_WATCH(external_forces)
+        // KRATOS_WATCH("BEFORE ASSEMBLING ANYTHING")
+        // KRATOS_WATCH(this->Id())
+        // KRATOS_WATCH(stiffness_matrix)
+        // KRATOS_WATCH(MassMatrix)
+        // KRATOS_WATCH(damping_matrix)
+        // KRATOS_WATCH(current_disp)
+        // KRATOS_WATCH(element_internal_forces)
+        // KRATOS_WATCH(damping_force)
+        // KRATOS_WATCH(external_forces)
 
         for (size_t i = 0; i < msNumberOfNodes; ++i) {
             size_t index = msDimension * i;
@@ -233,15 +233,15 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
         noalias(delta_external_force) = prod(H1,external_forces);
 
         // TODO
-        KRATOS_WATCH("AFTER ASSEMBLING MID FORCES WITH REACTIONS, BEFORE ASSEMBLING DELTA FORCES")
-        KRATOS_WATCH(this->Id())
-        KRATOS_WATCH(internal_force)
-        KRATOS_WATCH(damping_force)
-        KRATOS_WATCH(external_forces)
-        KRATOS_WATCH(H1)
-        KRATOS_WATCH(delta_internal_force)
-        KRATOS_WATCH(delta_damping_force)
-        KRATOS_WATCH(delta_external_force)
+        // KRATOS_WATCH("AFTER ASSEMBLING MID FORCES WITH REACTIONS, BEFORE ASSEMBLING DELTA FORCES")
+        // KRATOS_WATCH(this->Id())
+        // KRATOS_WATCH(internal_force)
+        // KRATOS_WATCH(damping_force)
+        // KRATOS_WATCH(external_forces)
+        // KRATOS_WATCH(H1)
+        // KRATOS_WATCH(delta_internal_force)
+        // KRATOS_WATCH(delta_damping_force)
+        // KRATOS_WATCH(delta_external_force)
 
         for (size_t i = 0; i < msNumberOfNodes; ++i) {
             size_t index = msDimension * i;
