@@ -77,12 +77,16 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
 
         for (SizeType i = 0; i < msNumberOfNodes; ++i) {
             double& r_nodal_mass = r_geom[i].GetValue(NODAL_MASS);
+            double& r_number_neigh_elems = r_geom[i].GetValue(NUMBER_OF_NEIGHBOUR_ELEMENTS);
             // array_1d<double, 3>& r_nodal_stiffness = r_geom[i].GetValue(NODAL_DIAGONAL_STIFFNESS);
             // array_1d<double, 3>& r_nodal_damping = r_geom[i].GetValue(NODAL_DIAGONAL_DAMPING);
             int index = i * msDimension;
 
             #pragma omp atomic
             r_nodal_mass += element_mass_vector[index];
+
+            #pragma omp atomic
+            r_number_neigh_elems += 1.0;
 
             // for (SizeType j = 0; j < msDimension; ++j) {
             //     #pragma omp atomic
@@ -189,16 +193,24 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
         Vector internal_force = ZeroVector(msLocalSize);
         Vector damping_force = ZeroVector(msLocalSize);
         Vector external_forces = ZeroVector(msLocalSize);
+        Vector mass_vector = ZeroVector(msLocalSize);
+        Vector num_neigh_elems_vector = ZeroVector(msLocalSize);
 
         for (size_t i = 0; i < msNumberOfNodes; ++i) {
             size_t index = msDimension * i;
 
+            const double& r_nodal_mass = GetGeometry()[i].GetValue(NODAL_MASS);
+            const double& r_number_neigh_elems = r_geom[i].GetValue(NUMBER_OF_NEIGHBOUR_ELEMENTS);
             const array_1d<double, 3>& r_internal_force = GetGeometry()[i].FastGetSolutionStepValue(NODAL_INERTIA);
             const array_1d<double, 3>& r_damping_force = GetGeometry()[i].FastGetSolutionStepValue(NODAL_DISPLACEMENT_STIFFNESS);
             const array_1d<double, 3>& r_external_forces = GetGeometry()[i].FastGetSolutionStepValue(EXTERNAL_FORCE);
             
 
             for (size_t j = 0; j < msDimension; ++j) {
+
+                mass_vector[index+j] = r_nodal_mass;
+
+                num_neigh_elems_vector[index+j] = r_number_neigh_elems;
 
                 internal_force[index+j] = r_internal_force[j]; // Assembled internal_force
 
@@ -209,7 +221,7 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
         }
 
         MatrixType H1( msLocalSize, msLocalSize );
-        this->CalculateFrequencyMatrix(H1, rCurrentProcessInfo);
+        this->CalculateFrequencyMatrix(H1, mass_vector, num_neigh_elems_vector, rCurrentProcessInfo);
 
         Vector delta_internal_force = ZeroVector(msLocalSize);
         noalias(delta_internal_force) = prod(H1,internal_force);
@@ -375,7 +387,7 @@ void TrussFICElementLinear3D2N::CalculateLumpedDampingVector(
     KRATOS_CATCH( "" )
 }
 
-void TrussFICElementLinear3D2N::CalculateFrequencyMatrix(MatrixType& rMatrix, const ProcessInfo& rCurrentProcessInfo)
+void TrussFICElementLinear3D2N::CalculateFrequencyMatrix(MatrixType& rMatrix, const VectorType& rMassVector, const VectorType& rNumNeighElemsVector, const ProcessInfo& rCurrentProcessInfo)
 {
     KRATOS_TRY
 
@@ -402,17 +414,22 @@ void TrussFICElementLinear3D2N::CalculateFrequencyMatrix(MatrixType& rMatrix, co
     Matrix damping_matrix(msLocalSize,msLocalSize);
     noalias(damping_matrix) = alpha*MassMatrix + beta*stiffness_matrix;
 
-    // Inverse of lumped mass matrix
+    // Inverse of lumped mass matrix and Identity matrix taking into account global assembly (TODO: check this...)
     Matrix MassMatrixInverse(msLocalSize,msLocalSize);
     noalias(MassMatrixInverse) = ZeroMatrix(msLocalSize,msLocalSize);
-    MassMatrixInverse(1, 1) = 1.0/mass_vector[1];
-    MassMatrixInverse(4, 4) = 1.0/mass_vector[4];
-
-    // Identity matrix
     MatrixType IdentityMatrix(msLocalSize,msLocalSize);
     noalias(IdentityMatrix) = ZeroMatrix(msLocalSize,msLocalSize);
-    IdentityMatrix(1,1) = 1.0;
-    IdentityMatrix(4,4) = 1.0;
+    for (size_t i = 0; i < msNumberOfNodes; ++i) {
+        size_t index = msDimension * i;
+        for (size_t j = 0; j < msDimension; ++j) {
+            MassMatrixInverse(index+j,index+j) = 1.0/rMassVector[index+j];
+            IdentityMatrix(index+j,index+j) = 1.0/rNumNeighElemsVector[index+j];
+        }
+    }
+    // MassMatrixInverse(1, 1) = 1.0/mass_vector[1];
+    // MassMatrixInverse(4, 4) = 1.0/mass_vector[4];
+    // IdentityMatrix(1,1) = 1.0;
+    // IdentityMatrix(4,4) = 1.0;
 
     const double delta = rCurrentProcessInfo[LOAD_FACTOR];
     const double delta_time = rCurrentProcessInfo[DELTA_TIME];
