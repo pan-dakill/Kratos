@@ -200,7 +200,7 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
             size_t index = msDimension * i;
 
             const double& r_nodal_mass = GetGeometry()[i].GetValue(NODAL_MASS);
-            const double& r_number_neigh_elems = r_geom[i].GetValue(NUMBER_OF_NEIGHBOUR_ELEMENTS);
+            const double& r_number_neigh_elems = GetGeometry()[i].GetValue(NUMBER_OF_NEIGHBOUR_ELEMENTS);
             const array_1d<double, 3>& r_internal_force = GetGeometry()[i].FastGetSolutionStepValue(NODAL_INERTIA);
             const array_1d<double, 3>& r_damping_force = GetGeometry()[i].FastGetSolutionStepValue(NODAL_DISPLACEMENT_STIFFNESS);
             const array_1d<double, 3>& r_external_forces = GetGeometry()[i].FastGetSolutionStepValue(EXTERNAL_FORCE);
