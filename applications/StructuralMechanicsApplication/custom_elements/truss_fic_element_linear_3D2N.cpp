@@ -111,8 +111,23 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
         BoundedVector<double, msLocalSize> element_internal_forces = ZeroVector(msLocalSize);
         UpdateInternalForces(element_internal_forces);
 
+        // Stiffness matrix
+        MatrixType stiffness_matrix = ZeroMatrix(msLocalSize,msLocalSize);
+        noalias(stiffness_matrix) = CreateElementStiffnessMatrix(rCurrentProcessInfo);
+        // Lumped mass matrix
+        VectorType mass_vector(msLocalSize);
+        CalculateLumpedMassVector(mass_vector);
+        Matrix MassMatrix(msLocalSize,msLocalSize);
+        noalias(MassMatrix) = ZeroMatrix(msLocalSize,msLocalSize);
+        // I only want 1D bars in Y direction
+        MassMatrix(1, 1) = mass_vector[1];
+        MassMatrix(4, 4) = mass_vector[4];
+        // Rayleigh Damping matrix
+        const double alpha = rCurrentProcessInfo[RAYLEIGH_ALPHA];
+        const double beta = rCurrentProcessInfo[RAYLEIGH_BETA];
         Matrix damping_matrix(msLocalSize,msLocalSize);
-        CalculateDampingMatrix(damping_matrix, rCurrentProcessInfo);
+        noalias(damping_matrix) = alpha*MassMatrix + beta*stiffness_matrix;
+
         Vector current_disp = ZeroVector(msLocalSize);
         GetValuesVector(current_disp);
         Vector damping_force = ZeroVector(msLocalSize);
@@ -120,14 +135,6 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
 
         Vector external_forces(msLocalSize);
         noalias(external_forces) = rRHSVector + element_internal_forces;
-
-        // Lumped mass matrix
-        VectorType mass_vector(msLocalSize);
-        CalculateLumpedMassVector(mass_vector);
-        Matrix MassMatrix(msLocalSize,msLocalSize);
-        noalias(MassMatrix) = ZeroMatrix(msLocalSize,msLocalSize);
-        for (IndexType i = 0; i < msLocalSize; ++i)
-            MassMatrix(i, i) = mass_vector[i];
 
         Vector current_nodal_accelerations = ZeroVector(msLocalSize);
         GetSecondDerivativesVector(current_nodal_accelerations);
@@ -142,12 +149,9 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
         noalias(damping_vector) = prod(damping_matrix,current_nodal_velocities);
 
         // TODO
-        MatrixType stiffness_matrix = ZeroMatrix(msLocalSize,msLocalSize);
-        noalias(stiffness_matrix) = CreateElementStiffnessMatrix(rCurrentProcessInfo);
         KRATOS_WATCH("BEFORE ASSEMBLING ANYTHING")
         KRATOS_WATCH(this->Id())
         KRATOS_WATCH(stiffness_matrix)
-        KRATOS_WATCH(mass_vector)
         KRATOS_WATCH(MassMatrix)
         KRATOS_WATCH(damping_matrix)
         KRATOS_WATCH(current_disp)
@@ -381,24 +385,34 @@ void TrussFICElementLinear3D2N::CalculateFrequencyMatrix(MatrixType& rMatrix, co
     }
     rMatrix = ZeroMatrix(msLocalSize, msLocalSize);
 
-    // Damping matrix
-    Matrix damping_matrix;
-    CalculateDampingMatrix(damping_matrix, rCurrentProcessInfo);
-
-    // Inverse of lumped mass matrix
+    // Stiffness matrix
+    MatrixType stiffness_matrix = ZeroMatrix(msLocalSize,msLocalSize);
+    noalias(stiffness_matrix) = CreateElementStiffnessMatrix(rCurrentProcessInfo);
+    // Lumped mass matrix
     VectorType mass_vector(msLocalSize);
     CalculateLumpedMassVector(mass_vector);
+    Matrix MassMatrix(msLocalSize,msLocalSize);
+    noalias(MassMatrix) = ZeroMatrix(msLocalSize,msLocalSize);
+    // I only want 1D bars in Y direction
+    MassMatrix(1, 1) = mass_vector[1];
+    MassMatrix(4, 4) = mass_vector[4];
+    // Rayleigh Damping matrix
+    const double alpha = rCurrentProcessInfo[RAYLEIGH_ALPHA];
+    const double beta = rCurrentProcessInfo[RAYLEIGH_BETA];
+    Matrix damping_matrix(msLocalSize,msLocalSize);
+    noalias(damping_matrix) = alpha*MassMatrix + beta*stiffness_matrix;
+
+    // Inverse of lumped mass matrix
     Matrix MassMatrixInverse(msLocalSize,msLocalSize);
     noalias(MassMatrixInverse) = ZeroMatrix(msLocalSize,msLocalSize);
-    for (IndexType i = 0; i < msLocalSize; ++i)
-        MassMatrixInverse(i, i) = 1.0/mass_vector[i];
+    MassMatrixInverse(1, 1) = 1.0/mass_vector[1];
+    MassMatrixInverse(4, 4) = 1.0/mass_vector[4];
 
     // Identity matrix
     MatrixType IdentityMatrix(msLocalSize,msLocalSize);
     noalias(IdentityMatrix) = ZeroMatrix(msLocalSize,msLocalSize);
-    for(unsigned int i = 0; i<msLocalSize; i++){
-        IdentityMatrix(i,i) = 1.0;
-    }
+    IdentityMatrix(1,1) = 1.0;
+    IdentityMatrix(4,4) = 1.0;
 
     const double delta = rCurrentProcessInfo[LOAD_FACTOR];
     const double delta_time = rCurrentProcessInfo[DELTA_TIME];
