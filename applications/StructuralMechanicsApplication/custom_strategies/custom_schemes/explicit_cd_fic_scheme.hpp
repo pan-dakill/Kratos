@@ -223,12 +223,13 @@ public:
         // const array_1d<double, 3>& r_actual_previous_external_forces = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE,2);
         const array_1d<double, 3>& r_current_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA);
         const array_1d<double, 3>& r_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA,1);
-        // const array_1d<double, 3>& r_actual_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA,2);
+        const array_1d<double, 3>& r_actual_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA,2);
 
         const array_1d<double, 3>& r_delta_external_force = itCurrentNode->FastGetSolutionStepValue(FRACTIONAL_ACCELERATION);
         const array_1d<double, 3>& r_delta_internal_force = itCurrentNode->FastGetSolutionStepValue(MIDDLE_VELOCITY);
         const array_1d<double, 3>& r_current_delta_damping_force = itCurrentNode->FastGetSolutionStepValue(MIDDLE_ANGULAR_VELOCITY);
         const array_1d<double, 3>& r_previous_delta_damping_force = itCurrentNode->FastGetSolutionStepValue(MIDDLE_ANGULAR_VELOCITY,1);
+        const array_1d<double, 3>& r_actual_previous_delta_damping_force = itCurrentNode->FastGetSolutionStepValue(MIDDLE_ANGULAR_VELOCITY,2);
 
         std::array<bool, 3> fix_displacements = {false, false, false};
         fix_displacements[0] = (itCurrentNode->GetDof(DISPLACEMENT_X, DisplacementPosition).IsFixed());
@@ -251,7 +252,9 @@ public:
         KRATOS_WATCH(r_delta_internal_force)
         KRATOS_WATCH(r_current_delta_damping_force)
         KRATOS_WATCH(r_previous_internal_force)
+        KRATOS_WATCH(r_actual_previous_internal_force)
         KRATOS_WATCH(r_previous_delta_damping_force)
+        KRATOS_WATCH(r_actual_previous_delta_damping_force)
         KRATOS_WATCH(r_delta_external_force)
         KRATOS_WATCH(r_external_force)
         KRATOS_WATCH(r_previous_external_force)
