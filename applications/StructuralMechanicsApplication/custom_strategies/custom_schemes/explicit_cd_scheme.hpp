@@ -225,6 +225,31 @@ public:
     }
 
     /**
+     * @brief Function to be called when it is needed to finalize an iteration. It is designed to be called at the end of each non linear iteration
+     * @param rModelPart The model part of the problem to solve
+     * @param A LHS matrix
+     * @param Dx Incremental update of primary variables
+     * @param b RHS Vector
+     */
+    void FinalizeNonLinIteration(
+        ModelPart& rModelPart,
+        TSystemMatrixType& A,
+        TSystemVectorType& Dx,
+        TSystemVectorType& b
+        ) override
+    {
+        KRATOS_TRY
+
+        BaseType::FinalizeNonLinIteration(rModelPart, rA, rDx, rb);
+        
+        InitializeResidual(rModelPart);
+
+        this->CalculateAndAddRHS(rModelPart);
+
+        KRATOS_CATCH("")
+    }
+
+    /**
      * @brief This method initializes the residual in the nodes of the model part
      * @param rModelPart The model of the problem to solve
      */
