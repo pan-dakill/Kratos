@@ -105,11 +105,17 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
 {
     KRATOS_TRY;
 
+    KRATOS_WATCH("CD-FIC: AddExplicitContribution")
+    
     if (rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == MIDDLE_VELOCITY) {
+
+        KRATOS_WATCH("CD-FIC: AddExplicitContribution MIDDLE_VELOCITY")
 
         // internal_forces = Ka
         BoundedVector<double, msLocalSize> internal_forces = ZeroVector(msLocalSize);
         UpdateInternalForces(internal_forces);
+
+        KRATOS_WATCH(internal_forces)
 
         Matrix damping_matrix(msLocalSize,msLocalSize);
         CalculateDampingMatrix(damping_matrix, rCurrentProcessInfo);
@@ -119,6 +125,8 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
 
         Vector damping_force = ZeroVector(msLocalSize);
         noalias(damping_force) = prod(damping_matrix,current_disp);
+
+        KRATOS_WATCH(damping_force)
 
         for (size_t i = 0; i < msNumberOfNodes; ++i) {
             size_t index = msDimension * i;
@@ -135,6 +143,8 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
         }
 
     } else if (rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == FORCE_RESIDUAL) {
+
+        KRATOS_WATCH("CD-FIC: AddExplicitContribution FORCE_RESIDUAL")
 
         // element_internal_forces = Ka
         BoundedVector<double, msLocalSize> element_internal_forces = ZeroVector(msLocalSize);
