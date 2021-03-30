@@ -135,9 +135,6 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
         Vector inertial_vector = ZeroVector(msLocalSize);
         noalias(inertial_vector) = prod(MassMatrix,current_nodal_accelerations);
 
-        Matrix damping_matrix(msLocalSize,msLocalSize);
-        CalculateDampingMatrix(damping_matrix, rCurrentProcessInfo);
-
         Vector current_nodal_velocities = ZeroVector(msLocalSize);
         GetFirstDerivativesVector(current_nodal_velocities);
 
