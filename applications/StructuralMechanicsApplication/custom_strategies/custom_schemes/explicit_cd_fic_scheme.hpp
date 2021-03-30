@@ -212,7 +212,7 @@ public:
         ) override
     {
         array_1d<double, 3>& r_current_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT);
-        // const array_1d<double, 3>& r_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,1);
+        const array_1d<double, 3>& r_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,1);
         const array_1d<double, 3>& r_actual_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,2);
 
         const double nodal_mass = itCurrentNode->GetValue(NODAL_MASS);
@@ -244,11 +244,12 @@ public:
         KRATOS_WATCH(mBeta)
         KRATOS_WATCH(nodal_mass)
         KRATOS_WATCH(r_current_displacement)
+        KRATOS_WATCH(r_previous_displacement)
+        KRATOS_WATCH(r_actual_previous_displacement)
         KRATOS_WATCH(r_current_internal_force)
         KRATOS_WATCH(r_damping_force)
         KRATOS_WATCH(r_delta_internal_force)
         KRATOS_WATCH(r_current_delta_damping_force)
-        KRATOS_WATCH(r_actual_previous_displacement)
         KRATOS_WATCH(r_previous_internal_force)
         KRATOS_WATCH(r_previous_delta_damping_force)
         KRATOS_WATCH(r_delta_external_force)
@@ -271,7 +272,7 @@ public:
         }
 
 
-        const array_1d<double, 3>& r_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,1);
+        // const array_1d<double, 3>& r_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,1);
         const array_1d<double, 3>& r_previous_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY,1);
         array_1d<double, 3>& r_current_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY);
         array_1d<double, 3>& r_current_acceleration = itCurrentNode->FastGetSolutionStepValue(ACCELERATION);
@@ -283,6 +284,7 @@ public:
         KRATOS_WATCH("After solving")
         KRATOS_WATCH(r_current_displacement)
         KRATOS_WATCH(r_previous_displacement)
+        KRATOS_WATCH(r_actual_previous_displacement)
         KRATOS_WATCH(r_current_velocity)
         KRATOS_WATCH(r_previous_velocity)
         KRATOS_WATCH(r_current_acceleration)
@@ -319,10 +321,10 @@ public:
         for(int i=0; i<static_cast<int>(r_nodes.size()); ++i) {
             auto it_node = it_node_begin + i;
             array_1d<double, 3>& r_external_force = it_node->FastGetSolutionStepValue(EXTERNAL_FORCE);
-            const array_1d<double, 3>& r_reaction = it_node->FastGetSolutionStepValue(REACTION,0); // TODO: check whether this needs to be ,0 or ,1
-            const array_1d<double, 3>& r_previous_reaction = it_node->FastGetSolutionStepValue(REACTION,1);
-            KRATOS_WATCH(r_reaction)
-            KRATOS_WATCH(r_previous_reaction)
+            const array_1d<double, 3>& r_reaction = it_node->FastGetSolutionStepValue(REACTION,0); // It doesn't matter whether this is ,0 or ,1 (it's the same at this point)
+            // const array_1d<double, 3>& r_previous_reaction = it_node->FastGetSolutionStepValue(REACTION,1);
+            // KRATOS_WATCH(r_reaction)
+            // KRATOS_WATCH(r_previous_reaction)
             noalias(r_external_force) += r_reaction;
         }
 

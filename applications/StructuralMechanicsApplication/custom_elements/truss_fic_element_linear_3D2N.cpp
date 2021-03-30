@@ -147,6 +147,7 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
         KRATOS_WATCH("BEFORE ASSEMBLING ANYTHING")
         KRATOS_WATCH(this->Id())
         KRATOS_WATCH(stiffness_matrix)
+        KRATOS_WATCH(mass_vector)
         KRATOS_WATCH(MassMatrix)
         KRATOS_WATCH(damping_matrix)
         KRATOS_WATCH(current_disp)
