@@ -536,28 +536,28 @@ private:
 
             if (it_node->GetDof(DISPLACEMENT_X, disppos).IsFixed()) {
                 double& r_reaction = it_node->FastGetSolutionStepValue(REACTION_X);
-                r_reaction = force_residual[0];
+                r_reaction = -force_residual[0];
             }
             if (it_node->GetDof(DISPLACEMENT_Y, disppos + 1).IsFixed()) {
                 double& r_reaction = it_node->FastGetSolutionStepValue(REACTION_Y);
-                r_reaction = force_residual[1];
+                r_reaction = -force_residual[1];
             }
             if (it_node->GetDof(DISPLACEMENT_Z, disppos + 2).IsFixed()) {
                 double& r_reaction = it_node->FastGetSolutionStepValue(REACTION_Z);
-                r_reaction = force_residual[2];
+                r_reaction = -force_residual[2];
             }
             if (has_dof_for_rot_z) {
                 if (it_node->GetDof(ROTATION_X, rotppos).IsFixed()) {
                     double& r_reaction = it_node->FastGetSolutionStepValue(REACTION_MOMENT_X);
-                    r_reaction = moment_residual[0];
+                    r_reaction = -moment_residual[0];
                 }
                 if (it_node->GetDof(ROTATION_Y, rotppos + 1).IsFixed()) {
                     double& r_reaction = it_node->FastGetSolutionStepValue(REACTION_MOMENT_Y);
-                    r_reaction = moment_residual[1];
+                    r_reaction = -moment_residual[1];
                 }
                 if (it_node->GetDof(ROTATION_Z, rotppos + 2).IsFixed()) {
                     double& r_reaction = it_node->FastGetSolutionStepValue(REACTION_MOMENT_Z);
-                    r_reaction = moment_residual[2];
+                    r_reaction = -moment_residual[2];
                 }
             }
         }

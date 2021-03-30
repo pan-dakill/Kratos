@@ -236,6 +236,7 @@ public:
             fix_displacements[2] = (itCurrentNode->GetDof(DISPLACEMENT_Z, DisplacementPosition + 2).IsFixed());
 
         //TODO
+        const array_1d<double, 3>& r_damping_force = itCurrentNode->FastGetSolutionStepValue(NODAL_DISPLACEMENT_STIFFNESS);
         KRATOS_WATCH("Before solving")
         KRATOS_WATCH(mDeltaTime)
         KRATOS_WATCH(mDelta)
@@ -244,6 +245,7 @@ public:
         KRATOS_WATCH(nodal_mass)
         KRATOS_WATCH(r_current_displacement)
         KRATOS_WATCH(r_current_internal_force)
+        KRATOS_WATCH(r_damping_force)
         KRATOS_WATCH(r_delta_internal_force)
         KRATOS_WATCH(r_current_delta_damping_force)
         KRATOS_WATCH(r_actual_previous_displacement)
@@ -269,8 +271,6 @@ public:
         }
 
 
-
-
         const array_1d<double, 3>& r_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,1);
         const array_1d<double, 3>& r_previous_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY,1);
         array_1d<double, 3>& r_current_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY);
@@ -282,7 +282,9 @@ public:
         //TODO
         KRATOS_WATCH("After solving")
         KRATOS_WATCH(r_current_displacement)
+        KRATOS_WATCH(r_previous_displacement)
         KRATOS_WATCH(r_current_velocity)
+        KRATOS_WATCH(r_previous_velocity)
         KRATOS_WATCH(r_current_acceleration)
 
     }
@@ -308,6 +310,20 @@ public:
         for (int i = 0; i < static_cast<int>(r_elements.size()); ++i) {
             auto it_elem = r_elements.begin() + i;
             CalculateRHSContribution(*it_elem, RHS_Contribution, equation_id_vector_dummy, r_current_process_info);
+        }
+
+        // Adding previous reactions to external forces
+        auto& r_nodes = rModelPart.Nodes();
+        const auto it_node_begin = r_nodes.begin();
+        #pragma omp parallel for, schedule(guided,512)
+        for(int i=0; i<static_cast<int>(r_nodes.size()); ++i) {
+            auto it_node = it_node_begin + i;
+            array_1d<double, 3>& r_external_force = it_node->FastGetSolutionStepValue(EXTERNAL_FORCE);
+            const array_1d<double, 3>& r_reaction = it_node->FastGetSolutionStepValue(REACTION,0); // TODO: check whether this needs to be ,0 or ,1
+            const array_1d<double, 3>& r_previous_reaction = it_node->FastGetSolutionStepValue(REACTION,1);
+            KRATOS_WATCH(r_reaction)
+            KRATOS_WATCH(r_previous_reaction)
+            noalias(r_external_force) += r_reaction;
         }
 
         #pragma omp parallel for firstprivate(RHS_Contribution, equation_id_vector_dummy), schedule(guided,512)
