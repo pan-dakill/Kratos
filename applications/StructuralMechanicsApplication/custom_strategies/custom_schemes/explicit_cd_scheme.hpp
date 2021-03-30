@@ -514,8 +514,6 @@ public:
         LocalSystemVectorType RHS_Contribution = LocalSystemVectorType(0);
         Element::EquationIdVectorType equation_id_vector_dummy; // Dummy
 
-        KRATOS_WATCH("CD: CalculateAndAddRHS")
-
         #pragma omp parallel for firstprivate(RHS_Contribution, equation_id_vector_dummy), schedule(guided,512)
         for (int i = 0; i < static_cast<int>(r_conditions.size()); ++i) {
             auto it_cond = r_conditions.begin() + i;

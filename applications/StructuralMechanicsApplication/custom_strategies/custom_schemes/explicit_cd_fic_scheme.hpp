@@ -298,8 +298,6 @@ public:
         LocalSystemVectorType RHS_Contribution = LocalSystemVectorType(0);
         Element::EquationIdVectorType equation_id_vector_dummy; // Dummy
 
-        KRATOS_WATCH("CD-FIC: CalculateAndAddRHS")
-
         #pragma omp parallel for firstprivate(RHS_Contribution, equation_id_vector_dummy), schedule(guided,512)
         for (int i = 0; i < static_cast<int>(r_conditions.size()); ++i) {
             auto it_cond = r_conditions.begin() + i;
@@ -322,28 +320,6 @@ public:
     }
 
     /**
-     * @brief This function is designed to calculate just the RHS contribution
-     * @param rCurrentElement The element to compute
-     * @param RHS_Contribution The RHS vector contribution
-     * @param EquationId The ID's of the element degrees of freedom
-     * @param rCurrentProcessInfo The current process info instance
-     */
-    void CalculateRHSContribution(
-        Element& rCurrentElement,
-        LocalSystemVectorType& RHS_Contribution,
-        Element::EquationIdVectorType& EquationId,
-        const ProcessInfo& rCurrentProcessInfo
-        ) override
-    {
-        KRATOS_TRY
-
-        rCurrentElement.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
-
-        rCurrentElement.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, FORCE_RESIDUAL, rCurrentProcessInfo);
-        KRATOS_CATCH("")
-    }
-
-    /**
      * @brief Functions that calculates the RHS of a "condition" object
      * @param rCurrentCondition The condition to compute
      * @param RHS_Contribution The RHS vector contribution
@@ -361,8 +337,30 @@ public:
 
         rCurrentCondition.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
 
-        rCurrentCondition.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, MIDDLE_VELOCITY, rCurrentProcessInfo);
+        rCurrentCondition.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, FORCE_RESIDUAL, rCurrentProcessInfo);
 
+        KRATOS_CATCH("")
+    }
+
+    /**
+     * @brief This function is designed to calculate just the RHS contribution
+     * @param rCurrentElement The element to compute
+     * @param RHS_Contribution The RHS vector contribution
+     * @param EquationId The ID's of the element degrees of freedom
+     * @param rCurrentProcessInfo The current process info instance
+     */
+    void CalculateRHSContribution(
+        Element& rCurrentElement,
+        LocalSystemVectorType& RHS_Contribution,
+        Element::EquationIdVectorType& EquationId,
+        const ProcessInfo& rCurrentProcessInfo
+        ) override
+    {
+        KRATOS_TRY
+
+        rCurrentElement.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
+
+        rCurrentElement.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, MIDDLE_VELOCITY , rCurrentProcessInfo);
         KRATOS_CATCH("")
     }
 
