@@ -242,9 +242,18 @@ public:
 
         BaseType::FinalizeNonLinIteration(rModelPart, A, Dx, b);
         
+        this->CalculateAndAddRHSFinal(rModelPart);
+
+        KRATOS_CATCH("")
+    }
+
+    virtual void CalculateAndAddRHSFinal(ModelPart& rModelPart)
+    {
+        KRATOS_TRY
+
         InitializeResidual(rModelPart);
 
-        this->CalculateAndAddRHS(rModelPart);
+        this-> CalculateAndAddRHS(rModelPart);
 
         KRATOS_CATCH("")
     }

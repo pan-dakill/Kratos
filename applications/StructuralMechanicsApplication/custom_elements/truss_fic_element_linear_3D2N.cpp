@@ -140,17 +140,17 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
         Vector external_forces(msLocalSize);
         noalias(external_forces) = rRHSVector + element_internal_forces;
 
-        Vector current_nodal_accelerations = ZeroVector(msLocalSize);
-        GetSecondDerivativesVector(current_nodal_accelerations);
+        // Vector current_nodal_accelerations = ZeroVector(msLocalSize);
+        // GetSecondDerivativesVector(current_nodal_accelerations);
 
-        Vector inertial_vector = ZeroVector(msLocalSize);
-        noalias(inertial_vector) = prod(MassMatrix,current_nodal_accelerations);
+        // Vector inertial_vector = ZeroVector(msLocalSize);
+        // noalias(inertial_vector) = prod(MassMatrix,current_nodal_accelerations);
 
-        Vector current_nodal_velocities = ZeroVector(msLocalSize);
-        GetFirstDerivativesVector(current_nodal_velocities);
+        // Vector current_nodal_velocities = ZeroVector(msLocalSize);
+        // GetFirstDerivativesVector(current_nodal_velocities);
 
-        Vector damping_vector = ZeroVector(msLocalSize);
-        noalias(damping_vector) = prod(damping_matrix,current_nodal_velocities);
+        // Vector damping_vector = ZeroVector(msLocalSize);
+        // noalias(damping_vector) = prod(damping_matrix,current_nodal_velocities);
 
         // TODO
         KRATOS_WATCH("BEFORE ASSEMBLING ANYTHING")
@@ -166,7 +166,7 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
         for (size_t i = 0; i < msNumberOfNodes; ++i) {
             size_t index = msDimension * i;
 
-            array_1d<double, 3>& r_force_residual = GetGeometry()[i].FastGetSolutionStepValue(FORCE_RESIDUAL);
+            // array_1d<double, 3>& r_force_residual = GetGeometry()[i].FastGetSolutionStepValue(FORCE_RESIDUAL);
             array_1d<double, 3>& r_internal_force = GetGeometry()[i].FastGetSolutionStepValue(NODAL_INERTIA);
             array_1d<double, 3>& r_damping_force = GetGeometry()[i].FastGetSolutionStepValue(NODAL_DISPLACEMENT_STIFFNESS);
             array_1d<double, 3>& r_external_forces = GetGeometry()[i].FastGetSolutionStepValue(EXTERNAL_FORCE);
@@ -174,8 +174,8 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
             for (size_t j = 0; j < msDimension; ++j) {
 
                 // rRHSVector = f-Ka
-                #pragma omp atomic
-                r_force_residual[j] += rRHSVector[index + j];// - inertial_vector[index + j] - damping_vector[index + j];
+                // #pragma omp atomic
+                // r_force_residual[j] += rRHSVector[index + j];// - inertial_vector[index + j] - damping_vector[index + j];
 
                 #pragma omp atomic
                 r_internal_force[j] += element_internal_forces[index + j];
@@ -260,6 +260,49 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
 
                 #pragma omp atomic
                 r_delta_external_force[j] += delta_external_force[index + j];
+            }
+        }
+    } else if (rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == REACTION) {
+
+        // Stiffness matrix
+        MatrixType stiffness_matrix = ZeroMatrix(msLocalSize,msLocalSize);
+        noalias(stiffness_matrix) = CreateElementStiffnessMatrix(rCurrentProcessInfo);
+        // Lumped mass matrix
+        VectorType mass_vector(msLocalSize);
+        CalculateLumpedMassVector(mass_vector);
+        Matrix MassMatrix(msLocalSize,msLocalSize);
+        noalias(MassMatrix) = ZeroMatrix(msLocalSize,msLocalSize);
+        // I only want 1D bars in Y direction
+        MassMatrix(1, 1) = mass_vector[1];
+        MassMatrix(4, 4) = mass_vector[4];
+        // Rayleigh Damping matrix
+        const double alpha = rCurrentProcessInfo[RAYLEIGH_ALPHA];
+        const double beta = rCurrentProcessInfo[RAYLEIGH_BETA];
+        Matrix damping_matrix(msLocalSize,msLocalSize);
+        noalias(damping_matrix) = alpha*MassMatrix + beta*stiffness_matrix;
+
+        Vector current_nodal_accelerations = ZeroVector(msLocalSize);
+        GetSecondDerivativesVector(current_nodal_accelerations);
+
+        Vector inertial_vector = ZeroVector(msLocalSize);
+        noalias(inertial_vector) = prod(MassMatrix,current_nodal_accelerations);
+
+        Vector current_nodal_velocities = ZeroVector(msLocalSize);
+        GetFirstDerivativesVector(current_nodal_velocities);
+
+        Vector damping_vector = ZeroVector(msLocalSize);
+        noalias(damping_vector) = prod(damping_matrix,current_nodal_velocities);
+
+        for (size_t i = 0; i < msNumberOfNodes; ++i) {
+            size_t index = msDimension * i;
+
+            array_1d<double, 3>& r_force_residual = GetGeometry()[i].FastGetSolutionStepValue(FORCE_RESIDUAL);
+
+            for (size_t j = 0; j < msDimension; ++j) {
+
+                // rRHSVector = f-Ka
+                #pragma omp atomic
+                r_force_residual[j] += rRHSVector[index + j];// - inertial_vector[index + j] - damping_vector[index + j];
             }
         }
     }
