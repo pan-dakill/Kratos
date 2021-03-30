@@ -236,22 +236,22 @@ public:
             fix_displacements[2] = (itCurrentNode->GetDof(DISPLACEMENT_Z, DisplacementPosition + 2).IsFixed());
 
         //TODO
-        // KRATOS_WATCH("Before solving")
-        // KRATOS_WATCH(mDeltaTime)
-        // KRATOS_WATCH(mDelta)
-        // KRATOS_WATCH(mAlpha)
-        // KRATOS_WATCH(mBeta)
-        // KRATOS_WATCH(nodal_mass)
-        // KRATOS_WATCH(r_current_displacement)
-        // KRATOS_WATCH(r_current_internal_force)
-        // KRATOS_WATCH(r_delta_internal_force)
-        // KRATOS_WATCH(r_current_delta_damping_force)
-        // KRATOS_WATCH(r_actual_previous_displacement)
-        // KRATOS_WATCH(r_previous_internal_force)
-        // KRATOS_WATCH(r_previous_delta_damping_force)
-        // KRATOS_WATCH(r_delta_external_force)
-        // KRATOS_WATCH(r_external_force)
-        // KRATOS_WATCH(r_previous_external_force)
+        KRATOS_WATCH("Before solving")
+        KRATOS_WATCH(mDeltaTime)
+        KRATOS_WATCH(mDelta)
+        KRATOS_WATCH(mAlpha)
+        KRATOS_WATCH(mBeta)
+        KRATOS_WATCH(nodal_mass)
+        KRATOS_WATCH(r_current_displacement)
+        KRATOS_WATCH(r_current_internal_force)
+        KRATOS_WATCH(r_delta_internal_force)
+        KRATOS_WATCH(r_current_delta_damping_force)
+        KRATOS_WATCH(r_actual_previous_displacement)
+        KRATOS_WATCH(r_previous_internal_force)
+        KRATOS_WATCH(r_previous_delta_damping_force)
+        KRATOS_WATCH(r_delta_external_force)
+        KRATOS_WATCH(r_external_force)
+        KRATOS_WATCH(r_previous_external_force)
 
         for (IndexType j = 0; j < DomainSize; j++) {
             if (fix_displacements[j] == false) {
@@ -280,10 +280,10 @@ public:
         noalias(r_current_acceleration) = (1.0/mDeltaTime) * (r_current_velocity - r_previous_velocity);
 
         //TODO
-        // KRATOS_WATCH("After solving")
-        // KRATOS_WATCH(r_current_displacement)
-        // KRATOS_WATCH(r_current_velocity)
-        // KRATOS_WATCH(r_current_acceleration)
+        KRATOS_WATCH("After solving")
+        KRATOS_WATCH(r_current_displacement)
+        KRATOS_WATCH(r_current_velocity)
+        KRATOS_WATCH(r_current_acceleration)
 
     }
 
