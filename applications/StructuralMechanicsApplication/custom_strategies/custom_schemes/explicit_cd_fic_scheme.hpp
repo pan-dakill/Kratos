@@ -325,6 +325,9 @@ public:
             // KRATOS_WATCH(r_reaction)
             // KRATOS_WATCH(r_previous_reaction)
             noalias(r_external_force) += r_reaction;
+            KRATOS_WATCH("reactions:")
+            KRATOS_WATCH(it_node->Id())
+            KRATOS_WATCH(r_external_force)
         }
 
         #pragma omp parallel for firstprivate(RHS_Contribution, equation_id_vector_dummy), schedule(guided,512)
