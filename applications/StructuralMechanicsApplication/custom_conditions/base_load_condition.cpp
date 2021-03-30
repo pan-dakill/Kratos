@@ -362,7 +362,7 @@ void BaseLoadCondition::AddExplicitContribution(
                 r_external_force[j] += rRHS[index + j];
             }
         }
-    } else if rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == REACTION ) {
+    } else if (rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == REACTION ) {
         for(SizeType i=0; i< number_of_nodes; ++i) {
             SizeType index = dimension * i;
 
