@@ -124,8 +124,17 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
         Matrix MassMatrix(msLocalSize,msLocalSize);
         noalias(MassMatrix) = ZeroMatrix(msLocalSize,msLocalSize);
         // I only want 1D bars in Y direction
-        MassMatrix(1, 1) = mass_vector[1];
-        MassMatrix(4, 4) = mass_vector[4];
+        // MassMatrix(1, 1) = mass_vector[1];
+        // MassMatrix(4, 4) = mass_vector[4];
+        for (size_t i = 0; i < msLocalSize; ++i) {
+            MassMatrix(i,i) = mass_vector[i];
+        }
+        // for (size_t i = 0; i < msNumberOfNodes; ++i) {
+        //     size_t index = msDimension * i;
+        //     for (size_t j = 0; j < msDimension; ++j) {
+        //         MassMatrix(index+j,index+j) = mass_vector[index+j];
+        //     }
+        // }
         // Rayleigh Damping matrix
         const double alpha = rCurrentProcessInfo[RAYLEIGH_ALPHA];
         const double beta = rCurrentProcessInfo[RAYLEIGH_BETA];
@@ -140,42 +149,14 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
         Vector external_forces(msLocalSize);
         noalias(external_forces) = rRHSVector + element_internal_forces;
 
-        // Vector current_nodal_accelerations = ZeroVector(msLocalSize);
-        // GetSecondDerivativesVector(current_nodal_accelerations);
-
-        // Vector inertial_vector = ZeroVector(msLocalSize);
-        // noalias(inertial_vector) = prod(MassMatrix,current_nodal_accelerations);
-
-        // Vector current_nodal_velocities = ZeroVector(msLocalSize);
-        // GetFirstDerivativesVector(current_nodal_velocities);
-
-        // Vector damping_vector = ZeroVector(msLocalSize);
-        // noalias(damping_vector) = prod(damping_matrix,current_nodal_velocities);
-
-        // TODO
-        // KRATOS_WATCH("BEFORE ASSEMBLING ANYTHING")
-        // KRATOS_WATCH(this->Id())
-        // KRATOS_WATCH(stiffness_matrix)
-        // KRATOS_WATCH(MassMatrix)
-        // KRATOS_WATCH(damping_matrix)
-        // KRATOS_WATCH(current_disp)
-        // KRATOS_WATCH(element_internal_forces)
-        // KRATOS_WATCH(damping_force)
-        // KRATOS_WATCH(external_forces)
-
         for (size_t i = 0; i < msNumberOfNodes; ++i) {
             size_t index = msDimension * i;
 
-            // array_1d<double, 3>& r_force_residual = GetGeometry()[i].FastGetSolutionStepValue(FORCE_RESIDUAL);
             array_1d<double, 3>& r_internal_force = GetGeometry()[i].FastGetSolutionStepValue(NODAL_INERTIA);
             array_1d<double, 3>& r_damping_force = GetGeometry()[i].FastGetSolutionStepValue(NODAL_DISPLACEMENT_STIFFNESS);
             array_1d<double, 3>& r_external_forces = GetGeometry()[i].FastGetSolutionStepValue(EXTERNAL_FORCE);
 
             for (size_t j = 0; j < msDimension; ++j) {
-
-                // rRHSVector = f-Ka
-                // #pragma omp atomic
-                // r_force_residual[j] += rRHSVector[index + j];// - inertial_vector[index + j] - damping_vector[index + j];
 
                 #pragma omp atomic
                 r_internal_force[j] += element_internal_forces[index + j];
@@ -205,7 +186,6 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
             const array_1d<double, 3>& r_damping_force = GetGeometry()[i].FastGetSolutionStepValue(NODAL_DISPLACEMENT_STIFFNESS);
             const array_1d<double, 3>& r_external_forces = GetGeometry()[i].FastGetSolutionStepValue(EXTERNAL_FORCE);
             
-
             for (size_t j = 0; j < msDimension; ++j) {
 
                 mass_vector[index+j] = r_nodal_mass;
@@ -232,17 +212,6 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
         Vector delta_external_force = ZeroVector(msLocalSize);
         noalias(delta_external_force) = prod(H1,external_forces);
 
-        // TODO
-        // KRATOS_WATCH("AFTER ASSEMBLING MID FORCES WITH REACTIONS, BEFORE ASSEMBLING DELTA FORCES")
-        // KRATOS_WATCH(this->Id())
-        // KRATOS_WATCH(internal_force)
-        // KRATOS_WATCH(damping_force)
-        // KRATOS_WATCH(external_forces)
-        // KRATOS_WATCH(H1)
-        // KRATOS_WATCH(delta_internal_force)
-        // KRATOS_WATCH(delta_damping_force)
-        // KRATOS_WATCH(delta_external_force)
-
         for (size_t i = 0; i < msNumberOfNodes; ++i) {
             size_t index = msDimension * i;
             
@@ -264,34 +233,43 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
         }
     } else if (rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == REACTION) {
 
-        // Stiffness matrix
-        MatrixType stiffness_matrix = ZeroMatrix(msLocalSize,msLocalSize);
-        noalias(stiffness_matrix) = CreateElementStiffnessMatrix(rCurrentProcessInfo);
-        // Lumped mass matrix
-        VectorType mass_vector(msLocalSize);
-        CalculateLumpedMassVector(mass_vector);
-        Matrix MassMatrix(msLocalSize,msLocalSize);
-        noalias(MassMatrix) = ZeroMatrix(msLocalSize,msLocalSize);
+        // // Stiffness matrix
+        // MatrixType stiffness_matrix = ZeroMatrix(msLocalSize,msLocalSize);
+        // noalias(stiffness_matrix) = CreateElementStiffnessMatrix(rCurrentProcessInfo);
+        // // Lumped mass matrix
+        // VectorType mass_vector(msLocalSize);
+        // CalculateLumpedMassVector(mass_vector);
+        // Matrix MassMatrix(msLocalSize,msLocalSize);
+        // noalias(MassMatrix) = ZeroMatrix(msLocalSize,msLocalSize);
         // I only want 1D bars in Y direction
-        MassMatrix(1, 1) = mass_vector[1];
-        MassMatrix(4, 4) = mass_vector[4];
-        // Rayleigh Damping matrix
-        const double alpha = rCurrentProcessInfo[RAYLEIGH_ALPHA];
-        const double beta = rCurrentProcessInfo[RAYLEIGH_BETA];
-        Matrix damping_matrix(msLocalSize,msLocalSize);
-        noalias(damping_matrix) = alpha*MassMatrix + beta*stiffness_matrix;
+        // MassMatrix(1, 1) = mass_vector[1];
+        // MassMatrix(4, 4) = mass_vector[4];
+        // for (size_t i = 0; i < msLocalSize; ++i) {
+        //     MassMatrix(i,i) = mass_vector[i];
+        // }
+        // for (size_t i = 0; i < msNumberOfNodes; ++i) {
+        //     size_t index = msDimension * i;
+        //     for (size_t j = 0; j < msDimension; ++j) {
+        //         MassMatrix(index+j,index+j) = mass_vector[index+j];
+        //     }
+        // }
+        // // Rayleigh Damping matrix
+        // const double alpha = rCurrentProcessInfo[RAYLEIGH_ALPHA];
+        // const double beta = rCurrentProcessInfo[RAYLEIGH_BETA];
+        // Matrix damping_matrix(msLocalSize,msLocalSize);
+        // noalias(damping_matrix) = alpha*MassMatrix + beta*stiffness_matrix;
 
-        Vector current_nodal_accelerations = ZeroVector(msLocalSize);
-        GetSecondDerivativesVector(current_nodal_accelerations);
+        // Vector current_nodal_accelerations = ZeroVector(msLocalSize);
+        // GetSecondDerivativesVector(current_nodal_accelerations);
 
-        Vector inertial_vector = ZeroVector(msLocalSize);
-        noalias(inertial_vector) = prod(MassMatrix,current_nodal_accelerations);
+        // Vector inertial_vector = ZeroVector(msLocalSize);
+        // noalias(inertial_vector) = prod(MassMatrix,current_nodal_accelerations);
 
-        Vector current_nodal_velocities = ZeroVector(msLocalSize);
-        GetFirstDerivativesVector(current_nodal_velocities);
+        // Vector current_nodal_velocities = ZeroVector(msLocalSize);
+        // GetFirstDerivativesVector(current_nodal_velocities);
 
-        Vector damping_vector = ZeroVector(msLocalSize);
-        noalias(damping_vector) = prod(damping_matrix,current_nodal_velocities);
+        // Vector damping_vector = ZeroVector(msLocalSize);
+        // noalias(damping_vector) = prod(damping_matrix,current_nodal_velocities);
 
         for (size_t i = 0; i < msNumberOfNodes; ++i) {
             size_t index = msDimension * i;
@@ -430,7 +408,12 @@ void TrussFICElementLinear3D2N::CalculateLumpedDampingVector(
     KRATOS_CATCH( "" )
 }
 
-void TrussFICElementLinear3D2N::CalculateFrequencyMatrix(MatrixType& rMatrix, const VectorType& rMassVector, const VectorType& rNumNeighElemsVector, const ProcessInfo& rCurrentProcessInfo)
+void TrussFICElementLinear3D2N::CalculateFrequencyMatrix(
+    MatrixType& rMatrix, 
+    const VectorType& rMassVector, 
+    const VectorType& rNumNeighElemsVector, 
+    const ProcessInfo& rCurrentProcessInfo
+    )
 {
     KRATOS_TRY
 
@@ -449,26 +432,39 @@ void TrussFICElementLinear3D2N::CalculateFrequencyMatrix(MatrixType& rMatrix, co
     Matrix MassMatrix(msLocalSize,msLocalSize);
     noalias(MassMatrix) = ZeroMatrix(msLocalSize,msLocalSize);
     // I only want 1D bars in Y direction
-    MassMatrix(1, 1) = mass_vector[1];
-    MassMatrix(4, 4) = mass_vector[4];
+    // MassMatrix(1, 1) = mass_vector[1];
+    // MassMatrix(4, 4) = mass_vector[4];
+    for (size_t i = 0; i < msLocalSize; ++i) {
+        MassMatrix(i,i) = mass_vector[i];
+    }
+    // for (size_t i = 0; i < msNumberOfNodes; ++i) {
+    //     size_t index = msDimension * i;
+    //     for (size_t j = 0; j < msDimension; ++j) {
+    //         MassMatrix(index+j,index+j) = mass_vector[index+j];
+    //     }
+    // }
     // Rayleigh Damping matrix
     const double alpha = rCurrentProcessInfo[RAYLEIGH_ALPHA];
     const double beta = rCurrentProcessInfo[RAYLEIGH_BETA];
     Matrix damping_matrix(msLocalSize,msLocalSize);
     noalias(damping_matrix) = alpha*MassMatrix + beta*stiffness_matrix;
 
-    // Inverse of lumped mass matrix and Identity matrix taking into account global assembly (TODO: check this...)
+    // Inverse of lumped mass matrix and Identity matrix taking into account global assembly
     Matrix MassMatrixInverse(msLocalSize,msLocalSize);
     noalias(MassMatrixInverse) = ZeroMatrix(msLocalSize,msLocalSize);
     MatrixType IdentityMatrix(msLocalSize,msLocalSize);
     noalias(IdentityMatrix) = ZeroMatrix(msLocalSize,msLocalSize);
-    for (size_t i = 0; i < msNumberOfNodes; ++i) {
-        size_t index = msDimension * i;
-        for (size_t j = 0; j < msDimension; ++j) {
-            MassMatrixInverse(index+j,index+j) = 1.0/rMassVector[index+j];
-            IdentityMatrix(index+j,index+j) = 1.0/rNumNeighElemsVector[index+j];
-        }
+    for (size_t i = 0; i < msLocalSize; ++i) {
+        MassMatrixInverse(i,i) = 1.0/rMassVector[i];
+        IdentityMatrix(i,i) = 1.0/rNumNeighElemsVector[i];
     }
+    // for (size_t i = 0; i < msNumberOfNodes; ++i) {
+    //     size_t index = msDimension * i;
+    //     for (size_t j = 0; j < msDimension; ++j) {
+    //         MassMatrixInverse(index+j,index+j) = 1.0/rMassVector[index+j];
+    //         IdentityMatrix(index+j,index+j) = 1.0/rNumNeighElemsVector[index+j];
+    //     }
+    // }
     // MassMatrixInverse(1, 1) = 1.0/mass_vector[1];
     // MassMatrixInverse(4, 4) = 1.0/mass_vector[4];
     // IdentityMatrix(1,1) = 1.0;

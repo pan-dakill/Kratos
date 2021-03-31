@@ -238,7 +238,7 @@ public:
             fix_displacements[2] = (itCurrentNode->GetDof(DISPLACEMENT_Z, DisplacementPosition + 2).IsFixed());
 
         //TODO
-        const array_1d<double, 3>& r_damping_force = itCurrentNode->FastGetSolutionStepValue(NODAL_DISPLACEMENT_STIFFNESS);
+        // const array_1d<double, 3>& r_damping_force = itCurrentNode->FastGetSolutionStepValue(NODAL_DISPLACEMENT_STIFFNESS);
         // KRATOS_WATCH("Before solving")
         // KRATOS_WATCH(mDeltaTime)
         // KRATOS_WATCH(mDelta)

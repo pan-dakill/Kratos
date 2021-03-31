@@ -256,7 +256,11 @@ protected:
 
     virtual void GetAuxValuesVector(Vector& rValues,int Step) const;
 
-    virtual void CalculateFrequencyMatrix(MatrixType& rMatrix,const ProcessInfo& rCurrentProcessInfo);
+    virtual void CalculateFrequencyMatrix(
+        MatrixType& rMatrix,
+        const VectorType& rMassVector, 
+        const VectorType& rNumNeighElemsVector,
+        const ProcessInfo& rCurrentProcessInfo);
 
     ///@}
     ///@name Protected Operations
