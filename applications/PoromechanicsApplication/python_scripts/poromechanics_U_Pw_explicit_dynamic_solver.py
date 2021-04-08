@@ -166,7 +166,7 @@ class ExplicitUPwSolver(UPwSolver):
         
         process_info.SetValue(StructuralMechanicsApplication.RAYLEIGH_ALPHA, alpha)
         process_info.SetValue(StructuralMechanicsApplication.RAYLEIGH_BETA, beta)
-        process_info.SetValue(KratosPoro.THETA_1, self.settings["theta_1"].GetDouble())
+        process_info.SetValue(KratosPoro.THETA, self.settings["theta_1"].GetDouble())
         process_info.SetValue(KratosPoro.G_FACTOR, self.settings["g_factor"].GetDouble())
         process_info.SetValue(KratosPoro.DELTA, self.settings["delta"].GetDouble())
 
