@@ -200,6 +200,13 @@ namespace Kratos {
         double GetFrictionDecayCoefficient(SphericParticle* element);
         std::size_t GetElementId(SphericParticle* element);
 
+    void CalculateViscoDampingCoeffWithFEM(double &equiv_visco_damp_coeff_normal,
+            double &equiv_visco_damp_coeff_tangential,
+            SphericParticle* element,
+            Condition* wall,
+            double kn_el,
+            double kt_el);
+
     private:
 
         friend class Serializer;

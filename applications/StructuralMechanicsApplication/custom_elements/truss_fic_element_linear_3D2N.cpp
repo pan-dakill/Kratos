@@ -113,7 +113,7 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
 
         // internal_forces = Ka
         BoundedVector<double, msLocalSize> element_internal_forces = ZeroVector(msLocalSize);
-        UpdateInternalForces(element_internal_forces);
+        UpdateInternalForces(element_internal_forces,rCurrentProcessInfo);
 
         // Stiffness matrix
         MatrixType stiffness_matrix = ZeroMatrix(msLocalSize,msLocalSize);
