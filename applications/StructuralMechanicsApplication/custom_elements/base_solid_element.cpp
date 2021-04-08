@@ -1697,9 +1697,6 @@ void BaseSolidElement::CalculateLumpedMassVector(
     // LUMPED MASS MATRIX
     const double total_mass = GetGeometry().DomainSize() * density * thickness;
 
-    // KRATOS_WATCH(this->Id())
-    // KRATOS_WATCH(total_mass)
-
     Vector lumping_factors;
     lumping_factors = GetGeometry().LumpingFactors( lumping_factors );
 
@@ -1767,7 +1764,7 @@ void BaseSolidElement::CalculateDampingMatrixWithLumpedMass(
         VectorType residual_vector( mat_size );
 
         this->CalculateAll(stiffness_matrix, residual_vector, rCurrentProcessInfo, true, false);
-        // KRATOS_WATCH(stiffness_matrix)
+
         noalias( rDampingMatrix ) += beta  * stiffness_matrix;
     }
 

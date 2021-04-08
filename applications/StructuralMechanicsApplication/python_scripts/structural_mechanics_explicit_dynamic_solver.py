@@ -34,8 +34,6 @@ class ExplicitMechanicalSolver(MechanicalSolver):
             "delta_time_refresh"         : 1000,
             "max_delta_time"             : 1.0e0,
             "fraction_delta_time"        : 0.333333333333333333333333333333333333,
-            "l2_rel_tolerance"           : 1.0e-4,
-            "l2_abs_tolerance"           : 1.0e-9,
             "rayleigh_alpha"             : 0.0,
             "rayleigh_beta"              : 0.0,
             "theta_1"                    : 1.0,
@@ -113,8 +111,6 @@ class ExplicitMechanicalSolver(MechanicalSolver):
     #### Specific internal functions ####
     def _create_solution_scheme(self):
         scheme_type = self.settings["scheme_type"].GetString()
-        # print(scheme_type)
-        # paraaa
 
         # Setting the Rayleigh damping parameters
         process_info = self.main_model_part.ProcessInfo

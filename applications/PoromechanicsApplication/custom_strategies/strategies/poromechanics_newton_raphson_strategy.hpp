@@ -240,7 +240,7 @@ protected:
     {
         double ReferenceDofsNorm = 0.0;
 
-        int NumThreads = OpenMPUtils::GetNumThreads();
+        int NumThreads = ParallelUtilities::GetNumThreads();
         OpenMPUtils::PartitionVector DofSetPartition;
         OpenMPUtils::DivideInPartitions(rDofSet.size(), NumThreads, DofSetPartition);
 

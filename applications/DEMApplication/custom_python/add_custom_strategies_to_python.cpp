@@ -27,7 +27,6 @@
 #include "custom_strategies/schemes/velocity_verlet_scheme.h"
 #include "custom_strategies/schemes/runge_kutta_scheme.h"
 #include "custom_strategies/schemes/quaternion_integration_scheme.h"
-#include "custom_strategies/schemes/split_forward_euler_scheme.h"
 
 //builder_and_solvers
 #include "solving_strategies/builder_and_solvers/builder_and_solver.h"
@@ -84,10 +83,6 @@ void  AddCustomStrategiesToPython(pybind11::module& m)
         ;
 
     py::class_<QuaternionIntegrationScheme, QuaternionIntegrationScheme::Pointer, DEMIntegrationScheme>(m, "QuaternionIntegrationScheme")
-        .def(py::init<>())
-        ;
-
-    py::class_<SplitForwardEulerScheme, SplitForwardEulerScheme::Pointer, DEMIntegrationScheme>(m, "SplitForwardEulerScheme")
         .def(py::init<>())
         ;
 

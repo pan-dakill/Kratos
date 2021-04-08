@@ -32,10 +32,6 @@
 #include "custom_elements/sintering_spheric_continuum_particle.h"
 #include "custom_elements/bonding_spheric_continuum_particle.h"
 #include "custom_elements/custom_clusters/singlespherecluster3D.h"
-#include "custom_elements/split_forward_euler_spheric_particle.h"
-#include "custom_elements/split_forward_euler_cylinder_particle.h"
-#include "custom_elements/split_forward_euler_spheric_continuum_particle.h"
-#include "custom_elements/split_forward_euler_cylinder_continuum_particle.h"
 #include "custom_conditions/mapping_condition.h"
 #include "custom_conditions/SolidFace.h"
 #include "custom_conditions/RigidFace.h"
@@ -91,15 +87,11 @@ protected:
 private:
 
     const CylinderParticle mCylinderParticle2D;
-    const SplitForwardEulerCylinderParticle mSplitForwardEulerCylinderParticle2D;
     const CylinderContinuumParticle mCylinderContinuumParticle2D;
-    const SplitForwardEulerCylinderContinuumParticle mSplitForwardEulerCylinderContinuumParticle2D;
     const SphericParticle mSphericParticle3D;
-    const SplitForwardEulerSphericParticle mSplitForwardEulerSphericParticle3D;
     const NanoParticle mNanoParticle3D;
     const AnalyticSphericParticle mAnalyticSphericParticle3D;
     const SphericContinuumParticle mSphericContinuumParticle3D;
-    const SplitForwardEulerSphericContinuumParticle mSplitForwardEulerSphericContinuumParticle3D;
     const PolyhedronSkinSphericParticle mPolyhedronSkinSphericParticle3D;
     const IceContinuumParticle mIceContinuumParticle3D;
     const BeamParticle mBeamParticle3D;

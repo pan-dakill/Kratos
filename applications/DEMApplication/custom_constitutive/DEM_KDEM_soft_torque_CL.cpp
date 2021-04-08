@@ -20,7 +20,6 @@ namespace Kratos {
         this->Check(pProp);
     }
 
-    // TODO: why ViscoLocalRotationalMoment is 0.0 ?
     void DEM_KDEM_soft_torque::ComputeParticleRotationalMoments(SphericContinuumParticle* element,
                                                     SphericContinuumParticle* neighbor,
                                                     double equiv_young,

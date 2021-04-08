@@ -149,29 +149,13 @@ namespace Kratos
 
         SphericContinuumParticle();
 
-        // void ComputeBallToBallStiffnessAndDamping(SphericParticle::ParticleDataBuffer & data_buffer,
-        //                                             double& r_nodal_stiffness,
-        //                                             double& r_nodal_damping,
-        //                                             double& r_nodal_rotational_stiffness,
-        //                                             double& r_nodal_rotational_damping) override;
-
-        // void ComputeBallToRigidFaceStiffnessAndDamping(SphericParticle::ParticleDataBuffer & data_buffer,
-        //                                                 double& r_nodal_stiffness,
-        //                                                 double& r_nodal_damping,
-        //                                                 double& r_nodal_rotational_stiffness,
-        //                                                 double& r_nodal_rotational_damping) override;
-
-        // double CalculateStiffnessNorm(const double& r_normal_stiffness, const double& r_tangential_stiffness);
-
-        // double CalculateDampingNorm(const double& r_normal_damping_coeff, const double& r_tangential_damping_coeff);
-
         void Initialize(const ProcessInfo& r_process_info) override;
         virtual double GetInitialDeltaWithFEM(int index) override;
-        void ComputeBallToBallContactForce(SphericParticle::ParticleDataBuffer& data_buffer,
-                                                   const ProcessInfo& r_process_info,
-                                                   array_1d<double, 3>& rElasticForce,
-                                                   array_1d<double, 3>& rContactForce,
-                                                   double& RollingResistance) override;
+        virtual void ComputeBallToBallContactForce(SphericParticle::ParticleDataBuffer &,
+                                                const ProcessInfo& r_process_info,
+                                                array_1d<double, 3>& rElasticForce,
+                                                array_1d<double, 3>& rContactForce,
+                                                double& RollingResistance) override;
 
         virtual void ComputeRollingResistance(double& RollingResistance,
                                             const double& NormalLocalContactForce,
