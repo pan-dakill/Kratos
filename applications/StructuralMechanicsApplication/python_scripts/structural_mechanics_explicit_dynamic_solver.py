@@ -44,7 +44,9 @@ class ExplicitMechanicalSolver(MechanicalSolver):
             "xi_1"                       : 1.0,
             "xi_n"                       : 1.0,
             "omega_1"                    : 1.0,
-            "omega_n"                    : 1.0
+            "omega_n"                    : 1.0,
+            "l2_rel_tolerance"                : 1.0e-4,
+            "l2_abs_tolerance"                : 1.0e-9
         }""")
         this_defaults.AddMissingParameters(super().GetDefaultParameters())
         return this_defaults
