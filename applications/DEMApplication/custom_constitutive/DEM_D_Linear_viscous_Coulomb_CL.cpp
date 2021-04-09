@@ -233,23 +233,6 @@ namespace Kratos {
 
     }
 
-    void DEM_D_Linear_viscous_Coulomb::CalculateViscoDampingCoeffWithFEM(double &equiv_visco_damp_coeff_normal,
-            double &equiv_visco_damp_coeff_tangential,
-            SphericParticle* element,
-            Condition* wall,
-            double kn_el,
-            double kt_el) {
-
-        KRATOS_TRY
-
-        const double my_mass    = element->GetMass();
-        const double gamma = element->GetProperties()[DAMPING_GAMMA];
-        equiv_visco_damp_coeff_normal     = 2.0 * gamma * sqrt(my_mass * kn_el);
-        equiv_visco_damp_coeff_tangential = 2.0 * gamma * sqrt(my_mass * kt_el);
-
-        KRATOS_CATCH("")
-    }
-
     double DEM_D_Linear_viscous_Coulomb::GetTgOfStaticFrictionAngleOfElement(SphericParticle* element){
         return element->GetTgOfStaticFrictionAngle();
     }
