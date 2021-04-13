@@ -125,7 +125,8 @@ public:
 
         const ProcessInfo& r_current_process_info = rModelPart.GetProcessInfo();
 
-        mDelta = r_current_process_info[LOAD_FACTOR];
+        mDelta1 = r_current_process_info[LOAD_FACTOR];
+        mDelta2 = r_current_process_info[DELTA_2];
 
         BaseType::Initialize(rModelPart);
 
@@ -158,19 +159,25 @@ public:
             it_node->SetValue(NUMBER_OF_NEIGHBOUR_ELEMENTS, 0.0);
             array_1d<double, 3>& r_force_residual = it_node->FastGetSolutionStepValue(FORCE_RESIDUAL);
             array_1d<double, 3>& r_external_forces = it_node->FastGetSolutionStepValue(EXTERNAL_FORCE);
-            array_1d<double, 3>& r_current_internal_force = it_node->FastGetSolutionStepValue(NODAL_INERTIA); // K*a (internal_forces)
+            array_1d<double, 3>& r_current_internal_force = it_node->FastGetSolutionStepValue(NODAL_INERTIA); // K*d (internal_forces)
             noalias(r_force_residual) = ZeroVector(3);
             noalias(r_external_forces) = ZeroVector(3);
             noalias(r_current_internal_force) = ZeroVector(3);
 
-            array_1d<double, 3>& r_delta_internal_force = it_node->FastGetSolutionStepValue(MIDDLE_VELOCITY); // H1Ka
-            array_1d<double, 3>& r_delta_damping_force = it_node->FastGetSolutionStepValue(MIDDLE_ANGULAR_VELOCITY); // H1Ca
+            array_1d<double, 3>& r_delta_internal_force = it_node->FastGetSolutionStepValue(MIDDLE_VELOCITY); // H1Kd
+            array_1d<double, 3>& r_delta_damping_force = it_node->FastGetSolutionStepValue(MIDDLE_ANGULAR_VELOCITY); // H1Cd
             array_1d<double, 3>& r_delta_external_force = it_node->FastGetSolutionStepValue(FRACTIONAL_ACCELERATION); // H1f
-            array_1d<double, 3>& r_damping_force = it_node->FastGetSolutionStepValue(NODAL_DISPLACEMENT_STIFFNESS); // C*a
+            array_1d<double, 3>& r_damping_force = it_node->FastGetSolutionStepValue(NODAL_DISPLACEMENT_STIFFNESS); // C*d
             noalias(r_delta_internal_force) = ZeroVector(3);
             noalias(r_delta_damping_force) = ZeroVector(3);
             noalias(r_delta_external_force) = ZeroVector(3);
             noalias(r_damping_force) = ZeroVector(3);
+            array_1d<double, 3>& r_delta2_internal_force = it_node->FastGetSolutionStepValue(DELTA_2_INTERNAL_FORCE); // H2Kd
+            array_1d<double, 3>& r_delta2_damping_force = it_node->FastGetSolutionStepValue(DELTA_2_DAMPING_FORCE); // H2Cd
+            array_1d<double, 3>& r_delta2_external_force = it_node->FastGetSolutionStepValue(DELTA_2_EXTERNAL_FORCE); // H2f
+            noalias(r_delta2_internal_force) = ZeroVector(3);
+            noalias(r_delta2_damping_force) = ZeroVector(3);
+            noalias(r_delta2_external_force) = ZeroVector(3);
         }
 
         KRATOS_CATCH("")
@@ -196,6 +203,9 @@ public:
         VariableUtils().SetVariable(MIDDLE_ANGULAR_VELOCITY, zero_array,r_nodes);
         VariableUtils().SetVariable(FRACTIONAL_ACCELERATION, zero_array,r_nodes);
         VariableUtils().SetVariable(NODAL_DISPLACEMENT_STIFFNESS, zero_array,r_nodes);
+        VariableUtils().SetVariable(DELTA_2_INTERNAL_FORCE, zero_array,r_nodes);
+        VariableUtils().SetVariable(DELTA_2_DAMPING_FORCE, zero_array,r_nodes);
+        VariableUtils().SetVariable(DELTA_2_EXTERNAL_FORCE, zero_array,r_nodes);
 
         KRATOS_CATCH("")
     }
@@ -230,6 +240,10 @@ public:
         const array_1d<double, 3>& r_current_delta_damping_force = itCurrentNode->FastGetSolutionStepValue(MIDDLE_ANGULAR_VELOCITY);
         const array_1d<double, 3>& r_previous_delta_damping_force = itCurrentNode->FastGetSolutionStepValue(MIDDLE_ANGULAR_VELOCITY,1);
         // const array_1d<double, 3>& r_actual_previous_delta_damping_force = itCurrentNode->FastGetSolutionStepValue(MIDDLE_ANGULAR_VELOCITY,2);
+        const array_1d<double, 3>& r_delta2_internal_force = itCurrentNode->FastGetSolutionStepValue(DELTA_2_INTERNAL_FORCE);
+        const array_1d<double, 3>& r_delta2_damping_force = itCurrentNode->FastGetSolutionStepValue(DELTA_2_DAMPING_FORCE);
+        const array_1d<double, 3>& r_previous_delta2_damping_force = itCurrentNode->FastGetSolutionStepValue(DELTA_2_DAMPING_FORCE,1);
+        const array_1d<double, 3>& r_delta2_external_force = itCurrentNode->FastGetSolutionStepValue(DELTA_2_EXTERNAL_FORCE);
 
         std::array<bool, 3> fix_displacements = {false, false, false};
         fix_displacements[0] = (itCurrentNode->GetDof(DISPLACEMENT_X, DisplacementPosition).IsFixed());
@@ -241,7 +255,8 @@ public:
         // const array_1d<double, 3>& r_damping_force = itCurrentNode->FastGetSolutionStepValue(NODAL_DISPLACEMENT_STIFFNESS);
         // KRATOS_WATCH("Before solving")
         // KRATOS_WATCH(mDeltaTime)
-        // KRATOS_WATCH(mDelta)
+        // KRATOS_WATCH(mDelta1)
+        // KRATOS_WATCH(mDelta2)
         // KRATOS_WATCH(mAlpha)
         // KRATOS_WATCH(mBeta)
         // KRATOS_WATCH(nodal_mass)
@@ -256,19 +271,28 @@ public:
         // KRATOS_WATCH(r_delta_external_force)
         // KRATOS_WATCH(r_external_force)
         // KRATOS_WATCH(r_previous_external_force)
+        // KRATOS_WATCH(r_delta2_internal_force)
+        // KRATOS_WATCH(r_delta2_damping_force)
+        // KRATOS_WATCH(r_previous_delta2_damping_force)
+        // KRATOS_WATCH(r_delta2_external_force)
 
         for (IndexType j = 0; j < DomainSize; j++) {
             if (fix_displacements[j] == false) {
-                r_current_displacement[j] = ( 2.0*(1.0+mDelta)*nodal_mass*r_current_displacement[j]
-                                            - mDelta*mDeltaTime*mDeltaTime*r_current_internal_force[j]
+                r_current_displacement[j] = ( 2.0*(1.0+mDelta1)*nodal_mass*r_current_displacement[j]
+                                            - mDelta1*mDeltaTime*mDeltaTime*r_current_internal_force[j]
                                             - mDeltaTime*mDeltaTime*r_delta_internal_force[j]
                                             - mDeltaTime*r_current_delta_damping_force[j]
-                                            - (1.0+mDelta)*nodal_mass*r_actual_previous_displacement[j]
-                                            + mDelta*mDeltaTime*mDeltaTime*r_previous_internal_force[j]
+                                            - (1.0+mDelta1)*nodal_mass*r_actual_previous_displacement[j]
+                                            + mDelta1*mDeltaTime*mDeltaTime*r_previous_internal_force[j]
                                             + mDeltaTime*r_previous_delta_damping_force[j]
                                             + mDeltaTime*mDeltaTime*r_delta_external_force[j]
-                                            + mDelta*mDeltaTime*mDeltaTime*(r_external_force[j]-r_previous_external_force[j]) ) /
-                                            ( nodal_mass*(1.0+mDelta) );
+                                            + mDelta1*mDeltaTime*mDeltaTime*(r_external_force[j]-r_previous_external_force[j]) 
+                                            + (1.0+mDelta1)*mDelta2*mDelta2*(
+                                                mDeltaTime*mDeltaTime*r_delta2_internal_force[j]
+                                                + mDeltaTime*r_delta2_damping_force[j]
+                                                - mDeltaTime*r_previous_delta2_damping_force[j]
+                                                - mDeltaTime*mDeltaTime*r_delta2_external_force[j])
+                                            ) / ( nodal_mass*(1.0+mDelta1) );
             }
         }
 
@@ -525,7 +549,8 @@ protected:
     ///@name Protected member Variables
     ///@{
 
-    double mDelta;
+    double mDelta1;
+    double mDelta2;
 
     ///@}
     ///@name Protected Operators

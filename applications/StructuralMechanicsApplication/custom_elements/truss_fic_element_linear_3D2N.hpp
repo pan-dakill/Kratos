@@ -124,7 +124,7 @@ protected:
      */
     void CalculateLumpedDampingVector(VectorType& rDampingVector, const ProcessInfo& rCurrentProcessInfo);
 
-    void CalculateFrequencyMatrix(MatrixType& rMatrix, const VectorType& rMassVector, const VectorType& rNumNeighElemsVector, const ProcessInfo& rCurrentProcessInfo);
+    void CalculateFrequencyMatrix(MatrixType& rH1Matrix, MatrixType& rH2Matrix, const VectorType& rMassVector, const VectorType& rNumNeighElemsVector, const ProcessInfo& rCurrentProcessInfo);
 
     // void GetAuxiliaryVelocityVector(Vector& rValues, int Step) const;
 

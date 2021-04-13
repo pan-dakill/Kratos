@@ -201,8 +201,9 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
         }
 
         MatrixType H1( msLocalSize, msLocalSize );
-        this->CalculateFrequencyMatrix(H1, mass_vector, num_neigh_elems_vector, rCurrentProcessInfo);
-
+        MatrixType H2( msLocalSize, msLocalSize );
+        this->CalculateFrequencyMatrix(H1, H2, mass_vector, num_neigh_elems_vector, rCurrentProcessInfo);
+      
         Vector delta_internal_force = ZeroVector(msLocalSize);
         noalias(delta_internal_force) = prod(H1,internal_force);
 
@@ -212,12 +213,24 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
         Vector delta_external_force = ZeroVector(msLocalSize);
         noalias(delta_external_force) = prod(H1,external_forces);
 
+        Vector delta2_internal_force = ZeroVector(msLocalSize);
+        noalias(delta2_internal_force) = prod(H2,internal_force);
+
+        Vector delta2_damping_force = ZeroVector(msLocalSize);
+        noalias(delta2_damping_force) = prod(H2,damping_force);
+
+        Vector delta2_external_force = ZeroVector(msLocalSize);
+        noalias(delta2_external_force) = prod(H2,external_forces);
+
         for (size_t i = 0; i < msNumberOfNodes; ++i) {
             size_t index = msDimension * i;
             
-            array_1d<double, 3>& r_delta_internal_force = GetGeometry()[i].FastGetSolutionStepValue(MIDDLE_VELOCITY); // H1Ka
-            array_1d<double, 3>& r_delta_damping_force = GetGeometry()[i].FastGetSolutionStepValue(MIDDLE_ANGULAR_VELOCITY); // H1Ca
+            array_1d<double, 3>& r_delta_internal_force = GetGeometry()[i].FastGetSolutionStepValue(MIDDLE_VELOCITY); // H1Kd
+            array_1d<double, 3>& r_delta_damping_force = GetGeometry()[i].FastGetSolutionStepValue(MIDDLE_ANGULAR_VELOCITY); // H1Cd
             array_1d<double, 3>& r_delta_external_force = GetGeometry()[i].FastGetSolutionStepValue(FRACTIONAL_ACCELERATION); // H1f
+            array_1d<double, 3>& r_delta2_internal_force = GetGeometry()[i].FastGetSolutionStepValue(DELTA_2_INTERNAL_FORCE); // H2Kd
+            array_1d<double, 3>& r_delta2_damping_force = GetGeometry()[i].FastGetSolutionStepValue(DELTA_2_DAMPING_FORCE); // H2Cd
+            array_1d<double, 3>& r_delta2_external_force = GetGeometry()[i].FastGetSolutionStepValue(DELTA_2_EXTERNAL_FORCE); // H2f
 
             for (size_t j = 0; j < msDimension; ++j) {
 
@@ -229,6 +242,15 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
 
                 #pragma omp atomic
                 r_delta_external_force[j] += delta_external_force[index + j];
+
+                #pragma omp atomic
+                r_delta2_internal_force[j] += delta2_internal_force[index + j];
+
+                #pragma omp atomic
+                r_delta2_damping_force[j] += delta2_damping_force[index + j];
+
+                #pragma omp atomic
+                r_delta2_external_force[j] += delta2_external_force[index + j];
             }
         }
     } else if (rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == REACTION) {
@@ -409,7 +431,8 @@ void TrussFICElementLinear3D2N::CalculateLumpedDampingVector(
 }
 
 void TrussFICElementLinear3D2N::CalculateFrequencyMatrix(
-    MatrixType& rMatrix, 
+    MatrixType& rH1Matrix, 
+    MatrixType& rH2Matrix, 
     const VectorType& rMassVector, 
     const VectorType& rNumNeighElemsVector, 
     const ProcessInfo& rCurrentProcessInfo
@@ -418,10 +441,15 @@ void TrussFICElementLinear3D2N::CalculateFrequencyMatrix(
     KRATOS_TRY
 
     // Clear matrix
-    if (rMatrix.size1() != msLocalSize || rMatrix.size2() != msLocalSize) {
-        rMatrix.resize(msLocalSize, msLocalSize, false);
+    if (rH1Matrix.size1() != msLocalSize || rH1Matrix.size2() != msLocalSize) {
+        rH1Matrix.resize(msLocalSize, msLocalSize, false);
     }
-    rMatrix = ZeroMatrix(msLocalSize, msLocalSize);
+    rH1Matrix = ZeroMatrix(msLocalSize, msLocalSize);
+
+    if (rH2Matrix.size1() != msLocalSize || rH2Matrix.size2() != msLocalSize) {
+        rH2Matrix.resize(msLocalSize, msLocalSize, false);
+    }
+    rH2Matrix = ZeroMatrix(msLocalSize, msLocalSize);
 
     // Stiffness matrix
     MatrixType stiffness_matrix = ZeroMatrix(msLocalSize,msLocalSize);
@@ -475,7 +503,9 @@ void TrussFICElementLinear3D2N::CalculateFrequencyMatrix(
 
     MatrixType aux_matrix(msLocalSize,msLocalSize);
     noalias(aux_matrix) = prod(damping_matrix,MassMatrixInverse);
-    noalias(rMatrix) = (1.0+delta)*IdentityMatrix - delta*delta_time*aux_matrix;
+    noalias(rH1Matrix) = (1.0+delta)*IdentityMatrix - delta*delta_time*aux_matrix;
+
+    noalias(rH2Matrix) = delta_time*delta_time*prod(stiffness_matrix,MassMatrixInverse);
 
     KRATOS_CATCH("")
 }

@@ -39,7 +39,8 @@ class ExplicitMechanicalSolver(MechanicalSolver):
             "theta_1"                    : 1.0,
             "theta_2"                    : 0.0,
             "theta_3"                    : 0.0,
-            "delta"                      : 1.0,
+            "delta_1"                      : 1.0,
+            "delta_2"                      : 1.0,
             "calculate_alpha_beta"       : false,
             "xi_1"                       : 1.0,
             "xi_n"                       : 1.0,
@@ -65,12 +66,15 @@ class ExplicitMechanicalSolver(MechanicalSolver):
             if (self.settings["rotation_dofs"].GetBool()):
                 self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.FRACTIONAL_ANGULAR_ACCELERATION)
         if(scheme_type == "cd" or scheme_type == "ocd" or scheme_type == "vv" or scheme_type == "ovv" or scheme_type == "omdp" or scheme_type == "cd_fic"):
-            self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.NODAL_INERTIA) # K*d: internal forces
+            self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.NODAL_INERTIA) # Kd: internal forces
             self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.MIDDLE_VELOCITY) # H1Kd
             self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.MIDDLE_ANGULAR_VELOCITY) # H1Cd
             self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.FRACTIONAL_ACCELERATION) # H1f
-            self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.NODAL_DISPLACEMENT_STIFFNESS) # C*v
-            self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.NUMBER_OF_NEIGHBOUR_ELEMENTS) 
+            self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.NODAL_DISPLACEMENT_STIFFNESS) # Cd
+            # self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.NUMBER_OF_NEIGHBOUR_ELEMENTS)
+            self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.DELTA_2_INTERNAL_FORCE) # H2Kd
+            self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.DELTA_2_DAMPING_FORCE) # H2Cd
+            self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.DELTA_2_EXTERNAL_FORCE) # H2f
 
         self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.NODAL_MASS)
         self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.FORCE_RESIDUAL) # -R=f-Ma-Cv-Kd
@@ -125,6 +129,10 @@ class ExplicitMechanicalSolver(MechanicalSolver):
             omega_n = self.settings["omega_n"].GetDouble()
             beta = 2.0*(xi_n*omega_n-xi_1*omega_1)/(omega_n*omega_n-omega_1*omega_1)
             alpha = 2.0*xi_1*omega_1-beta*omega_1*omega_1
+            print('Info:')
+            print('dt: ',self.settings["time_stepping"]["time_step"].GetDouble())
+            print('delta1: ',self.settings["delta_1"].GetDouble())
+            print('delta2: ',self.settings["delta_2"].GetDouble())
             print('Alpha and Beta input:')
             print('omega_1: ',omega_1)
             print('omega_n: ',omega_n)
@@ -140,9 +148,9 @@ class ExplicitMechanicalSolver(MechanicalSolver):
         process_info.SetValue(StructuralMechanicsApplication.RAYLEIGH_ALPHA, alpha)
         process_info.SetValue(StructuralMechanicsApplication.RAYLEIGH_BETA, beta)
         process_info.SetValue(StructuralMechanicsApplication.THETA_1, self.settings["theta_1"].GetDouble())
-        process_info.SetValue(StructuralMechanicsApplication.THETA_2, self.settings["theta_2"].GetDouble())
+        process_info.SetValue(StructuralMechanicsApplication.DELTA_2, self.settings["delta_2"].GetDouble())
         process_info.SetValue(StructuralMechanicsApplication.THETA_3, self.settings["theta_3"].GetDouble())
-        process_info.SetValue(StructuralMechanicsApplication.LOAD_FACTOR, self.settings["delta"].GetDouble())
+        process_info.SetValue(StructuralMechanicsApplication.LOAD_FACTOR, self.settings["delta_1"].GetDouble())
         process_info.SetValue(KratosMultiphysics.ERROR_RATIO, self.settings["l2_rel_tolerance"].GetDouble())
         process_info.SetValue(KratosMultiphysics.ERROR_INTEGRATION_POINT, self.settings["l2_abs_tolerance"].GetDouble())
         process_info.SetValue(KratosMultiphysics.DELTA_TIME, self.settings["time_stepping"]["time_step"].GetDouble())
