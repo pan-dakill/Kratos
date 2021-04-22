@@ -50,6 +50,7 @@
 #include "custom_strategies/schemes/velocity_verlet_scheme.h"
 #include "custom_strategies/schemes/runge_kutta_scheme.h"
 #include "custom_strategies/schemes/quaternion_integration_scheme.h"
+#include "custom_strategies/schemes/central_differences_scheme.h"
 
 namespace Kratos {
 KRATOS_CREATE_VARIABLE(GlobalPointersVector<Element>, CONTINUUM_INI_NEIGHBOUR_ELEMENTS)
@@ -439,6 +440,12 @@ KRATOS_CREATE_3D_VARIABLE_WITH_COMPONENTS(LOADING_VELOCITY)
 // for DEM-FEM 2D
 KRATOS_CREATE_VARIABLE(double, IMPOSED_Z_STRAIN_VALUE)
 KRATOS_CREATE_VARIABLE(bool, IMPOSED_Z_STRAIN_OPTION)
+
+// Time Integration Scheme with Rayleigh Damping
+KRATOS_CREATE_3D_VARIABLE_WITH_COMPONENTS(DISPLACEMENT_OLD)
+KRATOS_CREATE_3D_VARIABLE_WITH_COMPONENTS(INTERNAL_FORCE_OLD)
+KRATOS_CREATE_VARIABLE(double, RAYLEIGH_ALPHA)
+KRATOS_CREATE_VARIABLE(double, RAYLEIGH_BETA)
 
 //FLAGS
 KRATOS_CREATE_LOCAL_FLAG(DEMFlags, HAS_ROTATION, 0);
@@ -889,6 +896,12 @@ void KratosDEMApplication::Register() {
     KRATOS_REGISTER_VARIABLE(IMPOSED_Z_STRAIN_VALUE)
     KRATOS_REGISTER_VARIABLE(IMPOSED_Z_STRAIN_OPTION)
 
+    // Time Integration Scheme with Rayleigh Damping
+    KRATOS_REGISTER_3D_VARIABLE_WITH_COMPONENTS(DISPLACEMENT_OLD)
+    KRATOS_REGISTER_3D_VARIABLE_WITH_COMPONENTS(INTERNAL_FORCE_OLD)
+    KRATOS_REGISTER_VARIABLE(RAYLEIGH_ALPHA)
+    KRATOS_REGISTER_VARIABLE(RAYLEIGH_BETA)
+
     // ELEMENTS
     KRATOS_REGISTER_ELEMENT("CylinderParticle2D", mCylinderParticle2D)
     KRATOS_REGISTER_ELEMENT("CylinderContinuumParticle2D", mCylinderContinuumParticle2D)
@@ -963,6 +976,7 @@ void KratosDEMApplication::Register() {
     Serializer::Register("SymplecticEulerScheme", SymplecticEulerScheme());
     Serializer::Register("TaylorScheme", TaylorScheme());
     Serializer::Register("VelocityVerletScheme", VelocityVerletScheme());
+    Serializer::Register("CentralDifferencesScheme", CentralDifferencesScheme());
     Serializer::Register("RungeKuttaScheme", RungeKuttaScheme());
     Serializer::Register("QuaternionIntegrationScheme", QuaternionIntegrationScheme());
     Serializer::Register("DEMIntegrationScheme", DEMIntegrationScheme());

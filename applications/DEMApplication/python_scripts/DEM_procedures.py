@@ -371,6 +371,8 @@ class Procedures():
             translational_scheme = TaylorScheme()
         elif self.DEM_parameters["TranslationalIntegrationScheme"].GetString() == 'Velocity_Verlet':
             translational_scheme = VelocityVerletScheme()
+        elif self.DEM_parameters["TranslationalIntegrationScheme"].GetString() == 'Central_Differences':
+            translational_scheme = CentralDifferencesScheme()
         else:
             KratosPrintWarning('Error: selected translational integration scheme not defined. Please select a different scheme')
             sys.exit("\nExecution was aborted.\n")
@@ -386,6 +388,8 @@ class Procedures():
                 rotational_scheme = TaylorScheme()
             elif self.DEM_parameters["TranslationalIntegrationScheme"].GetString() == 'Velocity_Verlet':
                 rotational_scheme = VelocityVerletScheme()
+            elif self.DEM_parameters["TranslationalIntegrationScheme"].GetString() == 'Central_Differences':
+                rotational_scheme = CentralDifferencesScheme()
         elif self.DEM_parameters["RotationalIntegrationScheme"].GetString() == 'Runge_Kutta':
             rotational_scheme = RungeKuttaScheme()
         elif self.DEM_parameters["RotationalIntegrationScheme"].GetString() == 'Quaternion_Integration':
@@ -426,6 +430,13 @@ class Procedures():
         model_part.AddNodalSolutionStepVariable(DELTA_DISPLACEMENT)
         model_part.AddNodalSolutionStepVariable(TOTAL_FORCES)
         model_part.AddNodalSolutionStepVariable(CONTACT_FORCES)
+        # TODO. Ignasi: think how to add them properly
+        model_part.AddNodalSolutionStepVariable(DISPLACEMENT_OLD)
+        model_part.AddNodalSolutionStepVariable(INTERNAL_FORCE)
+        model_part.AddNodalSolutionStepVariable(INTERNAL_FORCE_OLD)
+        model_part.AddNodalSolutionStepVariable(EXTERNAL_FORCE)
+        model_part.AddNodalSolutionStepVariable(RAYLEIGH_ALPHA)
+        model_part.AddNodalSolutionStepVariable(RAYLEIGH_ALPHA)
 
     def AddSpheresVariables(self, model_part, DEM_parameters):
 
