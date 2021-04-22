@@ -501,9 +501,10 @@ void TrussFICElementLinear3D2N::CalculateFrequencyMatrix(
     const double delta = rCurrentProcessInfo[LOAD_FACTOR];
     const double delta_time = rCurrentProcessInfo[DELTA_TIME];
 
-    MatrixType aux_matrix(msLocalSize,msLocalSize);
-    noalias(aux_matrix) = prod(damping_matrix,MassMatrixInverse);
-    noalias(rH1Matrix) = (1.0+delta)*IdentityMatrix - delta*delta_time*aux_matrix;
+    // MatrixType aux_matrix(msLocalSize,msLocalSize);
+    // noalias(aux_matrix) = prod(damping_matrix,MassMatrixInverse);
+    // noalias(rH1Matrix) = (1.0+delta)*IdentityMatrix - delta*delta_time*aux_matrix;
+    noalias(rH1Matrix) = delta*delta_time*prod(damping_matrix,MassMatrixInverse);
 
     noalias(rH2Matrix) = delta_time*delta_time*prod(stiffness_matrix,MassMatrixInverse);
 

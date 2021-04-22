@@ -41,6 +41,7 @@ class ExplicitMechanicalSolver(MechanicalSolver):
             "theta_3"                    : 0.0,
             "delta_1"                      : 1.0,
             "delta_2"                      : 1.0,
+            "gamma"                      : 1.0,
             "calculate_alpha_beta"       : false,
             "xi_1"                       : 1.0,
             "xi_n"                       : 1.0,
@@ -131,9 +132,9 @@ class ExplicitMechanicalSolver(MechanicalSolver):
             alpha = 2.0*xi_1*omega_1-beta*omega_1*omega_1
             print('Info:')
             print('dt: ',self.settings["time_stepping"]["time_step"].GetDouble())
+            print('gamma: ',self.settings["gamma"].GetDouble())
             print('delta1: ',self.settings["delta_1"].GetDouble())
             print('delta2: ',self.settings["delta_2"].GetDouble())
-            print('Alpha and Beta input:')
             print('omega_1: ',omega_1)
             print('omega_n: ',omega_n)
             print('xi_1: ',xi_1)
@@ -149,6 +150,7 @@ class ExplicitMechanicalSolver(MechanicalSolver):
         process_info.SetValue(StructuralMechanicsApplication.RAYLEIGH_BETA, beta)
         process_info.SetValue(StructuralMechanicsApplication.THETA_1, self.settings["theta_1"].GetDouble())
         process_info.SetValue(StructuralMechanicsApplication.DELTA_2, self.settings["delta_2"].GetDouble())
+        process_info.SetValue(StructuralMechanicsApplication.GAMMA, self.settings["gamma"].GetDouble())
         process_info.SetValue(StructuralMechanicsApplication.THETA_3, self.settings["theta_3"].GetDouble())
         process_info.SetValue(StructuralMechanicsApplication.LOAD_FACTOR, self.settings["delta_1"].GetDouble())
         process_info.SetValue(KratosMultiphysics.ERROR_RATIO, self.settings["l2_rel_tolerance"].GetDouble())

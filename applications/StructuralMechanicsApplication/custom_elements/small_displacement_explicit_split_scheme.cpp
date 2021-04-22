@@ -669,9 +669,10 @@ void SmallDisplacementExplicitSplitScheme::CalculateFrequencyMatrix(
     const double delta = rCurrentProcessInfo[LOAD_FACTOR];
     const double delta_time = rCurrentProcessInfo[DELTA_TIME];
 
-    MatrixType aux_matrix(mat_size,mat_size);
-    noalias(aux_matrix) = prod(DampingMatrix,MassMatrixInverse);
-    noalias(rH1Matrix) = (1.0+delta)*IdentityMatrix - delta*delta_time*aux_matrix;
+    // MatrixType aux_matrix(mat_size,mat_size);
+    // noalias(aux_matrix) = prod(DampingMatrix,MassMatrixInverse);
+    // noalias(rH1Matrix) = (1.0+delta)*IdentityMatrix - delta*delta_time*aux_matrix;
+    noalias(rH1Matrix) = delta*delta_time*prod(DampingMatrix,MassMatrixInverse);
 
     noalias(rH2Matrix) = delta_time*delta_time*prod(stiffness_matrix,MassMatrixInverse);
 
