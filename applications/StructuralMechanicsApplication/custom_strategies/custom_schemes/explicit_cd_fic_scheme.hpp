@@ -560,6 +560,7 @@ protected:
 
     double mDelta1;
     double mDelta2;
+    double mGamma;
 
     ///@}
     ///@name Protected Operators
