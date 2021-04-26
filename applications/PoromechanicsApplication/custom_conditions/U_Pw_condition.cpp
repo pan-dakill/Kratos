@@ -366,7 +366,7 @@ void UPwCondition<TDim,TNumNodes>::AddExplicitContribution(
             #pragma omp atomic
             r_flux_residual += rRHSVector[index + TDim];
         }
-    } else if(rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == DELTA_DAMPING_FORCE ) {
+    } else if(rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == DELTA1_DAMPING_D_FORCE ) {
         
         // CD-FIC
 

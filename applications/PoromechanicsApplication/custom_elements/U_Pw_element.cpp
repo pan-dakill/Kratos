@@ -857,7 +857,7 @@ void UPwElement<TDim,TNumNodes>::CalculateDeltaDampingForce( VectorType& rRightH
         IdentityMatrix(i,i) = 1.0;
     }
 
-    const double delta = rCurrentProcessInfo[DELTA];
+    const double delta = rCurrentProcessInfo[DELTA1];
     const double delta_time = rCurrentProcessInfo[DELTA_TIME];
 
     MatrixType H1(element_size,element_size);
@@ -941,7 +941,7 @@ void UPwElement<TDim,TNumNodes>::CalculateDeltaInternalForce( VectorType& rRight
         IdentityMatrix(i,i) = 1.0;
     }
 
-    const double delta = rCurrentProcessInfo[DELTA];
+    const double delta = rCurrentProcessInfo[DELTA1];
     const double delta_time = rCurrentProcessInfo[DELTA_TIME];
 
     MatrixType H1(element_size,element_size);
@@ -982,7 +982,7 @@ void UPwElement<TDim,TNumNodes>::CalculateDeltaBodyForce( VectorType& rRightHand
         IdentityMatrix(i,i) = 1.0;
     }
 
-    const double delta = rCurrentProcessInfo[DELTA];
+    const double delta = rCurrentProcessInfo[DELTA1];
     const double delta_time = rCurrentProcessInfo[DELTA_TIME];
 
     MatrixType H1(element_size,element_size);
@@ -1023,7 +1023,7 @@ void UPwElement<TDim,TNumNodes>::CalculateDeltaForceResidualTerms( VectorType& r
         IdentityMatrix(i,i) = 1.0;
     }
 
-    const double delta = rCurrentProcessInfo[DELTA];
+    const double delta = rCurrentProcessInfo[DELTA1];
     const double delta_time = rCurrentProcessInfo[DELTA_TIME];
 
     MatrixType H1(element_size,element_size);
@@ -1180,7 +1180,7 @@ void UPwElement<TDim,TNumNodes>::AddExplicitContribution(
             #pragma omp atomic
             r_flux_residual += flux_residual[index + TDim];
         }
-    } else if(rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == DELTA_DAMPING_FORCE ) {
+    } else if(rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == DELTA1_DAMPING_D_FORCE ) {
 
         // CD-FIC
 
@@ -1202,7 +1202,7 @@ void UPwElement<TDim,TNumNodes>::AddExplicitContribution(
         Vector delta_force_residual_terms = ZeroVector(element_size); // H1Cv+delta*dt*K*v
         this->CalculateDeltaForceResidualTerms(delta_force_residual_terms,rCurrentProcessInfo);
 
-        const double delta = rCurrentProcessInfo[DELTA];
+        const double delta = rCurrentProcessInfo[DELTA1];
 
         for(SizeType i=0; i< TNumNodes; ++i) {
 
@@ -1211,9 +1211,9 @@ void UPwElement<TDim,TNumNodes>::AddExplicitContribution(
             array_1d<double, 3 >& r_force_residual = rGeom[i].FastGetSolutionStepValue(FORCE_RESIDUAL);
             array_1d<double, 3 >& r_external_force = rGeom[i].FastGetSolutionStepValue(EXTERNAL_FORCE);
             array_1d<double, 3 >& r_internal_force = rGeom[i].FastGetSolutionStepValue(INTERNAL_FORCE);
-            array_1d<double, 3 >& r_delta_external_force = rGeom[i].FastGetSolutionStepValue(DELTA_EXTERNAL_FORCE);
-            array_1d<double, 3 >& r_delta_internal_force = rGeom[i].FastGetSolutionStepValue(DELTA_INTERNAL_FORCE);
-            array_1d<double, 3 >& r_delta_damping_force = rGeom[i].FastGetSolutionStepValue(DELTA_DAMPING_FORCE);
+            array_1d<double, 3 >& r_delta_external_force = rGeom[i].FastGetSolutionStepValue(DELTA1_EXTERNAL_FORCE);
+            array_1d<double, 3 >& r_delta_internal_force = rGeom[i].FastGetSolutionStepValue(DELTA1_INTERNAL_FORCE);
+            array_1d<double, 3 >& r_delta_damping_force = rGeom[i].FastGetSolutionStepValue(DELTA1_DAMPING_D_FORCE);
             double& r_flux_residual = rGeom[i].FastGetSolutionStepValue(FLUX_RESIDUAL);
 
             for(SizeType j=0; j<TDim; ++j) {

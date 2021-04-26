@@ -58,10 +58,14 @@ class ExplicitUPwSolver(UPwSolver):
         if(scheme_type == "vv" or scheme_type == "ovv"):
             self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.DAMPING_FORCE)
 
-        if(scheme_type == "cd_fic" or scheme_type == "ocd_fic"):
-            self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.DELTA_DAMPING_FORCE)
-            self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.DELTA_INTERNAL_FORCE)
-            self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.DELTA_EXTERNAL_FORCE)
+        if(scheme_type == "cd_fic"):
+            self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.DAMPING_D_FORCE)
+            self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.DELTA1_DAMPING_D_FORCE)
+            self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.DELTA1_INTERNAL_FORCE)
+            self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.DELTA1_EXTERNAL_FORCE)
+            self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.DELTA2_DAMPING_D_FORCE)
+            self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.DELTA2_INTERNAL_FORCE)
+            self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.DELTA2_EXTERNAL_FORCE)
         
         # TODO: check
         # self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.NODAL_MASS)
@@ -148,11 +152,10 @@ class ExplicitUPwSolver(UPwSolver):
         
         process_info.SetValue(StructuralMechanicsApplication.RAYLEIGH_ALPHA, alpha)
         process_info.SetValue(StructuralMechanicsApplication.RAYLEIGH_BETA, beta)
-        process_info.SetValue(KratosPoro.THETA, self.settings["theta_1"].GetDouble())
         process_info.SetValue(KratosPoro.G_FACTOR, self.settings["g_factor"].GetDouble())
-        process_info.SetValue(KratosPoro.DELTA, self.settings["delta_1"].GetDouble())
-        process_info.SetValue(StructuralMechanicsApplication.DELTA_2, self.settings["delta_2"].GetDouble())
-        process_info.SetValue(StructuralMechanicsApplication.GAMMA, self.settings["gamma"].GetDouble())
+        process_info.SetValue(KratosPoro.DELTA1, self.settings["delta_1"].GetDouble())
+        process_info.SetValue(KratosPoro.DELTA2, self.settings["delta_2"].GetDouble())
+        process_info.SetValue(KratosPoro.FIC_GAMMA, self.settings["gamma"].GetDouble())
 
         # Setting the time integration schemes
         if(scheme_type == "cd"):

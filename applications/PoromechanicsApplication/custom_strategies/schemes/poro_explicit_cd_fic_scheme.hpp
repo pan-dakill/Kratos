@@ -90,7 +90,6 @@ public:
     using BaseType::mDeltaTime;
     using BaseType::mAlpha;
     using BaseType::mBeta;
-    using BaseType::mTheta1;
 
     /// Counted pointer of PoroExplicitCDFICScheme
     KRATOS_CLASS_POINTER_DEFINITION(PoroExplicitCDFICScheme);
@@ -124,7 +123,7 @@ public:
 
         const ProcessInfo& r_current_process_info = rModelPart.GetProcessInfo();
 
-        mDelta = r_current_process_info[DELTA];
+        mDelta = r_current_process_info[DELTA1];
 
         BaseType::Initialize(rModelPart);
 
@@ -159,9 +158,9 @@ public:
             double& r_flux_residual = it_node->FastGetSolutionStepValue(FLUX_RESIDUAL);
             array_1d<double, 3>& r_external_force = it_node->FastGetSolutionStepValue(EXTERNAL_FORCE);
             array_1d<double, 3>& r_internal_force = it_node->FastGetSolutionStepValue(INTERNAL_FORCE);
-            array_1d<double, 3>& r_delta_internal_force = it_node->FastGetSolutionStepValue(DELTA_INTERNAL_FORCE);
-            array_1d<double, 3>& r_delta_damping_force = it_node->FastGetSolutionStepValue(DELTA_DAMPING_FORCE);
-            array_1d<double, 3>& r_delta_external_force = it_node->FastGetSolutionStepValue(DELTA_EXTERNAL_FORCE);
+            array_1d<double, 3>& r_delta_internal_force = it_node->FastGetSolutionStepValue(DELTA1_INTERNAL_FORCE);
+            array_1d<double, 3>& r_delta_damping_force = it_node->FastGetSolutionStepValue(DELTA1_DAMPING_D_FORCE);
+            array_1d<double, 3>& r_delta_external_force = it_node->FastGetSolutionStepValue(DELTA1_EXTERNAL_FORCE);
             noalias(r_force_residual) = ZeroVector(3);
             r_flux_residual = 0.0;
             noalias(r_external_force) = ZeroVector(3);
@@ -190,9 +189,9 @@ public:
         // Auxiliar values
         const array_1d<double, 3> zero_array = ZeroVector(3);
         // Initializing the variables
-        VariableUtils().SetVariable(DELTA_INTERNAL_FORCE, zero_array,r_nodes);
-        VariableUtils().SetVariable(DELTA_DAMPING_FORCE, zero_array,r_nodes);
-        VariableUtils().SetVariable(DELTA_EXTERNAL_FORCE, zero_array,r_nodes);
+        VariableUtils().SetVariable(DELTA1_INTERNAL_FORCE, zero_array,r_nodes);
+        VariableUtils().SetVariable(DELTA1_DAMPING_D_FORCE, zero_array,r_nodes);
+        VariableUtils().SetVariable(DELTA1_EXTERNAL_FORCE, zero_array,r_nodes);
 
         KRATOS_CATCH("")
     }
@@ -225,10 +224,10 @@ public:
         const array_1d<double, 3>& r_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(INTERNAL_FORCE,1);
         // const array_1d<double, 3>& r_actual_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(INTERNAL_FORCE,2);
 
-        const array_1d<double, 3>& r_delta_external_force = itCurrentNode->FastGetSolutionStepValue(DELTA_EXTERNAL_FORCE);
-        const array_1d<double, 3>& r_delta_internal_force = itCurrentNode->FastGetSolutionStepValue(DELTA_INTERNAL_FORCE);
-        const array_1d<double, 3>& r_current_delta_damping_force = itCurrentNode->FastGetSolutionStepValue(DELTA_DAMPING_FORCE);
-        const array_1d<double, 3>& r_previous_delta_damping_force = itCurrentNode->FastGetSolutionStepValue(DELTA_DAMPING_FORCE,1);
+        const array_1d<double, 3>& r_delta_external_force = itCurrentNode->FastGetSolutionStepValue(DELTA1_EXTERNAL_FORCE);
+        const array_1d<double, 3>& r_delta_internal_force = itCurrentNode->FastGetSolutionStepValue(DELTA1_INTERNAL_FORCE);
+        const array_1d<double, 3>& r_current_delta_damping_force = itCurrentNode->FastGetSolutionStepValue(DELTA1_DAMPING_D_FORCE);
+        const array_1d<double, 3>& r_previous_delta_damping_force = itCurrentNode->FastGetSolutionStepValue(DELTA1_DAMPING_D_FORCE,1);
 
         std::array<bool, 3> fix_displacements = {false, false, false};
         fix_displacements[0] = (itCurrentNode->GetDof(DISPLACEMENT_X, DisplacementPosition).IsFixed());
@@ -286,7 +285,7 @@ public:
 
         // this->TCalculateRHSContribution(rCurrentElement, RHS_Contribution, rCurrentProcessInfo);
         // rCurrentElement.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
-        rCurrentElement.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, DELTA_DAMPING_FORCE, rCurrentProcessInfo);
+        rCurrentElement.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, DELTA1_DAMPING_D_FORCE, rCurrentProcessInfo);
 
         KRATOS_CATCH("")
     }
@@ -309,7 +308,7 @@ public:
 
         // this->TCalculateRHSContribution(rCurrentCondition, RHS_Contribution, rCurrentProcessInfo);
         rCurrentCondition.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
-        rCurrentCondition.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, DELTA_DAMPING_FORCE, rCurrentProcessInfo);
+        rCurrentCondition.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, DELTA1_DAMPING_D_FORCE, rCurrentProcessInfo);
 
         KRATOS_CATCH("")
     }
