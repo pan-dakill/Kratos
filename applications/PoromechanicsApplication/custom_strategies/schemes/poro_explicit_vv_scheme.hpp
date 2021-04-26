@@ -12,8 +12,8 @@
 //
 //
 
-#if !defined(KRATOS_EXPLICIT_CD_SCHEME_HPP_INCLUDED)
-#define KRATOS_EXPLICIT_CD_SCHEME_HPP_INCLUDED
+#if !defined(KRATOS_PORO_EXPLICIT_VV_SCHEME_HPP_INCLUDED)
+#define KRATOS_PORO_EXPLICIT_VV_SCHEME_HPP_INCLUDED
 
 /* External includes */
 
@@ -47,7 +47,7 @@ namespace Kratos {
 ///@{
 
 /**
- * @class ExplicitCDScheme
+ * @class PoroExplicitVVScheme
  * @ingroup StructuralMechanicsApplciation
  * @brief An explicit forward euler scheme with a split of the inertial term
  * @author Ignasi de Pouplana
@@ -55,7 +55,7 @@ namespace Kratos {
 template <class TSparseSpace,
           class TDenseSpace //= DenseSpace<double>
           >
-class ExplicitCDScheme
+class PoroExplicitVVScheme
     : public Scheme<TSparseSpace, TDenseSpace> {
 
 public:
@@ -88,8 +88,8 @@ public:
     /// The definition of the numerical limit
     static constexpr double numerical_limit = std::numeric_limits<double>::epsilon();
 
-    /// Counted pointer of ExplicitCDScheme
-    KRATOS_CLASS_POINTER_DEFINITION(ExplicitCDScheme);
+    /// Counted pointer of PoroExplicitVVScheme
+    KRATOS_CLASS_POINTER_DEFINITION(PoroExplicitVVScheme);
 
     ///@}
     ///@name Life Cycle
@@ -97,18 +97,22 @@ public:
 
     /**
      * @brief Default constructor.
-     * @details The ExplicitCDScheme method
+     * @details The PoroExplicitVVScheme method
      */
-    ExplicitCDScheme()
-        : Scheme<TSparseSpace, TDenseSpace>() {}
+    PoroExplicitVVScheme()
+        : Scheme<TSparseSpace, TDenseSpace>()
+    {
+
+    }
 
     /** Destructor.
     */
-    virtual ~ExplicitCDScheme() {}
+    virtual ~PoroExplicitVVScheme() {}
 
     ///@}
     ///@name Operators
     ///@{
+
 
     /**
      * @brief This function is designed to be called once to perform all the checks needed
@@ -124,7 +128,7 @@ public:
 
         BaseType::Check(rModelPart);
 
-        KRATOS_ERROR_IF(rModelPart.GetBufferSize() < 3) << "Insufficient buffer size for CD Scheme. It has to be >= 3" << std::endl;
+        KRATOS_ERROR_IF(rModelPart.GetBufferSize() < 2) << "Insufficient buffer size for Forward Euler Scheme. It has to be >= 2" << std::endl;
 
         KRATOS_ERROR_IF_NOT(rModelPart.GetProcessInfo().Has(DOMAIN_SIZE)) << "DOMAIN_SIZE not defined on ProcessInfo. Please define" << std::endl;
 
@@ -251,10 +255,12 @@ public:
             double& r_flux_residual = it_node->FastGetSolutionStepValue(FLUX_RESIDUAL);
             array_1d<double, 3>& r_external_force = it_node->FastGetSolutionStepValue(EXTERNAL_FORCE);
             array_1d<double, 3>& r_internal_force = it_node->FastGetSolutionStepValue(INTERNAL_FORCE);
+            array_1d<double, 3>& r_damping_force = it_node->FastGetSolutionStepValue(DAMPING_FORCE);
             noalias(r_force_residual) = ZeroVector(3);
             r_flux_residual = 0.0;
             noalias(r_external_force) = ZeroVector(3);
             noalias(r_internal_force) = ZeroVector(3);
+            noalias(r_damping_force) = ZeroVector(3);
         }
 
         KRATOS_CATCH("")
@@ -269,6 +275,34 @@ public:
     ) override
     {
         KRATOS_TRY;
+
+        InitializeResidual(rModelPart);
+
+        this->CalculateAndAddRHS(rModelPart);
+
+        // The current process info
+        const ProcessInfo& r_current_process_info = rModelPart.GetProcessInfo();
+
+        // The array of nodes
+        NodesArrayType& r_nodes = rModelPart.Nodes();
+
+        /// Working in 2D/3D (the definition of DOMAIN_SIZE is check in the Check method)
+        const SizeType dim = r_current_process_info[DOMAIN_SIZE];
+
+        // Step Update
+        mDeltaTime = r_current_process_info[DELTA_TIME];
+
+        // The iterator of the first node
+        const auto it_node_begin = rModelPart.NodesBegin();
+
+        // Getting dof position
+        const IndexType disppos = it_node_begin->GetDofPosition(DISPLACEMENT_X);
+
+        #pragma omp parallel for schedule(guided,512)
+        for (int i = 0; i < static_cast<int>(r_nodes.size()); ++i) {
+            // Current step information "N+1" (before step update).
+            this->PredictTranslationalDegreesOfFreedom(it_node_begin + i, disppos, dim);
+        } // for Node parallel
 
         InitializeResidual(rModelPart);
 
@@ -296,8 +330,57 @@ public:
         VariableUtils().SetVariable(FLUX_RESIDUAL, zero_double,r_nodes);
         VariableUtils().SetVariable(EXTERNAL_FORCE, zero_array,r_nodes);
         VariableUtils().SetVariable(INTERNAL_FORCE, zero_array,r_nodes);
+        VariableUtils().SetVariable(DAMPING_FORCE, zero_array,r_nodes);
 
         KRATOS_CATCH("")
+    }
+
+    /**
+     * @brief This method updates the translation DoF
+     * @param itCurrentNode The iterator of the current node
+     * @param DisplacementPosition The position of the displacement dof on the database
+     * @param DomainSize The current dimention of the problem
+     */
+    virtual void PredictTranslationalDegreesOfFreedom(
+        NodeIterator itCurrentNode,
+        const IndexType DisplacementPosition,
+        const SizeType DomainSize = 3
+        )
+    {
+        array_1d<double, 3>& r_current_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT);
+        array_1d<double, 3>& r_current_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY);
+
+        const double nodal_mass = itCurrentNode->GetValue(NODAL_MASS);
+
+        const array_1d<double, 3>& r_external_forces = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE);
+        const array_1d<double, 3>& r_previous_external_forces = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE,1);
+        const array_1d<double, 3>& r_current_internal_force = itCurrentNode->FastGetSolutionStepValue(INTERNAL_FORCE);
+        const array_1d<double, 3>& r_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(INTERNAL_FORCE,1);
+        const array_1d<double, 3>& r_current_damping_force = itCurrentNode->FastGetSolutionStepValue(DAMPING_FORCE);
+
+        std::array<bool, 3> fix_displacements = {false, false, false};
+        fix_displacements[0] = (itCurrentNode->GetDof(DISPLACEMENT_X, DisplacementPosition).IsFixed());
+        fix_displacements[1] = (itCurrentNode->GetDof(DISPLACEMENT_Y, DisplacementPosition + 1).IsFixed());
+        if (DomainSize == 3)
+            fix_displacements[2] = (itCurrentNode->GetDof(DISPLACEMENT_Z, DisplacementPosition + 2).IsFixed());
+
+        // Solution of the explicit equation:
+        if (nodal_mass > numerical_limit){
+            for (IndexType j = 0; j < DomainSize; j++) {
+                if (fix_displacements[j] == false) {
+                    r_current_displacement[j] += r_current_velocity[j]*mDeltaTime + 0.5 * (mTheta1*r_external_forces[j]+(1.0-mTheta1)*r_previous_external_forces[j]
+                                                                                           - (mTheta1*r_current_internal_force[j]+(1.0-mTheta1)*r_previous_internal_force[j])
+                                                                                           - r_current_damping_force[j])/nodal_mass * mDeltaTime * mDeltaTime;
+                    r_current_velocity[j] += 0.5 * mDeltaTime * (mTheta1*r_external_forces[j]+(1.0-mTheta1)*r_previous_external_forces[j]
+                                                                 - (mTheta1*r_current_internal_force[j]+(1.0-mTheta1)*r_previous_internal_force[j])
+                                                                 - r_current_damping_force[j])/nodal_mass;
+                }
+            }
+        }
+        else {
+            noalias(r_current_displacement) = ZeroVector(3);
+            noalias(r_current_velocity) = ZeroVector(3);
+        }
     }
 
     /**
@@ -356,9 +439,7 @@ public:
         const SizeType DomainSize = 3
         )
     {
-        array_1d<double, 3>& r_current_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT);
-        // const array_1d<double, 3>& r_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,1);
-        const array_1d<double, 3>& r_actual_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,2);
+        array_1d<double, 3>& r_current_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY);
 
         double& r_current_water_pressure = itCurrentNode->FastGetSolutionStepValue(WATER_PRESSURE);
         double& r_current_dt_water_pressure = itCurrentNode->FastGetSolutionStepValue(DT_WATER_PRESSURE);
@@ -367,10 +448,9 @@ public:
 
         const array_1d<double, 3>& r_external_forces = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE);
         const array_1d<double, 3>& r_previous_external_forces = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE,1);
-        // const array_1d<double, 3>& r_actual_previous_external_forces = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE,2);
         const array_1d<double, 3>& r_current_internal_force = itCurrentNode->FastGetSolutionStepValue(INTERNAL_FORCE);
         const array_1d<double, 3>& r_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(INTERNAL_FORCE,1);
-        // const array_1d<double, 3>& r_actual_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(INTERNAL_FORCE,2);
+        const array_1d<double, 3>& r_current_damping_force = itCurrentNode->FastGetSolutionStepValue(DAMPING_FORCE);
 
         std::array<bool, 3> fix_displacements = {false, false, false};
         fix_displacements[0] = (itCurrentNode->GetDof(DISPLACEMENT_X, DisplacementPosition).IsFixed());
@@ -378,36 +458,19 @@ public:
         if (DomainSize == 3)
             fix_displacements[2] = (itCurrentNode->GetDof(DISPLACEMENT_Z, DisplacementPosition + 2).IsFixed());
 
-        for (IndexType j = 0; j < DomainSize; j++) {
-            if (fix_displacements[j] == false) {
-                r_current_displacement[j] = ( (2.0-mDeltaTime*mAlpha)*nodal_mass*r_current_displacement[j]
-                                            + (mDeltaTime*mAlpha-1.0)*nodal_mass*r_actual_previous_displacement[j]
-                                            - mDeltaTime*(mBeta+mTheta1*mDeltaTime)*r_current_internal_force[j]
-                                            + mDeltaTime*(mBeta-(1.0-mTheta1)*mDeltaTime)*r_previous_internal_force[j]
-                                            + mDeltaTime*mDeltaTime*(mTheta1*r_external_forces[j]+(1.0-mTheta1)*r_previous_external_forces[j]) ) /
-                                            nodal_mass;
+        // Solution of the explicit equation:
+        if (nodal_mass > numerical_limit){
+            for (IndexType j = 0; j < DomainSize; j++) {
+                if (fix_displacements[j] == false) {
+                    r_current_velocity[j] += 0.5 * mDeltaTime * (mTheta1*r_external_forces[j]+(1.0-mTheta1)*r_previous_external_forces[j]
+                                                                 - (mTheta1*r_current_internal_force[j]+(1.0-mTheta1)*r_previous_internal_force[j])
+                                                                 - r_current_damping_force[j])/nodal_mass;
+                }
             }
         }
-
-        // Solution of the explicit equation:
-        // if ( nodal_mass > numerical_limit ){
-        //     for (IndexType j = 0; j < DomainSize; j++) {
-        //         if (fix_displacements[j] == false) {
-        //             r_current_displacement[j] = ( (2.0-mDeltaTime*mAlpha)*nodal_mass*r_current_displacement[j]
-        //                                         + (mDeltaTime*mAlpha-1.0)*nodal_mass*r_actual_previous_displacement[j]
-        //                                         - mDeltaTime*(mBeta+mTheta1*mDeltaTime)*r_current_internal_force[j]
-        //                                         + mDeltaTime*(mBeta-(1.0-mTheta1)*mDeltaTime)*r_previous_internal_force[j]
-        //                                         + mDeltaTime*mDeltaTime*(mTheta1*r_external_forces[j]+(1.0-mTheta1)*r_previous_external_forces[j]) ) /
-        //                                         nodal_mass;
-        //         }
-        //     }
-        // } else{
-        //     for (IndexType j = 0; j < DomainSize; j++) {
-        //         if (fix_displacements[j] == false) {
-        //             r_current_displacement[j] = 0.0;
-        //         }
-        //     }
-        // }
+        else {
+            noalias(r_current_velocity) = ZeroVector(3);
+        }
         // Solution of the darcy_equation
         if( itCurrentNode->IsFixed(WATER_PRESSURE) == false ) {
             // TODO: this is on standby
@@ -415,14 +478,10 @@ public:
             r_current_dt_water_pressure = 0.0;
         }
 
-        const array_1d<double, 3>& r_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,1);
         const array_1d<double, 3>& r_previous_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY,1);
-        array_1d<double, 3>& r_current_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY);
         array_1d<double, 3>& r_current_acceleration = itCurrentNode->FastGetSolutionStepValue(ACCELERATION);
 
-        noalias(r_current_velocity) = (1.0/mDeltaTime) * (r_current_displacement - r_previous_displacement);
         noalias(r_current_acceleration) = (1.0/mDeltaTime) * (r_current_velocity - r_previous_velocity);
-
     }
 
     /**
@@ -484,7 +543,7 @@ public:
 
         // this->TCalculateRHSContribution(rCurrentElement, RHS_Contribution, rCurrentProcessInfo);
         // rCurrentElement.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
-        rCurrentElement.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, FORCE_RESIDUAL, rCurrentProcessInfo);
+        rCurrentElement.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, DAMPING_FORCE, rCurrentProcessInfo);
 
         KRATOS_CATCH("")
     }
@@ -587,7 +646,6 @@ public:
         KRATOS_CATCH("")
     }
 
-
     ///@}
     ///@name Operations
     ///@{
@@ -612,16 +670,10 @@ protected:
     ///@name Protected Structs
     ///@{
 
-    /**
-     * @brief This struct contains the information related with the increment od time step
-     */
-
-    /**
-     * @brief This struct contains the details of the time variables
-     */
 
     ///@name Protected static Member Variables
     ///@{
+
 
     ///@}
     ///@name Protected member Variables
@@ -701,7 +753,7 @@ private:
 
     ///@}
 
-}; /* Class ExplicitCDScheme */
+}; /* Class PoroExplicitVVScheme */
 
 ///@}
 
@@ -712,4 +764,4 @@ private:
 
 } /* namespace Kratos.*/
 
-#endif /* KRATOS_EXPLICIT_CD_SCHEME_HPP_INCLUDED  defined */
+#endif /* KRATOS_PORO_EXPLICIT_VV_SCHEME_HPP_INCLUDED  defined */

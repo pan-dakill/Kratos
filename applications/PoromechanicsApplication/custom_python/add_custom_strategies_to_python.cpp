@@ -20,8 +20,6 @@
 #include "custom_strategies/strategies/poromechanics_ramm_arc_length_nonlocal_strategy.hpp"
 #include "custom_strategies/strategies/poromechanics_explicit_strategy.hpp"
 #include "custom_strategies/strategies/poromechanics_explicit_nonlocal_strategy.hpp"
-#include "custom_strategies/strategies/poromechanics_explicit_ramm_arc_length_strategy.hpp"
-#include "custom_strategies/strategies/poromechanics_explicit_ramm_arc_length_nonlocal_strategy.hpp"
 
 //builders and solvers
 
@@ -29,11 +27,11 @@
 #include "custom_strategies/schemes/newmark_quasistatic_U_Pw_scheme.hpp"
 #include "custom_strategies/schemes/newmark_quasistatic_damped_U_Pw_scheme.hpp"
 #include "custom_strategies/schemes/newmark_dynamic_U_Pw_scheme.hpp"
-#include "custom_strategies/schemes/explicit_cd_scheme.hpp"
-#include "custom_strategies/schemes/explicit_ocd_scheme.hpp"
-#include "custom_strategies/schemes/explicit_vv_scheme.hpp"
-#include "custom_strategies/schemes/explicit_ovv_scheme.hpp"
-#include "custom_strategies/schemes/explicit_cd_fic_scheme.hpp"
+#include "custom_strategies/schemes/poro_explicit_cd_scheme.hpp"
+#include "custom_strategies/schemes/poro_explicit_ocd_scheme.hpp"
+#include "custom_strategies/schemes/poro_explicit_vv_scheme.hpp"
+#include "custom_strategies/schemes/poro_explicit_ovv_scheme.hpp"
+#include "custom_strategies/schemes/poro_explicit_cd_fic_scheme.hpp"
 
 //linear solvers
 #include "linear_solvers/linear_solver.h"
@@ -61,11 +59,11 @@ void  AddCustomStrategiesToPython(pybind11::module& m)
     typedef NewmarkQuasistaticUPwScheme< SparseSpaceType, LocalSpaceType >  NewmarkQuasistaticUPwSchemeType;
     typedef NewmarkQuasistaticDampedUPwScheme< SparseSpaceType, LocalSpaceType >  NewmarkQuasistaticDampedUPwSchemeType;
     typedef NewmarkDynamicUPwScheme< SparseSpaceType, LocalSpaceType >  NewmarkDynamicUPwSchemeType;
-    typedef ExplicitCDScheme< SparseSpaceType, LocalSpaceType >  ExplicitCDSchemeType;
-    typedef ExplicitOCDScheme< SparseSpaceType, LocalSpaceType >  ExplicitOCDSchemeType;
-    typedef ExplicitVVScheme< SparseSpaceType, LocalSpaceType >  ExplicitVVSchemeType;
-    typedef ExplicitOVVScheme< SparseSpaceType, LocalSpaceType >  ExplicitOVVSchemeType;
-    typedef ExplicitCDFICScheme< SparseSpaceType, LocalSpaceType >  ExplicitCDFICSchemeType;
+    typedef PoroExplicitCDScheme< SparseSpaceType, LocalSpaceType >  PoroExplicitCDSchemeType;
+    typedef PoroExplicitOCDScheme< SparseSpaceType, LocalSpaceType >  PoroExplicitOCDSchemeType;
+    typedef PoroExplicitVVScheme< SparseSpaceType, LocalSpaceType >  PoroExplicitVVSchemeType;
+    typedef PoroExplicitOVVScheme< SparseSpaceType, LocalSpaceType >  PoroExplicitOVVSchemeType;
+    typedef PoroExplicitCDFICScheme< SparseSpaceType, LocalSpaceType >  PoroExplicitCDFICSchemeType;
 
     typedef PoromechanicsNewtonRaphsonStrategy< SparseSpaceType, LocalSpaceType, LinearSolverType > PoromechanicsNewtonRaphsonStrategyType;
     typedef PoromechanicsRammArcLengthStrategy< SparseSpaceType, LocalSpaceType, LinearSolverType > PoromechanicsRammArcLengthStrategyType;
@@ -73,8 +71,6 @@ void  AddCustomStrategiesToPython(pybind11::module& m)
     typedef PoromechanicsRammArcLengthNonlocalStrategy< SparseSpaceType, LocalSpaceType, LinearSolverType > PoromechanicsRammArcLengthNonlocalStrategyType;
     typedef PoromechanicsExplicitStrategy< SparseSpaceType, LocalSpaceType, LinearSolverType > PoromechanicsExplicitStrategyType;
     typedef PoromechanicsExplicitNonlocalStrategy< SparseSpaceType, LocalSpaceType, LinearSolverType > PoromechanicsExplicitNonlocalStrategyType;
-    typedef PoromechanicsExplicitRammArcLengthStrategy< SparseSpaceType, LocalSpaceType, LinearSolverType > PoromechanicsExplicitRammArcLengthStrategyType;
-    typedef PoromechanicsExplicitRammArcLengthNonlocalStrategy< SparseSpaceType, LocalSpaceType, LinearSolverType > PoromechanicsExplicitRammArcLengthNonlocalStrategyType;
 
 //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -87,20 +83,20 @@ void  AddCustomStrategiesToPython(pybind11::module& m)
     py::class_< NewmarkDynamicUPwSchemeType,typename NewmarkDynamicUPwSchemeType::Pointer, BaseSchemeType >
     (m, "NewmarkDynamicUPwScheme")
     .def( py::init<  double, double, double >());
-    py::class_< ExplicitCDSchemeType,typename ExplicitCDSchemeType::Pointer, BaseSchemeType >
-    (m,"ExplicitCDScheme")
+    py::class_< PoroExplicitCDSchemeType,typename PoroExplicitCDSchemeType::Pointer, BaseSchemeType >
+    (m,"PoroExplicitCDScheme")
     .def(py::init< >());
-    py::class_< ExplicitOCDSchemeType,typename ExplicitOCDSchemeType::Pointer, BaseSchemeType >
-    (m,"ExplicitOCDScheme")
+    py::class_< PoroExplicitOCDSchemeType,typename PoroExplicitOCDSchemeType::Pointer, BaseSchemeType >
+    (m,"PoroExplicitOCDScheme")
     .def(py::init< >());
-    py::class_< ExplicitVVSchemeType,typename ExplicitVVSchemeType::Pointer, BaseSchemeType >
-    (m,"ExplicitVVScheme")
+    py::class_< PoroExplicitVVSchemeType,typename PoroExplicitVVSchemeType::Pointer, BaseSchemeType >
+    (m,"PoroExplicitVVScheme")
     .def(py::init< >());
-    py::class_< ExplicitOVVSchemeType,typename ExplicitOVVSchemeType::Pointer, BaseSchemeType >
-    (m,"ExplicitOVVScheme")
+    py::class_< PoroExplicitOVVSchemeType,typename PoroExplicitOVVSchemeType::Pointer, BaseSchemeType >
+    (m,"PoroExplicitOVVScheme")
     .def(py::init< >());
-    py::class_< ExplicitCDFICSchemeType,typename ExplicitCDFICSchemeType::Pointer, BaseSchemeType >
-    (m,"ExplicitCDFICScheme")
+    py::class_< PoroExplicitCDFICSchemeType,typename PoroExplicitCDFICSchemeType::Pointer, BaseSchemeType >
+    (m,"PoroExplicitCDFICScheme")
     .def(py::init< >());
 
     py::class_< PoromechanicsNewtonRaphsonStrategyType, typename PoromechanicsNewtonRaphsonStrategyType::Pointer, BaseSolvingStrategyType >
@@ -125,12 +121,6 @@ void  AddCustomStrategiesToPython(pybind11::module& m)
     .def( py::init< ModelPart&, BaseSchemeType::Pointer, Parameters&, bool, bool, bool >());
     py::class_< PoromechanicsExplicitNonlocalStrategyType, typename PoromechanicsExplicitNonlocalStrategyType::Pointer, BaseSolvingStrategyType >
     (m, "PoromechanicsExplicitNonlocalStrategy")
-    .def( py::init< ModelPart&, BaseSchemeType::Pointer, Parameters&, bool, bool, bool >());
-    py::class_< PoromechanicsExplicitRammArcLengthStrategyType, typename PoromechanicsExplicitRammArcLengthStrategyType::Pointer, BaseSolvingStrategyType >
-    (m, "PoromechanicsExplicitRammArcLengthStrategy")
-    .def( py::init< ModelPart&, BaseSchemeType::Pointer, Parameters&, bool, bool, bool >());
-    py::class_< PoromechanicsExplicitRammArcLengthNonlocalStrategyType, typename PoromechanicsExplicitRammArcLengthNonlocalStrategyType::Pointer, BaseSolvingStrategyType >
-    (m, "PoromechanicsExplicitRammArcLengthNonlocalStrategy")
     .def( py::init< ModelPart&, BaseSchemeType::Pointer, Parameters&, bool, bool, bool >());
 
 }

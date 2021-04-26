@@ -65,6 +65,11 @@ class UPwSolver(PythonSolver):
             "newmark_beta": 0.25,
             "newmark_gamma": 0.5,
             "newmark_theta": 0.5,
+            "calculate_alpha_beta"       : false,
+            "omega_1"                    : 1.0,
+            "omega_n"                    : 10.0,
+            "xi_1"                       : 1.0,
+            "xi_n"                       : 0.05,
             "rayleigh_alpha": 0.0,
             "rayleigh_beta": 0.0,
             "strategy_type": "newton_raphson",
@@ -384,8 +389,24 @@ class UPwSolver(PythonSolver):
             beta = self.settings["newmark_beta"].GetDouble()
             gamma = self.settings["newmark_gamma"].GetDouble()
             theta = self.settings["newmark_theta"].GetDouble()
-            rayleigh_alpha = self.settings["rayleigh_alpha"].GetDouble()
-            rayleigh_beta = self.settings["rayleigh_beta"].GetDouble()
+            if self.settings["calculate_alpha_beta"].GetBool():
+                omega_1 = self.settings["omega_1"].GetDouble()
+                omega_n = self.settings["omega_n"].GetDouble()
+                xi_1 = self.settings["xi_1"].GetDouble()
+                xi_n = self.settings["xi_n"].GetDouble()
+                rayleigh_beta = 2.0*(xi_n*omega_n-xi_1*omega_1)/(omega_n*omega_n-omega_1*omega_1)
+                rayleigh_alpha = 2.0*xi_1*omega_1-rayleigh_beta*omega_1*omega_1
+                print('Info:')
+                print('omega_1: ',omega_1)
+                print('omega_n: ',omega_n)
+                print('xi_1: ',xi_1)
+                print('xi_n: ',xi_n)
+                print('Alpha and Beta output:')
+                print('rayleigh_alpha: ',rayleigh_alpha)
+                print('rayleigh_beta: ',rayleigh_beta)
+            else:
+                rayleigh_alpha = self.settings["rayleigh_alpha"].GetDouble()
+                rayleigh_beta = self.settings["rayleigh_beta"].GetDouble()
             self.main_model_part.ProcessInfo.SetValue(KratosStructural.RAYLEIGH_ALPHA,rayleigh_alpha)
             self.main_model_part.ProcessInfo.SetValue(KratosStructural.RAYLEIGH_BETA,rayleigh_beta)
             if(solution_type == "implicit_quasi_static"):

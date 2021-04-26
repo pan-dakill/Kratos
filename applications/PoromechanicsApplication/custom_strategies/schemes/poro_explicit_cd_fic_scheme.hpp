@@ -12,13 +12,13 @@
 //
 //
 
-#if !defined(KRATOS_EXPLICIT_CD_FIC_SCHEME_HPP_INCLUDED)
-#define KRATOS_EXPLICIT_CD_FIC_SCHEME_HPP_INCLUDED
+#if !defined(KRATOS_PORO_EXPLICIT_CD_FIC_SCHEME_HPP_INCLUDED)
+#define KRATOS_PORO_EXPLICIT_CD_FIC_SCHEME_HPP_INCLUDED
 
 /* External includes */
 
 /* Project includes */
-#include "custom_strategies/schemes/explicit_cd_scheme.hpp"
+#include "custom_strategies/schemes/poro_explicit_cd_scheme.hpp"
 #include "utilities/variable_utils.h"
 
 // Application includes
@@ -47,7 +47,7 @@ namespace Kratos {
 ///@{
 
 /**
- * @class ExplicitCDFICScheme
+ * @class PoroExplicitCDFICScheme
  * @ingroup StructuralMechanicsApplciation
  * @brief An explicit forward euler scheme with a split of the inertial term
  * @author Ignasi de Pouplana
@@ -55,15 +55,15 @@ namespace Kratos {
 template <class TSparseSpace,
           class TDenseSpace //= DenseSpace<double>
           >
-class ExplicitCDFICScheme
-    : public ExplicitCDScheme<TSparseSpace, TDenseSpace> {
+class PoroExplicitCDFICScheme
+    : public PoroExplicitCDScheme<TSparseSpace, TDenseSpace> {
 
 public:
     ///@name Type Definitions
     ///@{
 
     /// The definition of the base type
-    typedef ExplicitCDScheme<TSparseSpace, TDenseSpace> BaseType;
+    typedef PoroExplicitCDScheme<TSparseSpace, TDenseSpace> BaseType;
 
     /// Some definitions related with the base class
     typedef typename BaseType::DofsArrayType DofsArrayType;
@@ -92,8 +92,8 @@ public:
     using BaseType::mBeta;
     using BaseType::mTheta1;
 
-    /// Counted pointer of ExplicitCDFICScheme
-    KRATOS_CLASS_POINTER_DEFINITION(ExplicitCDFICScheme);
+    /// Counted pointer of PoroExplicitCDFICScheme
+    KRATOS_CLASS_POINTER_DEFINITION(PoroExplicitCDFICScheme);
 
     ///@}
     ///@name Life Cycle
@@ -101,14 +101,14 @@ public:
 
     /**
      * @brief Default constructor.
-     * @details The ExplicitCDFICScheme method
+     * @details The PoroExplicitCDFICScheme method
      */
-    ExplicitCDFICScheme()
-        : ExplicitCDScheme<TSparseSpace, TDenseSpace>() {}
+    PoroExplicitCDFICScheme()
+        : PoroExplicitCDScheme<TSparseSpace, TDenseSpace>() {}
 
     /** Destructor.
     */
-    virtual ~ExplicitCDFICScheme() {}
+    virtual ~PoroExplicitCDFICScheme() {}
 
     ///@}
     ///@name Operators
@@ -407,7 +407,7 @@ private:
 
     ///@}
 
-}; /* Class ExplicitCDFICScheme */
+}; /* Class PoroExplicitCDFICScheme */
 
 ///@}
 
@@ -418,4 +418,4 @@ private:
 
 } /* namespace Kratos.*/
 
-#endif /* KRATOS_EXPLICIT_CD_FIC_SCHEME_HPP_INCLUDED  defined */
+#endif /* KRATOS_PORO_EXPLICIT_CD_FIC_SCHEME_HPP_INCLUDED  defined */
