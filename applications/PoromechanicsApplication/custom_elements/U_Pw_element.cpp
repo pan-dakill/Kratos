@@ -894,10 +894,10 @@ void UPwElement<TDim,TNumNodes>::CalculateHMatrices(
     // Inverse of lumped mass matrix taking into account global assembly
     Matrix MassMatrixInverse(element_size,element_size);
     noalias(MassMatrixInverse) = ZeroMatrix(element_size,element_size);
-    for ( IndexType i = 0; i < TNumNodes; ++i ) {
-        for ( IndexType j = 0; j < TDim; ++j ) {
-            IndexType index = i * (TDim + 1) + j;
-            MassMatrixInverse(index,index) = 1.0/rMassVector[i];
+    for (SizeType i=0; i< TNumNodes; ++i) {
+        SizeType index = (TDim + 1) * i;
+        for (SizeType j=0; j<TDim; ++j) {
+            MassMatrixInverse(index+j,index+j) = 1.0/rMassVector[index+j];
         }
     }
 
