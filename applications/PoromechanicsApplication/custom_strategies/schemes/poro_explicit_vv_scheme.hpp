@@ -461,7 +461,7 @@ public:
         if (nodal_mass > numerical_limit){
             for (IndexType j = 0; j < DomainSize; j++) {
                 if (fix_displacements[j] == false) {
-                    r_current_velocity[j] += 0.5 * mDeltaTime * r_external_forces[j]
+                    r_current_velocity[j] += 0.5 * mDeltaTime * (r_external_forces[j]
                                                                  - r_current_internal_force[j]
                                                                  - r_current_damping_force[j])/nodal_mass;
                 }
