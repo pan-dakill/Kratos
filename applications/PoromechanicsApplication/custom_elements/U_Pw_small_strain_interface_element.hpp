@@ -226,9 +226,7 @@ protected:
 
     void CalculateLumpedMassMatrix( MatrixType& rLeftHandSideMatrix, const ProcessInfo& rCurrentProcessInfo ) override;
     
-    void CalculateLumpedMassMatrixInverse( MatrixType& rLeftHandSideMatrix, const ProcessInfo& rCurrentProcessInfo ) override;
-
-
+    
     void InterpolateOutputDoubles( std::vector<double>& rOutput, const std::vector<double>& GPValues );
 
     template< class TValueType >

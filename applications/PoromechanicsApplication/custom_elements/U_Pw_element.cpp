@@ -832,7 +832,7 @@ void UPwElement<TDim,TNumNodes>::CalculateDampingForce( VectorType& rRightHandSi
 //----------------------------------------------------------------------------------------
 
 template< unsigned int TDim, unsigned int TNumNodes >
-void UPwElement<TDim,TNumNodes>::CalculateDeltaDampingForce( VectorType& rRightHandSideVector, const ProcessInfo& rCurrentProcessInfo )
+void UPwElement<TDim,TNumNodes>::CalculateDampingDForce( VectorType& rRightHandSideVector, const ProcessInfo& rCurrentProcessInfo )
 {
     KRATOS_TRY
 
@@ -846,31 +846,11 @@ void UPwElement<TDim,TNumNodes>::CalculateDeltaDampingForce( VectorType& rRightH
     // Compute Damping Matrix
     MatrixType DampingMatrix(element_size,element_size);
     this->CalculateDampingMatrixWithLumpedMass(DampingMatrix,rCurrentProcessInfo);
-
-    // Compute Mass Matrix Inverse
-    MatrixType MassMatrixInverse(element_size,element_size);
-    this->CalculateLumpedMassMatrixInverse(MassMatrixInverse,rCurrentProcessInfo);
-
-    MatrixType IdentityMatrix(element_size,element_size);
-    noalias(IdentityMatrix) = ZeroMatrix(element_size,element_size);
-    for(unsigned int i = 0; i<element_size; i++){
-        IdentityMatrix(i,i) = 1.0;
-    }
-
-    const double delta = rCurrentProcessInfo[DELTA1];
-    const double delta_time = rCurrentProcessInfo[DELTA_TIME];
-
-    MatrixType H1(element_size,element_size);
-    MatrixType aux_matrix(element_size,element_size);
-    noalias(aux_matrix) = prod(DampingMatrix,MassMatrixInverse);
-    noalias(H1) = (1.0+delta)*IdentityMatrix - delta*delta_time*aux_matrix;
-
-    noalias(aux_matrix) = prod(H1,DampingMatrix);
 
     VectorType DisplacementVector(element_size);
     this->GetValuesVector(DisplacementVector,0);
 
-    noalias(rRightHandSideVector) = prod(aux_matrix,DisplacementVector);
+    noalias(rRightHandSideVector) = prod(DampingMatrix,DisplacementVector);
 
     KRATOS_CATCH( "" )
 }
@@ -878,174 +858,58 @@ void UPwElement<TDim,TNumNodes>::CalculateDeltaDampingForce( VectorType& rRightH
 //----------------------------------------------------------------------------------------
 
 template< unsigned int TDim, unsigned int TNumNodes >
-void UPwElement<TDim,TNumNodes>::CalculateLumpedMassMatrixInverse( MatrixType& rLeftHandSideMatrix, const ProcessInfo& rCurrentProcessInfo )
+void UPwElement<TDim,TNumNodes>::CalculateHMatrices( 
+    MatrixType& rH1Matrix,
+    MatrixType& rH2Matrix,
+    const VectorType& rMassVector,
+    const ProcessInfo& rCurrentProcessInfo )
 {
     KRATOS_TRY
 
-    const auto& r_geom = GetGeometry();
-    const auto& r_prop = GetProperties();
     const SizeType element_size = TNumNodes * (TDim + 1);
 
-    //Resizing mass matrix
-    if ( rLeftHandSideMatrix.size1() != element_size )
-        rLeftHandSideMatrix.resize( element_size, element_size, false );
-    noalias( rLeftHandSideMatrix ) = ZeroMatrix( element_size, element_size );
+    //Resizing matrices
+    if ( rH1Matrix.size1() != element_size )
+        rH1Matrix.resize( element_size, element_size, false );
+    noalias( rH1Matrix ) = ZeroMatrix( element_size, element_size );
+    if ( rH2Matrix.size1() != element_size )
+        rH2Matrix.resize( element_size, element_size, false );
+    noalias( rH2Matrix ) = ZeroMatrix( element_size, element_size );
 
-    const double& porosity = r_prop[POROSITY];
-    const double density = porosity*r_prop[DENSITY_WATER] + (1.0-porosity)*r_prop[DENSITY_SOLID];
-
-    const double thickness = (TDim == 2 && r_prop.Has(THICKNESS)) ? r_prop[THICKNESS] : 1.0;
-
-    // LUMPED MASS MATRIX
-    const double total_mass = r_geom.DomainSize() * density * thickness;
-
-    Vector lumping_factors;
-    lumping_factors = r_geom.LumpingFactors( lumping_factors );
-
-    for ( IndexType i = 0; i < TNumNodes; ++i ) {
-        const double temp = lumping_factors[i] * total_mass;
-        for ( IndexType j = 0; j < TDim; ++j ) {
-            IndexType index = i * (TDim + 1) + j;
-            rLeftHandSideMatrix(index,index) = 1.0/temp;
-        }
-    }
-
-    KRATOS_CATCH( "" )
-}
-
-//----------------------------------------------------------------------------------------
-
-template< unsigned int TDim, unsigned int TNumNodes >
-void UPwElement<TDim,TNumNodes>::CalculateDeltaInternalForce( VectorType& rRightHandSideVector, VectorType& rNegInternalForces, const ProcessInfo& rCurrentProcessInfo )
-{
-    KRATOS_TRY
-
-    const unsigned int element_size = TNumNodes * (TDim + 1);
-
-    //Resetting the RHS
-    if ( rRightHandSideVector.size() != element_size )
-        rRightHandSideVector.resize( element_size, false );
-    noalias( rRightHandSideVector ) = ZeroVector( element_size );
-
-    // Compute Damping Matrix
+    // Compute Damping Matrix with Rayleigh Method (Damping Matrix = alpha*M + beta*K)
     MatrixType DampingMatrix(element_size,element_size);
-    this->CalculateDampingMatrixWithLumpedMass(DampingMatrix,rCurrentProcessInfo);
-
-    // Compute Mass Matrix Inverse
-    MatrixType MassMatrixInverse(element_size,element_size);
-    this->CalculateLumpedMassMatrixInverse(MassMatrixInverse,rCurrentProcessInfo);
-
-    MatrixType IdentityMatrix(element_size,element_size);
-    noalias(IdentityMatrix) = ZeroMatrix(element_size,element_size);
-    for(unsigned int i = 0; i<element_size; i++){
-        IdentityMatrix(i,i) = 1.0;
-    }
-
-    const double delta = rCurrentProcessInfo[DELTA1];
-    const double delta_time = rCurrentProcessInfo[DELTA_TIME];
-
-    MatrixType H1(element_size,element_size);
-    MatrixType aux_matrix(element_size,element_size);
-    noalias(aux_matrix) = prod(DampingMatrix,MassMatrixInverse);
-    noalias(H1) = (1.0+delta)*IdentityMatrix - delta*delta_time*aux_matrix;
-
-    noalias(rRightHandSideVector) = -1.0*prod(H1,rNegInternalForces);
-
-    KRATOS_CATCH( "" )
-}
-
-//----------------------------------------------------------------------------------------
-
-template< unsigned int TDim, unsigned int TNumNodes >
-void UPwElement<TDim,TNumNodes>::CalculateDeltaBodyForce( VectorType& rRightHandSideVector, VectorType& rBodyForce, const ProcessInfo& rCurrentProcessInfo )
-{
-    KRATOS_TRY
-
-    const unsigned int element_size = TNumNodes * (TDim + 1);
-
-    //Resetting the RHS
-    if ( rRightHandSideVector.size() != element_size )
-        rRightHandSideVector.resize( element_size, false );
-    noalias( rRightHandSideVector ) = ZeroVector( element_size );
-
-    // Compute Damping Matrix
-    MatrixType DampingMatrix(element_size,element_size);
-    this->CalculateDampingMatrixWithLumpedMass(DampingMatrix,rCurrentProcessInfo);
-
-    // Compute Mass Matrix Inverse
-    MatrixType MassMatrixInverse(element_size,element_size);
-    this->CalculateLumpedMassMatrixInverse(MassMatrixInverse,rCurrentProcessInfo);
-
-    MatrixType IdentityMatrix(element_size,element_size);
-    noalias(IdentityMatrix) = ZeroMatrix(element_size,element_size);
-    for(unsigned int i = 0; i<element_size; i++){
-        IdentityMatrix(i,i) = 1.0;
-    }
-
-    const double delta = rCurrentProcessInfo[DELTA1];
-    const double delta_time = rCurrentProcessInfo[DELTA_TIME];
-
-    MatrixType H1(element_size,element_size);
-    MatrixType aux_matrix(element_size,element_size);
-    noalias(aux_matrix) = prod(DampingMatrix,MassMatrixInverse);
-    noalias(H1) = (1.0+delta)*IdentityMatrix - delta*delta_time*aux_matrix;
-
-    noalias(rRightHandSideVector) = prod(H1,rBodyForce);
-
-    KRATOS_CATCH( "" )
-}
-
-//----------------------------------------------------------------------------------------
-
-template< unsigned int TDim, unsigned int TNumNodes >
-void UPwElement<TDim,TNumNodes>::CalculateDeltaForceResidualTerms( VectorType& rRightHandSideVector, const ProcessInfo& rCurrentProcessInfo )
-{
-    KRATOS_TRY
-
-    const unsigned int element_size = TNumNodes * (TDim + 1);
-
-    //Resetting the RHS
-    if ( rRightHandSideVector.size() != element_size )
-        rRightHandSideVector.resize( element_size, false );
-    noalias( rRightHandSideVector ) = ZeroVector( element_size );
-
-    // Compute Damping Matrix
-    MatrixType DampingMatrix(element_size,element_size);
-    this->CalculateDampingMatrixWithLumpedMass(DampingMatrix,rCurrentProcessInfo);
-
-    // Compute Mass Matrix Inverse
-    MatrixType MassMatrixInverse(element_size,element_size);
-    this->CalculateLumpedMassMatrixInverse(MassMatrixInverse,rCurrentProcessInfo);
-
-    MatrixType IdentityMatrix(element_size,element_size);
-    noalias(IdentityMatrix) = ZeroMatrix(element_size,element_size);
-    for(unsigned int i = 0; i<element_size; i++){
-        IdentityMatrix(i,i) = 1.0;
-    }
-
-    const double delta = rCurrentProcessInfo[DELTA1];
-    const double delta_time = rCurrentProcessInfo[DELTA_TIME];
-
-    MatrixType H1(element_size,element_size);
-    MatrixType aux_matrix(element_size,element_size);
-    noalias(aux_matrix) = prod(DampingMatrix,MassMatrixInverse);
-    noalias(H1) = (1.0+delta)*IdentityMatrix - delta*delta_time*aux_matrix;
-
+    // Compute Mass Matrix
+    MatrixType MassMatrix(element_size,element_size);
+    this->CalculateLumpedMassMatrix(MassMatrix,rCurrentProcessInfo);
     // Compute Stiffness matrix
     MatrixType StiffnessMatrix(element_size,element_size);
     this->CalculateStiffnessMatrix(StiffnessMatrix,rCurrentProcessInfo);
+    // Damping Matrix
+    if ( DampingMatrix.size1() != element_size )
+        DampingMatrix.resize( element_size, element_size, false );
+    noalias( DampingMatrix ) = ZeroMatrix( element_size, element_size );
+    noalias(DampingMatrix) += rCurrentProcessInfo[RAYLEIGH_ALPHA] * MassMatrix;
+    noalias(DampingMatrix) += rCurrentProcessInfo[RAYLEIGH_BETA] * StiffnessMatrix;
 
-    noalias(aux_matrix) = prod(H1,DampingMatrix);
-    MatrixType aux_matrix_2(element_size,element_size);
-    noalias(aux_matrix_2) = aux_matrix + delta*delta_time*StiffnessMatrix;
+    // Inverse of lumped mass matrix taking into account global assembly
+    Matrix MassMatrixInverse(element_size,element_size);
+    noalias(MassMatrixInverse) = ZeroMatrix(element_size,element_size);
+    for ( IndexType i = 0; i < TNumNodes; ++i ) {
+        for ( IndexType j = 0; j < TDim; ++j ) {
+            IndexType index = i * (TDim + 1) + j;
+            MassMatrixInverse(index,index) = 1.0/rMassVector[i];
+        }
+    }
 
-    VectorType VelocityVector(element_size);
-    this->GetFirstDerivativesVector(VelocityVector,0);
+    const double delta1 = rCurrentProcessInfo[DELTA1];
+    const double delta_time = rCurrentProcessInfo[DELTA_TIME];
 
-    noalias(rRightHandSideVector) = prod(aux_matrix_2,VelocityVector);
+    noalias(rH1Matrix) = delta1*delta_time*prod(DampingMatrix,MassMatrixInverse);
+    noalias(rH2Matrix) = delta_time*delta_time*prod(StiffnessMatrix,MassMatrixInverse);
 
     KRATOS_CATCH( "" )
 }
+
 
 //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -1074,6 +938,9 @@ void UPwElement<TDim,TNumNodes>::AddExplicitContribution(
 
             #pragma omp atomic
             rGeom[i].GetValue(NODAL_MASS) += lumped_mass_matrix(index,index);
+
+            // #pragma omp atomic
+            // rGeom[i].GetValue(NUMBER_OF_NEIGHBOUR_ELEMENTS) += 1.0;
         }
     }
 
@@ -1098,7 +965,7 @@ void UPwElement<TDim,TNumNodes>::AddExplicitContribution(
 
     if( rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == FORCE_RESIDUAL ) {
 
-        // CD/OCD
+        // CD,OCD
 
         Vector flux_residual = ZeroVector(element_size);
         // this->CalculateFluxResidual(flux_residual,rCurrentProcessInfo);
@@ -1108,10 +975,10 @@ void UPwElement<TDim,TNumNodes>::AddExplicitContribution(
         // this->CalculateNegInternalForce(neg_internal_force,rCurrentProcessInfo);
         // TODO: is this more efficient?
         this->CalculateExplicitContributions(flux_residual,body_force,neg_internal_force,rCurrentProcessInfo);
-        Vector damping_force = ZeroVector(element_size);
-        this->CalculateDampingForce(damping_force,rCurrentProcessInfo);
-        Vector inertial_force = ZeroVector(element_size);
-        this->CalculateInertialForce(inertial_force,rCurrentProcessInfo);
+        // Vector damping_force = ZeroVector(element_size);
+        // this->CalculateDampingForce(damping_force,rCurrentProcessInfo);
+        // Vector inertial_force = ZeroVector(element_size);
+        // this->CalculateInertialForce(inertial_force,rCurrentProcessInfo);
 
         for(SizeType i=0; i< TNumNodes; ++i) {
 
@@ -1124,7 +991,7 @@ void UPwElement<TDim,TNumNodes>::AddExplicitContribution(
 
             for(SizeType j=0; j<TDim; ++j) {
                 #pragma omp atomic
-                r_force_residual[j] += body_force[index + j] + neg_internal_force[index + j] - damping_force[index + j] - inertial_force[index + j];
+                r_force_residual[j] += body_force[index + j] + neg_internal_force[index + j];// - damping_force[index + j] - inertial_force[index + j];
 
                 #pragma omp atomic
                 r_external_force[j] += body_force[index + j];
@@ -1138,20 +1005,16 @@ void UPwElement<TDim,TNumNodes>::AddExplicitContribution(
         }
     } else if( rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == DAMPING_FORCE ) {
 
-        // VV/OVV
+        // VV,OVV
 
         Vector flux_residual = ZeroVector(element_size);
-        // this->CalculateFluxResidual(flux_residual,rCurrentProcessInfo);
         Vector body_force = ZeroVector(element_size);
-        // this->CalculateMixBodyForce(body_force,rCurrentProcessInfo);
         Vector neg_internal_force = ZeroVector(element_size);
-        // this->CalculateNegInternalForce(neg_internal_force,rCurrentProcessInfo);
-        // TODO: is this more efficient?
         this->CalculateExplicitContributions(flux_residual,body_force,neg_internal_force,rCurrentProcessInfo);
         Vector damping_force = ZeroVector(element_size);
         this->CalculateDampingForce(damping_force,rCurrentProcessInfo);
-        Vector inertial_force = ZeroVector(element_size);
-        this->CalculateInertialForce(inertial_force,rCurrentProcessInfo);
+        // Vector inertial_force = ZeroVector(element_size);
+        // this->CalculateInertialForce(inertial_force,rCurrentProcessInfo);
 
         for(SizeType i=0; i< TNumNodes; ++i) {
 
@@ -1165,7 +1028,7 @@ void UPwElement<TDim,TNumNodes>::AddExplicitContribution(
 
             for(SizeType j=0; j<TDim; ++j) {
                 #pragma omp atomic
-                r_force_residual[j] += body_force[index + j] + neg_internal_force[index + j] - damping_force[index + j] - inertial_force[index + j];
+                r_force_residual[j] += body_force[index + j] + neg_internal_force[index + j];// - damping_force[index + j] - inertial_force[index + j];
 
                 #pragma omp atomic
                 r_external_force[j] += body_force[index + j];
@@ -1180,46 +1043,26 @@ void UPwElement<TDim,TNumNodes>::AddExplicitContribution(
             #pragma omp atomic
             r_flux_residual += flux_residual[index + TDim];
         }
-    } else if(rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == DELTA1_DAMPING_D_FORCE ) {
+    } else if(rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == DAMPING_D_FORCE ) {
 
-        // CD-FIC
-
-        // TODO: we are assuming that the body_force is constant in time, i.e. fn-fn-1=0
+        // CD-FIC_1
 
         Vector flux_residual = ZeroVector(element_size);
         Vector body_force = ZeroVector(element_size);
         Vector neg_internal_force = ZeroVector(element_size);
         this->CalculateExplicitContributions(flux_residual,body_force,neg_internal_force,rCurrentProcessInfo);
-        Vector inertial_force = ZeroVector(element_size);
-        this->CalculateInertialForce(inertial_force,rCurrentProcessInfo);
-
-        Vector delta_damping_force = ZeroVector(element_size);
-        this->CalculateDeltaDampingForce(delta_damping_force,rCurrentProcessInfo);
-        Vector delta_internal_force = ZeroVector(element_size);
-        this->CalculateDeltaInternalForce(delta_internal_force,neg_internal_force,rCurrentProcessInfo);
-        Vector delta_body_force = ZeroVector(element_size);
-        this->CalculateDeltaBodyForce(delta_body_force,body_force,rCurrentProcessInfo);
-        Vector delta_force_residual_terms = ZeroVector(element_size); // H1Cv+delta*dt*K*v
-        this->CalculateDeltaForceResidualTerms(delta_force_residual_terms,rCurrentProcessInfo);
-
-        const double delta = rCurrentProcessInfo[DELTA1];
+        Vector damping_d_force = ZeroVector(element_size);
+        this->CalculateDampingDForce(damping_d_force,rCurrentProcessInfo);
 
         for(SizeType i=0; i< TNumNodes; ++i) {
 
             SizeType index = (TDim + 1) * i;
 
-            array_1d<double, 3 >& r_force_residual = rGeom[i].FastGetSolutionStepValue(FORCE_RESIDUAL);
             array_1d<double, 3 >& r_external_force = rGeom[i].FastGetSolutionStepValue(EXTERNAL_FORCE);
             array_1d<double, 3 >& r_internal_force = rGeom[i].FastGetSolutionStepValue(INTERNAL_FORCE);
-            array_1d<double, 3 >& r_delta_external_force = rGeom[i].FastGetSolutionStepValue(DELTA1_EXTERNAL_FORCE);
-            array_1d<double, 3 >& r_delta_internal_force = rGeom[i].FastGetSolutionStepValue(DELTA1_INTERNAL_FORCE);
-            array_1d<double, 3 >& r_delta_damping_force = rGeom[i].FastGetSolutionStepValue(DELTA1_DAMPING_D_FORCE);
-            double& r_flux_residual = rGeom[i].FastGetSolutionStepValue(FLUX_RESIDUAL);
+            array_1d<double, 3 >& r_damping_d_force = rGeom[i].FastGetSolutionStepValue(DAMPING_D_FORCE);
 
             for(SizeType j=0; j<TDim; ++j) {
-                #pragma omp atomic
-                r_force_residual[j] += delta_body_force[index + j] - delta_internal_force[index + j] - delta_force_residual_terms[index + j] - (1.0+delta)*inertial_force[index + j];
-
                 #pragma omp atomic
                 r_external_force[j] += body_force[index + j];
 
@@ -1227,13 +1070,97 @@ void UPwElement<TDim,TNumNodes>::AddExplicitContribution(
                 r_internal_force[j] += -neg_internal_force[index + j];
 
                 #pragma omp atomic
-                r_delta_external_force[j] += delta_body_force[index + j];
+                r_damping_d_force[j] += damping_d_force[index + j];
+            }
+        }
+    } else if(rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == DELTA1_DAMPING_D_FORCE ) {
+        // CD-FIC_2
+
+        Vector mass_vector = ZeroVector(element_size);
+        Vector external_force = ZeroVector(element_size);
+        Vector internal_force = ZeroVector(element_size);
+        Vector damping_d_force = ZeroVector(element_size);
+        
+        for (SizeType i=0; i< TNumNodes; ++i) {
+
+            SizeType index = (TDim + 1) * i;
+
+            const double& r_nodal_mass = rGeom[i].GetValue(NODAL_MASS);
+            const array_1d<double, 3>& r_external_force = rGeom[i].FastGetSolutionStepValue(EXTERNAL_FORCE);
+            const array_1d<double, 3>& r_internal_force = rGeom[i].FastGetSolutionStepValue(INTERNAL_FORCE);
+            const array_1d<double, 3>& r_damping_d_force = rGeom[i].FastGetSolutionStepValue(DAMPING_D_FORCE);
+
+            for (SizeType j=0; j<TDim; ++j) {
+                mass_vector[index+j] = r_nodal_mass;
+                external_force[index+j] = r_external_force[j]; // External Forces coming from condition, elements and reactions
+                internal_force[index+j] = r_internal_force[j]; // Assembled internal_force
+                damping_d_force[index+j] = r_damping_d_force[j]; // Assembled damping_force
+            }
+        }
+
+        MatrixType H1( element_size, element_size );
+        MatrixType H2( element_size, element_size );
+        this->CalculateHMatrices(H1, H2, mass_vector, rCurrentProcessInfo);
+
+        Vector delta1_external_force = ZeroVector(element_size);
+        noalias(delta1_external_force) = prod(H1,external_force);
+        Vector delta1_internal_force = ZeroVector(element_size);
+        noalias(delta1_internal_force) = prod(H1,internal_force);
+        Vector delta1_damping_d_force = ZeroVector(element_size);
+        noalias(delta1_damping_d_force) = prod(H1,damping_d_force);
+
+        Vector delta2_external_force = ZeroVector(element_size);
+        noalias(delta2_external_force) = prod(H2,external_force);
+        Vector delta2_internal_force = ZeroVector(element_size);
+        noalias(delta2_internal_force) = prod(H2,internal_force);
+        Vector delta2_damping_d_force = ZeroVector(element_size);
+        noalias(delta2_damping_d_force) = prod(H2,damping_d_force);
+
+        for(SizeType i=0; i< TNumNodes; ++i) {
+
+            SizeType index = (TDim + 1) * i;
+
+            array_1d<double, 3 >& r_delta1_external_force = rGeom[i].FastGetSolutionStepValue(DELTA1_EXTERNAL_FORCE);
+            array_1d<double, 3 >& r_delta1_internal_force = rGeom[i].FastGetSolutionStepValue(DELTA1_INTERNAL_FORCE);
+            array_1d<double, 3 >& r_delta1_damping_d_force = rGeom[i].FastGetSolutionStepValue(DELTA1_DAMPING_D_FORCE);
+            array_1d<double, 3 >& r_delta2_external_force = rGeom[i].FastGetSolutionStepValue(DELTA2_EXTERNAL_FORCE);
+            array_1d<double, 3 >& r_delta2_internal_force = rGeom[i].FastGetSolutionStepValue(DELTA2_INTERNAL_FORCE);
+            array_1d<double, 3 >& r_delta2_damping_d_force = rGeom[i].FastGetSolutionStepValue(DELTA2_DAMPING_D_FORCE);
+
+            for(SizeType j=0; j<TDim; ++j) {
+                #pragma omp atomic
+                r_delta1_external_force[j] += delta1_external_force[index + j];
+                #pragma omp atomic
+                r_delta1_internal_force[j] += delta1_internal_force[index + j];
+                #pragma omp atomic
+                r_delta1_damping_d_force[j] += delta1_damping_d_force[index + j];
 
                 #pragma omp atomic
-                r_delta_internal_force[j] += delta_internal_force[index + j];
-
+                r_delta2_external_force[j] += delta2_external_force[index + j];
                 #pragma omp atomic
-                r_delta_damping_force[j] += delta_damping_force[index + j];
+                r_delta2_internal_force[j] += delta2_internal_force[index + j];
+                #pragma omp atomic
+                r_delta2_damping_d_force[j] += delta2_damping_d_force[index + j];
+            }
+        }
+    } else if(rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == REACTION ) {
+        // CD-FIC_3
+
+        Vector flux_residual = ZeroVector(element_size);
+        Vector body_force = ZeroVector(element_size);
+        Vector neg_internal_force = ZeroVector(element_size);
+        this->CalculateExplicitContributions(flux_residual,body_force,neg_internal_force,rCurrentProcessInfo);
+
+        for(SizeType i=0; i< TNumNodes; ++i) {
+
+            SizeType index = (TDim + 1) * i;
+
+            array_1d<double, 3 >& r_force_residual = rGeom[i].FastGetSolutionStepValue(FORCE_RESIDUAL);
+            double& r_flux_residual = rGeom[i].FastGetSolutionStepValue(FLUX_RESIDUAL);
+
+            for(SizeType j=0; j<TDim; ++j) {
+                #pragma omp atomic
+                r_force_residual[j] += body_force[index + j] + neg_internal_force[index + j];
             }
 
             #pragma omp atomic

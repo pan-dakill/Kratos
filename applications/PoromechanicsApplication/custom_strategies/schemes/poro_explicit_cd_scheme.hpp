@@ -165,6 +165,58 @@ public:
     }
 
     /**
+     * @brief This method initializes some rutines related with the explicit scheme
+     * @param rModelPart The model of the problem to solve
+     * @param DomainSize The current dimention of the problem
+     */
+    virtual void InitializeExplicitScheme(
+        ModelPart& rModelPart,
+        const SizeType DomainSize = 3
+        )
+    {
+        KRATOS_TRY
+
+        /// The array of ndoes
+        NodesArrayType& r_nodes = rModelPart.Nodes();
+
+        // The first iterator of the array of nodes
+        const auto it_node_begin = rModelPart.NodesBegin();
+
+        /// Initialise the database of the nodes
+        #pragma omp parallel for schedule(guided,512)
+        for (int i = 0; i < static_cast<int>(r_nodes.size()); ++i) {
+            auto it_node = (it_node_begin + i);
+            it_node->SetValue(NODAL_MASS, 0.0);
+            // TODO: Set Nodal AntiCompressibility to zero for mass-balance equation (C=1/Q, with Q being the compressibility coeff.)
+            array_1d<double, 3>& r_force_residual = it_node->FastGetSolutionStepValue(FORCE_RESIDUAL);
+            double& r_flux_residual = it_node->FastGetSolutionStepValue(FLUX_RESIDUAL);
+            array_1d<double, 3>& r_external_force = it_node->FastGetSolutionStepValue(EXTERNAL_FORCE);
+            array_1d<double, 3>& r_internal_force = it_node->FastGetSolutionStepValue(INTERNAL_FORCE);
+            noalias(r_force_residual) = ZeroVector(3);
+            r_flux_residual = 0.0;
+            noalias(r_external_force) = ZeroVector(3);
+            noalias(r_internal_force) = ZeroVector(3);
+        }
+
+        KRATOS_CATCH("")
+    }
+
+    /**
+     * @brief This method performs some custom operations to initialize the scheme
+     * @param rModelPart The model of the problem to solve
+     * @param DomainSize The current dimention of the problem
+     */
+    virtual void SchemeCustomInitialization(
+        ModelPart& rModelPart,
+        const SizeType DomainSize = 3
+        )
+    {
+        KRATOS_TRY
+
+        KRATOS_CATCH("")
+    }
+
+    /**
      * @brief It initializes time step solution. Only for reasons if the time step solution is restarted
      * @param rModelPart The model of the problem to solve
      * @param rA LHS matrix
@@ -187,6 +239,30 @@ public:
 
         KRATOS_CATCH("")
     }
+
+    /**
+     * @brief This method initializes the residual in the nodes of the model part
+     * @param rModelPart The model of the problem to solve
+     */
+    virtual void InitializeResidual(ModelPart& rModelPart)
+    {
+        KRATOS_TRY
+
+        // The array of nodes
+        NodesArrayType& r_nodes = rModelPart.Nodes();
+
+        // Auxiliar values
+        const array_1d<double, 3> zero_array = ZeroVector(3);
+        double zero_double = 0.0;
+        // Initializing the variables
+        VariableUtils().SetVariable(FORCE_RESIDUAL, zero_array,r_nodes);
+        VariableUtils().SetVariable(FLUX_RESIDUAL, zero_double,r_nodes);
+        VariableUtils().SetVariable(EXTERNAL_FORCE, zero_array,r_nodes);
+        VariableUtils().SetVariable(INTERNAL_FORCE, zero_array,r_nodes);
+
+        KRATOS_CATCH("")
+    }
+
 
     /**
      * @brief It initializes the non-linear iteration
@@ -224,43 +300,6 @@ public:
         KRATOS_CATCH( "" );
     }
 
-    /**
-     * @brief This method initializes some rutines related with the explicit scheme
-     * @param rModelPart The model of the problem to solve
-     * @param DomainSize The current dimention of the problem
-     */
-    virtual void InitializeExplicitScheme(
-        ModelPart& rModelPart,
-        const SizeType DomainSize = 3
-        )
-    {
-        KRATOS_TRY
-
-        /// The array of ndoes
-        NodesArrayType& r_nodes = rModelPart.Nodes();
-
-        // The first iterator of the array of nodes
-        const auto it_node_begin = rModelPart.NodesBegin();
-
-        /// Initialise the database of the nodes
-        #pragma omp parallel for schedule(guided,512)
-        for (int i = 0; i < static_cast<int>(r_nodes.size()); ++i) {
-            auto it_node = (it_node_begin + i);
-            it_node->SetValue(NODAL_MASS, 0.0);
-            // TODO: Set Nodal AntiCompressibility to zero for mass-balance equation (C=1/Q, with Q being the compressibility coeff.)
-            array_1d<double, 3>& r_force_residual = it_node->FastGetSolutionStepValue(FORCE_RESIDUAL);
-            double& r_flux_residual = it_node->FastGetSolutionStepValue(FLUX_RESIDUAL);
-            array_1d<double, 3>& r_external_force = it_node->FastGetSolutionStepValue(EXTERNAL_FORCE);
-            array_1d<double, 3>& r_internal_force = it_node->FastGetSolutionStepValue(INTERNAL_FORCE);
-            noalias(r_force_residual) = ZeroVector(3);
-            r_flux_residual = 0.0;
-            noalias(r_external_force) = ZeroVector(3);
-            noalias(r_internal_force) = ZeroVector(3);
-        }
-
-        KRATOS_CATCH("")
-    }
-
      void Predict(
         ModelPart& rModelPart,
         DofsArrayType& rDofSet,
@@ -276,59 +315,74 @@ public:
         KRATOS_CATCH("")
     }
 
+    void CalculateAndAddRHS(ModelPart& rModelPart)
+    {
+        KRATOS_TRY
+
+        const ProcessInfo& r_current_process_info = rModelPart.GetProcessInfo();
+        ConditionsArrayType& r_conditions = rModelPart.Conditions();
+        ElementsArrayType& r_elements = rModelPart.Elements();
+
+        LocalSystemVectorType RHS_Contribution = LocalSystemVectorType(0);
+        Element::EquationIdVectorType equation_id_vector_dummy; // Dummy
+
+        #pragma omp parallel for firstprivate(RHS_Contribution, equation_id_vector_dummy), schedule(guided,512)
+        for (int i = 0; i < static_cast<int>(r_conditions.size()); ++i) {
+            auto it_cond = r_conditions.begin() + i;
+            CalculateRHSContribution(*it_cond, RHS_Contribution, equation_id_vector_dummy, r_current_process_info);
+        }
+
+        #pragma omp parallel for firstprivate(RHS_Contribution, equation_id_vector_dummy), schedule(guided,512)
+        for (int i = 0; i < static_cast<int>(r_elements.size()); ++i) {
+            auto it_elem = r_elements.begin() + i;
+            CalculateRHSContribution(*it_elem, RHS_Contribution, equation_id_vector_dummy, r_current_process_info);
+        }
+
+        KRATOS_CATCH("")
+    }
+
     /**
-     * @brief Function to be called when it is needed to finalize an iteration. It is designed to be called at the end of each non linear iteration
-     * @param rModelPart The model part of the problem to solve
-     * @param A LHS matrix
-     * @param Dx Incremental update of primary variables
-     * @param b RHS Vector
+     * @brief This function is designed to calculate just the RHS contribution
+     * @param rCurrentElement The element to compute
+     * @param RHS_Contribution The RHS vector contribution
+     * @param EquationId The ID's of the element degrees of freedom
+     * @param rCurrentProcessInfo The current process info instance
      */
-    void FinalizeNonLinIteration(
-        ModelPart& rModelPart,
-        TSystemMatrixType& A,
-        TSystemVectorType& Dx,
-        TSystemVectorType& b
+    void CalculateRHSContribution(
+        Element& rCurrentElement,
+        LocalSystemVectorType& RHS_Contribution,
+        Element::EquationIdVectorType& EquationId,
+        const ProcessInfo& rCurrentProcessInfo
         ) override
     {
         KRATOS_TRY
 
-        BaseType::FinalizeNonLinIteration(rModelPart, A, Dx, b);
-        
-        this->CalculateAndAddRHSFinal(rModelPart);
-
-        KRATOS_CATCH("")
-    }
-
-    virtual void CalculateAndAddRHSFinal(ModelPart& rModelPart)
-    {
-        KRATOS_TRY
-
-        InitializeResidual(rModelPart);
-
-        this-> CalculateAndAddRHS(rModelPart);
+        // this->TCalculateRHSContribution(rCurrentElement, RHS_Contribution, rCurrentProcessInfo);
+        // rCurrentElement.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
+        rCurrentElement.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, FORCE_RESIDUAL, rCurrentProcessInfo);
 
         KRATOS_CATCH("")
     }
 
     /**
-     * @brief This method initializes the residual in the nodes of the model part
-     * @param rModelPart The model of the problem to solve
+     * @brief Functions that calculates the RHS of a "condition" object
+     * @param rCurrentCondition The condition to compute
+     * @param RHS_Contribution The RHS vector contribution
+     * @param EquationId The ID's of the condition degrees of freedom
+     * @param rCurrentProcessInfo The current process info instance
      */
-    virtual void InitializeResidual(ModelPart& rModelPart)
+    void CalculateRHSContribution(
+        Condition& rCurrentCondition,
+        LocalSystemVectorType& RHS_Contribution,
+        Element::EquationIdVectorType& EquationId,
+        const ProcessInfo& rCurrentProcessInfo
+        ) override
     {
         KRATOS_TRY
 
-        // The array of nodes
-        NodesArrayType& r_nodes = rModelPart.Nodes();
-
-        // Auxiliar values
-        const array_1d<double, 3> zero_array = ZeroVector(3);
-        double zero_double = 0.0;
-        // Initializing the variables
-        VariableUtils().SetVariable(FORCE_RESIDUAL, zero_array,r_nodes);
-        VariableUtils().SetVariable(FLUX_RESIDUAL, zero_double,r_nodes);
-        VariableUtils().SetVariable(EXTERNAL_FORCE, zero_array,r_nodes);
-        VariableUtils().SetVariable(INTERNAL_FORCE, zero_array,r_nodes);
+        // this->TCalculateRHSContribution(rCurrentCondition, RHS_Contribution, rCurrentProcessInfo);
+        rCurrentCondition.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
+        rCurrentCondition.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, FORCE_RESIDUAL, rCurrentProcessInfo);
 
         KRATOS_CATCH("")
     }
@@ -440,88 +494,35 @@ public:
     }
 
     /**
-     * @brief This method performs some custom operations to initialize the scheme
-     * @param rModelPart The model of the problem to solve
-     * @param DomainSize The current dimention of the problem
+     * @brief Function to be called when it is needed to finalize an iteration. It is designed to be called at the end of each non linear iteration
+     * @param rModelPart The model part of the problem to solve
+     * @param A LHS matrix
+     * @param Dx Incremental update of primary variables
+     * @param b RHS Vector
      */
-    virtual void SchemeCustomInitialization(
+    void FinalizeNonLinIteration(
         ModelPart& rModelPart,
-        const SizeType DomainSize = 3
-        )
-    {
-        KRATOS_TRY
-
-        KRATOS_CATCH("")
-    }
-
-    void CalculateAndAddRHS(ModelPart& rModelPart)
-    {
-        KRATOS_TRY
-
-        const ProcessInfo& r_current_process_info = rModelPart.GetProcessInfo();
-        ConditionsArrayType& r_conditions = rModelPart.Conditions();
-        ElementsArrayType& r_elements = rModelPart.Elements();
-
-        LocalSystemVectorType RHS_Contribution = LocalSystemVectorType(0);
-        Element::EquationIdVectorType equation_id_vector_dummy; // Dummy
-
-        #pragma omp parallel for firstprivate(RHS_Contribution, equation_id_vector_dummy), schedule(guided,512)
-        for (int i = 0; i < static_cast<int>(r_conditions.size()); ++i) {
-            auto it_cond = r_conditions.begin() + i;
-            CalculateRHSContribution(*it_cond, RHS_Contribution, equation_id_vector_dummy, r_current_process_info);
-        }
-
-        #pragma omp parallel for firstprivate(RHS_Contribution, equation_id_vector_dummy), schedule(guided,512)
-        for (int i = 0; i < static_cast<int>(r_elements.size()); ++i) {
-            auto it_elem = r_elements.begin() + i;
-            CalculateRHSContribution(*it_elem, RHS_Contribution, equation_id_vector_dummy, r_current_process_info);
-        }
-
-        KRATOS_CATCH("")
-    }
-
-    /**
-     * @brief This function is designed to calculate just the RHS contribution
-     * @param rCurrentElement The element to compute
-     * @param RHS_Contribution The RHS vector contribution
-     * @param EquationId The ID's of the element degrees of freedom
-     * @param rCurrentProcessInfo The current process info instance
-     */
-    void CalculateRHSContribution(
-        Element& rCurrentElement,
-        LocalSystemVectorType& RHS_Contribution,
-        Element::EquationIdVectorType& EquationId,
-        const ProcessInfo& rCurrentProcessInfo
+        TSystemMatrixType& A,
+        TSystemVectorType& Dx,
+        TSystemVectorType& b
         ) override
     {
         KRATOS_TRY
 
-        // this->TCalculateRHSContribution(rCurrentElement, RHS_Contribution, rCurrentProcessInfo);
-        // rCurrentElement.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
-        rCurrentElement.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, FORCE_RESIDUAL, rCurrentProcessInfo);
+        BaseType::FinalizeNonLinIteration(rModelPart, A, Dx, b);
+        
+        this->CalculateAndAddRHSBeforeReactions(rModelPart);
 
         KRATOS_CATCH("")
     }
 
-    /**
-     * @brief Functions that calculates the RHS of a "condition" object
-     * @param rCurrentCondition The condition to compute
-     * @param RHS_Contribution The RHS vector contribution
-     * @param EquationId The ID's of the condition degrees of freedom
-     * @param rCurrentProcessInfo The current process info instance
-     */
-    void CalculateRHSContribution(
-        Condition& rCurrentCondition,
-        LocalSystemVectorType& RHS_Contribution,
-        Element::EquationIdVectorType& EquationId,
-        const ProcessInfo& rCurrentProcessInfo
-        ) override
+    virtual void CalculateAndAddRHSBeforeReactions(ModelPart& rModelPart)
     {
         KRATOS_TRY
 
-        // this->TCalculateRHSContribution(rCurrentCondition, RHS_Contribution, rCurrentProcessInfo);
-        rCurrentCondition.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
-        rCurrentCondition.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, FORCE_RESIDUAL, rCurrentProcessInfo);
+        InitializeResidual(rModelPart);
+
+        this->CalculateAndAddRHS(rModelPart);
 
         KRATOS_CATCH("")
     }
@@ -648,23 +649,6 @@ protected:
     ///@}
     ///@name Protected Operators
     ///@{
-
-    /**
-    * @brief Functions that calculates the RHS of a "TObjectType" object
-    * @param rCurrentEntity The TObjectType to compute
-    * @param RHS_Contribution The RHS vector contribution
-    * @param rCurrentProcessInfo The current process info instance
-    */
-    // template <typename TObjectType>
-    // void TCalculateRHSContribution(
-    //     TObjectType& rCurrentEntity,
-    //     LocalSystemVectorType& RHS_Contribution,
-    //     const ProcessInfo& rCurrentProcessInfo
-    //     )
-    // {
-    //     rCurrentEntity.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
-    //     rCurrentEntity.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, FORCE_RESIDUAL, rCurrentProcessInfo);
-    // }
 
     ///@}
     ///@name Protected Operations
