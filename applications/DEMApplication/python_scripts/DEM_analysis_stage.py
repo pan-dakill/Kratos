@@ -184,6 +184,15 @@ class DEMAnalysisStage(AnalysisStage):
         elif self.DEM_parameters["TranslationalIntegrationScheme"].GetString() == 'Velocity_Verlet':
             return VelocityVerletScheme()
         elif self.DEM_parameters["TranslationalIntegrationScheme"].GetString() == 'Central_Differences':
+            # TODO. This should be in the ProjectParameters
+            xi_1 = 0.5
+            xi_n = 0.059
+            omega_1 = 8.83
+            omega_n = 20.92
+            beta = 2.0*(xi_n*omega_n-xi_1*omega_1)/(omega_n*omega_n-omega_1*omega_1)
+            alpha = 2.0*xi_1*omega_1-beta*omega_1*omega_1
+            self.spheres_model_part.ProcessInfo.SetValue(RAYLEIGH_ALPHA, alpha)
+            self.spheres_model_part.ProcessInfo.SetValue(RAYLEIGH_BETA, beta)
             return CentralDifferencesScheme()
 
         return None

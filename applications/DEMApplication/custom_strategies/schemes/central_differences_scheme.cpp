@@ -44,18 +44,20 @@ namespace Kratos {
         array_1d<double,3>& displ_old = i.FastGetSolutionStepValue(DISPLACEMENT_OLD);
         const array_1d<double,3>& internal_force = i.FastGetSolutionStepValue(INTERNAL_FORCE);
         const array_1d<double,3>& internal_force_old = i.FastGetSolutionStepValue(INTERNAL_FORCE_OLD);
-        const array_1d<double,3>& external_force = i.FastGetSolutionStepValue(INTERNAL_FORCE);
-        array_1d<double,3> displ_aux = ZeroVector(3);
+        const array_1d<double,3>& external_force = i.FastGetSolutionStepValue(EXTERNAL_FORCE);
 
         double mass_inv = 1.0 / mass;
         for (int k = 0; k < 3; k++) {
             if (Fix_vel[k] == false) {
-                // TODO. Ignasi: seguir
-                displ_aux[k] = (2.0-delta_t*alpha)*mass;
-                vel[k] += delta_t * force_reduction_factor * force[k] * mass_inv;
-                delta_displ[k] = delta_t * vel[k];
-                displ[k] += delta_displ[k];
+                delta_displ[k] = ( (2.0-delta_t*alpha)*mass*displ[k]
+                                + (delta_t*alpha-1.0)*mass*displ_old[k]
+                                - delta_t*(beta+delta_t)*internal_force[k]
+                                + delta_t*beta*internal_force_old[k]
+                                + delta_t*delta_t*external_force[k] ) * mass_inv - displ[k];
+                displ_old[k] = displ[k];
+                displ[k] = displ_old[k] + delta_displ[k];
                 coor[k] = initial_coor[k] + displ[k];
+                vel[k] = delta_displ[k]/delta_t;
             } else {
                 delta_displ[k] = delta_t * vel[k];
                 displ[k] += delta_displ[k];
@@ -76,10 +78,29 @@ namespace Kratos {
                 const double delta_t,
                 const bool Fix_Ang_vel[3]) {
 
-        array_1d<double, 3 > angular_acceleration;
-        CalculateLocalAngularAcceleration(moment_of_inertia, torque, moment_reduction_factor, angular_acceleration);
+        const double& alpha = i.FastGetSolutionStepValue(RAYLEIGH_ALPHA);
+        const double& beta = i.FastGetSolutionStepValue(RAYLEIGH_BETA);
+        array_1d<double,3>& rotated_angle_old = i.FastGetSolutionStepValue(PARTICLE_ROTATION_ANGLE_OLD);
+        const array_1d<double,3>& internal_torque = i.FastGetSolutionStepValue(PARTICLE_INTERNAL_MOMENT);
+        const array_1d<double,3>& internal_torque_old = i.FastGetSolutionStepValue(PARTICLE_INTERNAL_MOMENT_OLD);
+        const array_1d<double,3>& external_torque = i.FastGetSolutionStepValue(PARTICLE_EXTERNAL_MOMENT);
 
-        UpdateRotationalVariables(StepFlag, i, rotated_angle, delta_rotation, angular_velocity, angular_acceleration, delta_t, Fix_Ang_vel);
+        double moment_of_inertia_inv = 1.0 / moment_of_inertia;
+        for (int k = 0; k < 3; k++) {
+            if (Fix_Ang_vel[k] == false) {
+                delta_rotation[k] = ( (2.0-delta_t*alpha)*moment_of_inertia*rotated_angle[k]
+                                    + (delta_t*alpha-1.0)*moment_of_inertia*rotated_angle_old[k]
+                                    - delta_t*(beta+delta_t)*internal_torque[k]
+                                    + delta_t*beta*internal_torque_old[k]
+                                    + delta_t*delta_t*external_torque[k] ) * moment_of_inertia_inv - rotated_angle[k];
+                rotated_angle_old[k] = rotated_angle[k];
+                rotated_angle[k] = rotated_angle_old[k] + delta_rotation[k];
+                angular_velocity[k] = delta_rotation[k]/delta_t;
+            } else {
+                delta_rotation[k] = delta_t * angular_velocity[k];
+                rotated_angle[k] += delta_rotation[k];
+            }
+        } // dimensions
     }
 
     void CentralDifferencesScheme::CalculateNewRotationalVariablesOfRigidBodyElements(
@@ -104,6 +125,7 @@ namespace Kratos {
         CalculateLocalAngularAccelerationByEulerEquations(local_angular_velocity, moments_of_inertia, local_torque, moment_reduction_factor, local_angular_acceleration);
         GeometryFunctions::QuaternionVectorLocal2Global(Orientation, local_angular_acceleration, angular_acceleration);
 
+        // TODO: this is from symplectic euler...
         UpdateRotationalVariables(StepFlag, i, rotated_angle, delta_rotation, angular_velocity, angular_acceleration, delta_t, Fix_Ang_vel);
 
         double ang = DEM_INNER_PRODUCT_3(delta_rotation, delta_rotation);
@@ -133,18 +155,6 @@ namespace Kratos {
                 delta_rotation[k] = angular_velocity[k] * delta_t;
                 rotated_angle[k] += delta_rotation[k];
             }
-        }
-    }
-
-    void CentralDifferencesScheme::CalculateLocalAngularAcceleration(
-                const double moment_of_inertia,
-                const array_1d<double, 3 >& torque,
-                const double moment_reduction_factor,
-                array_1d<double, 3 >& angular_acceleration) {
-
-        double moment_of_inertia_inv = 1.0 / moment_of_inertia;
-        for (int j = 0; j < 3; j++) {
-            angular_acceleration[j] = moment_reduction_factor * torque[j] * moment_of_inertia_inv;
         }
     }
 

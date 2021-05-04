@@ -437,6 +437,10 @@ class Procedures():
         model_part.AddNodalSolutionStepVariable(EXTERNAL_FORCE)
         model_part.AddNodalSolutionStepVariable(RAYLEIGH_ALPHA)
         model_part.AddNodalSolutionStepVariable(RAYLEIGH_ALPHA)
+        model_part.AddNodalSolutionStepVariable(PARTICLE_ROTATION_ANGLE_OLD)
+        model_part.AddNodalSolutionStepVariable(PARTICLE_INTERNAL_MOMENT)
+        model_part.AddNodalSolutionStepVariable(PARTICLE_INTERNAL_MOMENT_OLD)
+        model_part.AddNodalSolutionStepVariable(PARTICLE_EXTERNAL_MOMENT)
 
     def AddSpheresVariables(self, model_part, DEM_parameters):
 

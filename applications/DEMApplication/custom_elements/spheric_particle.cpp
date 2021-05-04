@@ -249,6 +249,16 @@ void SphericParticle::CalculateRightHandSide(const ProcessInfo& r_process_info, 
     array_1d<double, 3>& contact_force       = this_node.FastGetSolutionStepValue(CONTACT_FORCES);
     array_1d<double, 3>& rigid_element_force = this_node.FastGetSolutionStepValue(RIGID_ELEMENT_FORCE);
 
+    // TODO: we could actually use elastic_force instead of internal_force...
+    array_1d<double, 3>& internal_force = this_node.FastGetSolutionStepValue(INTERNAL_FORCE);
+    array_1d<double, 3>& internal_force_old = this_node.FastGetSolutionStepValue(INTERNAL_FORCE_OLD);
+    array_1d<double, 3>& external_force = this_node.FastGetSolutionStepValue(EXTERNAL_FORCE);
+    array_1d<double, 3>& internal_moment = this_node.FastGetSolutionStepValue(PARTICLE_INTERNAL_MOMENT);
+    array_1d<double, 3>& internal_moment_old = this_node.FastGetSolutionStepValue(PARTICLE_INTERNAL_MOMENT_OLD);
+    array_1d<double, 3>& external_moment = this_node.FastGetSolutionStepValue(PARTICLE_EXTERNAL_MOMENT);
+    double& alpha = this_node.FastGetSolutionStepValue(RAYLEIGH_ALPHA);
+    double& beta = this_node.FastGetSolutionStepValue(RAYLEIGH_BETA);
+
     mContactMoment.clear();
     elastic_force.clear();
     contact_force.clear();
@@ -291,6 +301,16 @@ void SphericParticle::CalculateRightHandSide(const ProcessInfo& r_process_info, 
     total_moment[1] = mContactMoment[1] + additionally_applied_moment[1];
     total_moment[2] = mContactMoment[2] + additionally_applied_moment[2];
 
+    internal_force_old = internal_force;
+    internal_force = elastic_force;
+    external_force = additional_forces;
+    internal_moment_old = internal_moment;
+    internal_moment = mContactMoment; // TODO: here I am supposing ViscoLocalRotationalMoment is zero
+    external_moment = additionally_applied_moment;
+    // NOTE: we define alpha and beta constant for all particles
+    alpha = r_process_info[RAYLEIGH_ALPHA];
+    beta = r_process_info[RAYLEIGH_BETA];
+    
     ApplyGlobalDampingToContactForcesAndMoments(total_forces, total_moment);
 
     #ifdef KRATOS_DEBUG
