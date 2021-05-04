@@ -65,6 +65,12 @@ class MainCouplingPfemFemDemAitken_Solution(MainCouplingPfemFemDem.MainCouplingP
         PlotFileIterAitken.write("       time           ITER\n")
         PlotFileIterAitken.close()
 
+        # to print pressures in nodes
+        PlotFilepressures = open("pressures_measurement.txt","w")
+        PlotFilepressures.write("This file prints the pressures \n\n")
+        PlotFilepressures.write("       time           P1           P2           P3\n")
+        PlotFilepressures.close()
+
 
 #============================================================================================================================
     def SolveSolutionStep(self):
@@ -151,6 +157,46 @@ class MainCouplingPfemFemDemAitken_Solution(MainCouplingPfemFemDem.MainCouplingP
         else:
             PlotFileIterAitken.write("    " + "{0:.4e}".format(time).rjust(11) + "        " + str(aitken_iteration) + "  MAX iterations reached!" + "\n")
         PlotFileIterAitken.close()
+
+
+
+
+        #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        plot_pressure_meas = open("pressures_measurement.txt", "a")
+        nodes_p1 = self.FEMDEM_Solution.FEM_Solution.main_model_part.GetSubModelPart("P1").GetNodes()
+        nodes_p2 = self.FEMDEM_Solution.FEM_Solution.main_model_part.GetSubModelPart("P2").GetNodes()
+        nodes_p3 = self.FEMDEM_Solution.FEM_Solution.main_model_part.GetSubModelPart("P3").GetNodes()
+
+        count1 = 0
+        pressure1 = 0.0
+        for node in nodes_p1:
+            pressure1 += node.GetSolutionStepValue(KM.PRESSURE)
+            count1 +=1
+        pressure1 = pressure1 / count1
+
+        count2 = 0
+        pressure2 = 0.0
+        for node in nodes_p2:
+            pressure2 += node.GetSolutionStepValue(KM.PRESSURE)
+            count2 +=1
+        pressure2 = pressure2 / count2
+
+        count3 = 0
+        pressure3 = 0.0
+        for node in nodes_p3:
+            pressure3 += node.GetSolutionStepValue(KM.PRESSURE)
+            count3 +=1
+        pressure3 = pressure3 / count3
+
+        time = self.FEMDEM_Solution.FEM_Solution.time
+        plot_pressure_meas.write("    " + "{0:.4e}".format(time).rjust(11) + "        " + str(pressure1) + "        " + str(pressure2)  + "        " + str(pressure3) + "\n")
+        plot_pressure_meas.close()
+
+        #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 #============================================================================================================================
     def UpdateAndRelaxSolution(self, solid_model_part):
