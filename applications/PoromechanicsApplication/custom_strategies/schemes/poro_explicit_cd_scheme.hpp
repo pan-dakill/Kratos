@@ -520,9 +520,10 @@ public:
     {
         KRATOS_TRY
 
-        InitializeResidual(rModelPart);
+        // TODO: here we should erase the residual and recalculate it...
+        // InitializeResidual(rModelPart);
 
-        this->CalculateAndAddRHS(rModelPart);
+        // this->CalculateAndAddRHS(rModelPart);
 
         KRATOS_CATCH("")
     }

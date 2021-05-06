@@ -302,10 +302,10 @@ void SphericParticle::CalculateRightHandSide(const ProcessInfo& r_process_info, 
     total_moment[2] = mContactMoment[2] + additionally_applied_moment[2];
 
     internal_force_old = internal_force;
-    internal_force = elastic_force;
+    internal_force = -1.0*elastic_force;
     external_force = additional_forces;
     internal_moment_old = internal_moment;
-    internal_moment = mContactMoment; // TODO: here I am supposing ViscoLocalRotationalMoment is zero
+    internal_moment = -1.0*mContactMoment; // TODO: here I am supposing ViscoLocalRotationalMoment is zero
     external_moment = additionally_applied_moment;
     // NOTE: we define alpha and beta constant for all particles
     alpha = r_process_info[RAYLEIGH_ALPHA];
