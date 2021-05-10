@@ -185,10 +185,10 @@ class DEMAnalysisStage(AnalysisStage):
             return VelocityVerletScheme()
         elif self.DEM_parameters["TranslationalIntegrationScheme"].GetString() == 'Central_Differences':
             # TODO. This should be in the ProjectParameters
-            xi_1 = 0.5
+            xi_1 = 0.1
             xi_n = 0.059
-            omega_1 = 8.83
-            omega_n = 20.92
+            omega_1 = 5.928
+            omega_n = 18.82
             beta = 2.0*(xi_n*omega_n-xi_1*omega_1)/(omega_n*omega_n-omega_1*omega_1)
             alpha = 2.0*xi_1*omega_1-beta*omega_1*omega_1
             self.spheres_model_part.ProcessInfo.SetValue(RAYLEIGH_ALPHA, alpha)
@@ -500,6 +500,17 @@ class DEMAnalysisStage(AnalysisStage):
                 if self.spheres_model_part.ProcessInfo[IMPOSED_Z_STRAIN_OPTION]:
                     t = self.time
                     self.spheres_model_part.ProcessInfo.SetValue(IMPOSED_Z_STRAIN_VALUE, eval(self.DEM_parameters["ZStrainValue"].GetString()))
+
+        # TODO: Incremental EXTERNAL_APPLIED_FORCE
+        # for node in self.spheres_model_part.Nodes:
+        #     if node.Id == 1:
+        #         slope = 20.0
+        #         force_y = slope * self.time
+        #         values = Array3()
+        #         values[0] = 0.0
+        #         values[1] = force_y
+        #         values[2] = 0.0
+        #         node.SetSolutionStepValue(EXTERNAL_APPLIED_FORCE, values)
 
 
     def UpdateIsTimeToPrintInModelParts(self, is_time_to_print):

@@ -255,6 +255,18 @@ public:
         if (DomainSize == 3)
             fix_displacements[2] = (itCurrentNode->GetDof(DISPLACEMENT_Z, DisplacementPosition + 2).IsFixed());
 
+        // TODO
+        // KRATOS_WATCH(itCurrentNode->Id())
+        // KRATOS_WATCH(mDeltaTime)
+        // KRATOS_WATCH(mAlpha)
+        // KRATOS_WATCH(mBeta)
+        // KRATOS_WATCH(nodal_mass)
+        // KRATOS_WATCH(r_current_displacement)
+        // KRATOS_WATCH(r_actual_previous_displacement)
+        // KRATOS_WATCH(r_current_internal_force)
+        // KRATOS_WATCH(r_previous_internal_force)
+        // KRATOS_WATCH(r_external_force)
+
         //TODO
         // KRATOS_WATCH("Before solving")
         // KRATOS_WATCH(mDeltaTime)
@@ -358,7 +370,8 @@ public:
             // const array_1d<double, 3>& r_previous_reaction = it_node->FastGetSolutionStepValue(REACTION,1);
             // KRATOS_WATCH(r_reaction)
             // KRATOS_WATCH(r_previous_reaction)
-            noalias(r_external_force) += r_reaction;
+            // TODO: uncomment this
+            // noalias(r_external_force) += r_reaction;
             // KRATOS_WATCH("reactions:")
             // KRATOS_WATCH(it_node->Id())
             // KRATOS_WATCH(r_external_force)

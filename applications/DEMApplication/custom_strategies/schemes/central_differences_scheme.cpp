@@ -46,6 +46,18 @@ namespace Kratos {
         const array_1d<double,3>& internal_force_old = i.FastGetSolutionStepValue(INTERNAL_FORCE_OLD);
         const array_1d<double,3>& external_force = i.FastGetSolutionStepValue(EXTERNAL_FORCE);
 
+        // TODO
+        // KRATOS_WATCH(i.Id())
+        // KRATOS_WATCH(delta_t)
+        // KRATOS_WATCH(alpha)
+        // KRATOS_WATCH(beta)
+        // KRATOS_WATCH(mass)
+        // KRATOS_WATCH(displ)
+        // KRATOS_WATCH(displ_old)
+        // KRATOS_WATCH(internal_force)
+        // KRATOS_WATCH(internal_force_old)
+        // KRATOS_WATCH(external_force)
+
         double mass_inv = 1.0 / mass;
         for (int k = 0; k < 3; k++) {
             if (Fix_vel[k] == false) {
