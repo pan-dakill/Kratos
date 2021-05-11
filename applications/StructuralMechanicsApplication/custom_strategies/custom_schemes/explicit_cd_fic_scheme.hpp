@@ -370,8 +370,8 @@ public:
             // const array_1d<double, 3>& r_previous_reaction = it_node->FastGetSolutionStepValue(REACTION,1);
             // KRATOS_WATCH(r_reaction)
             // KRATOS_WATCH(r_previous_reaction)
-            // TODO: uncomment this
-            // noalias(r_external_force) += r_reaction;
+            // NOTE: comment this to recover CD
+            noalias(r_external_force) += r_reaction;
             // KRATOS_WATCH("reactions:")
             // KRATOS_WATCH(it_node->Id())
             // KRATOS_WATCH(r_external_force)

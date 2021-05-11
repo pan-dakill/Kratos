@@ -184,13 +184,24 @@ class DEMAnalysisStage(AnalysisStage):
         elif self.DEM_parameters["TranslationalIntegrationScheme"].GetString() == 'Velocity_Verlet':
             return VelocityVerletScheme()
         elif self.DEM_parameters["TranslationalIntegrationScheme"].GetString() == 'Central_Differences':
-            # TODO. This should be in the ProjectParameters
-            xi_1 = 0.1
-            xi_n = 0.059
-            omega_1 = 5.928
-            omega_n = 18.82
-            beta = 2.0*(xi_n*omega_n-xi_1*omega_1)/(omega_n*omega_n-omega_1*omega_1)
-            alpha = 2.0*xi_1*omega_1-beta*omega_1*omega_1
+            if self.DEM_parameters["calculate_alpha_beta"].GetBool():
+                xi_1 = self.DEM_parameters["xi_1"].GetDouble()
+                xi_n = self.DEM_parameters["xi_n"].GetDouble()
+                omega_1 = self.DEM_parameters["omega_1"].GetDouble()
+                omega_n = self.DEM_parameters["omega_n"].GetDouble()
+                beta = 2.0*(xi_n*omega_n-xi_1*omega_1)/(omega_n*omega_n-omega_1*omega_1)
+                alpha = 2.0*xi_1*omega_1-beta*omega_1*omega_1
+                print('Info:')
+                print('omega_1: ',omega_1)
+                print('omega_n: ',omega_n)
+                print('xi_1: ',xi_1)
+                print('xi_n: ',xi_n)
+                print('Alpha and Beta output:')
+                print('alpha: ',alpha)
+                print('beta: ',beta)
+            else:
+                alpha = self.DEM_parameters["rayleigh_alpha"].GetDouble()
+                beta = self.DEM_parameters["rayleigh_beta"].GetDouble()
             self.spheres_model_part.ProcessInfo.SetValue(RAYLEIGH_ALPHA, alpha)
             self.spheres_model_part.ProcessInfo.SetValue(RAYLEIGH_BETA, beta)
             return CentralDifferencesScheme()
