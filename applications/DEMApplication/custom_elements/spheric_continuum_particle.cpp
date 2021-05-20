@@ -6,6 +6,8 @@
 #include "spheric_continuum_particle.h"
 #include <cmath>
 
+#include <fstream>
+
 namespace Kratos {
 
     SphericContinuumParticle::SphericContinuumParticle():SphericParticle() {
@@ -534,6 +536,24 @@ double SphericContinuumParticle::CalculateDampingNorm(const double& r_normal_dam
                     mContinuumConstitutiveLawArray[i]->ComputeParticleRotationalMoments(this, neighbour_iterator, equiv_young, data_buffer.mDistance, calculation_area,
                                                                                         data_buffer.mLocalCoordSystem, ElasticLocalRotationalMoment, ViscoLocalRotationalMoment, equiv_poisson, indentation);
                 }
+
+
+                // TODO: provisional
+                // if (r_process_info[STEP] == 2) {
+                //     std::fstream rotation_damping_file;
+                //     rotation_damping_file.open ("rotation_damping_file.txt", std::fstream::out | std::fstream::app);
+                //     rotation_damping_file.precision(12);
+                //     rotation_damping_file << this->Id() << " " << ViscoLocalRotationalMoment[0] << " " << ViscoLocalRotationalMoment[1] << " " << ViscoLocalRotationalMoment[2] << std::endl;
+                //     rotation_damping_file.close();
+
+                //     KRATOS_WATCH(this->Id())
+                //     KRATOS_WATCH(ElasticLocalRotationalMoment)
+                //     KRATOS_WATCH(ViscoLocalRotationalMoment)
+                // }
+                // if (r_process_info[STEP] > 2) {
+                //     KRATOS_ERROR << "Particles Info File Written. STOP" << std::endl;
+                // }
+                // TODO
 
                 AddUpMomentsAndProject(data_buffer.mLocalCoordSystem, ElasticLocalRotationalMoment, ViscoLocalRotationalMoment);
             }
