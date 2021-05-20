@@ -263,24 +263,41 @@ void SphericParticle::CalculateRightHandSide(const ProcessInfo& r_process_info, 
     ComputeBallToRigidFaceContactForce(data_buffer, elastic_force, contact_force, RollingResistance, rigid_element_force, r_process_info);
 
     // TODO: provisional
-    // double nodal_stiffness = 0.0;
-    // double nodal_damping = 0.0;
-    // double nodal_rotational_stiffness = 0.0;
-    // double nodal_rotational_damping = 0.0;
-    // const double& mass = this_node.FastGetSolutionStepValue(NODAL_MASS);
-    // const double& moment_of_inertia = this_node.FastGetSolutionStepValue(PARTICLE_MOMENT_OF_INERTIA);
 
-    // ComputeBallToBallStiffnessAndDamping(data_buffer, nodal_stiffness, nodal_damping, nodal_rotational_stiffness, nodal_rotational_damping);
+    if (r_process_info[STEP] == 2) {
+        double nodal_stiffness = 0.0;
+        double nodal_damping = 0.0;
+        double nodal_rotational_stiffness = 0.0;
+        double nodal_rotational_damping = 0.0;
+        const double& mass = this_node.FastGetSolutionStepValue(NODAL_MASS);
+        const double& moment_of_inertia = this_node.FastGetSolutionStepValue(PARTICLE_MOMENT_OF_INERTIA);
 
-    // ComputeBallToRigidFaceStiffnessAndDamping(data_buffer, nodal_stiffness, nodal_damping, nodal_rotational_stiffness, nodal_rotational_damping);
+        ComputeBallToBallStiffnessAndDamping(data_buffer, nodal_stiffness, nodal_damping, nodal_rotational_stiffness, nodal_rotational_damping);
 
-    // KRATOS_WATCH(this->Id())
-    // KRATOS_WATCH(mass)
-    // KRATOS_WATCH(nodal_stiffness)
-    // KRATOS_WATCH(nodal_damping)
-    // KRATOS_WATCH(moment_of_inertia)
-    // KRATOS_WATCH(nodal_rotational_stiffness)
-    // KRATOS_WATCH(nodal_rotational_damping)
+        ComputeBallToRigidFaceStiffnessAndDamping(data_buffer, nodal_stiffness, nodal_damping, nodal_rotational_stiffness, nodal_rotational_damping);
+
+        double omega_particle = std::sqrt(nodal_stiffness/mass);
+        double rota_omega_particle = std::sqrt(nodal_rotational_stiffness/moment_of_inertia);
+        std::fstream particles_info_file;
+        particles_info_file.open ("particles_info_file.txt", std::fstream::out | std::fstream::app);
+        particles_info_file.precision(12);
+        particles_info_file << this->Id() << " " << omega_particle << " " << rota_omega_particle << " " << mass << " " << nodal_stiffness << " " << nodal_damping << " " << moment_of_inertia << " " << nodal_rotational_stiffness << " " << nodal_rotational_damping << std::endl;
+        particles_info_file.close();
+
+        KRATOS_WATCH(this->Id())
+        KRATOS_WATCH(omega_particle)
+        KRATOS_WATCH(rota_omega_particle)
+        KRATOS_WATCH(mass)
+        KRATOS_WATCH(nodal_stiffness)
+        KRATOS_WATCH(nodal_damping)
+        KRATOS_WATCH(moment_of_inertia)
+        KRATOS_WATCH(nodal_rotational_stiffness)
+        KRATOS_WATCH(nodal_rotational_damping)
+    }
+    if (r_process_info[STEP] > 2) {
+        KRATOS_ERROR << "Particles Info File Written. STOP" << std::endl;
+    }
+
     // TODO
 
     if (this->IsNot(DEMFlags::BELONGS_TO_A_CLUSTER)){

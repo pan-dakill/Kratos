@@ -59,7 +59,7 @@ namespace Kratos {
 
             for (int k = 0; k < 3; k++) {
                 aux_impulse[k] += delta_t*external_forces[k] - (beta+delta_t*theta_1)*internal_forces[k] +
-                                  (beta-delta_t*(1.0-mTheta1))*internal_forces_old[k] +
+                                  (beta-delta_t*(1.0-theta_1))*internal_forces_old[k] +
                                   delta_t*beta*nodal_stiffness*vel[k];
             }
         }
@@ -108,7 +108,7 @@ namespace Kratos {
 
             for (int k = 0; k < 3; k++) {
                 rotational_aux_impulse[k] += delta_t*rotational_external_forces[k] - (beta+delta_t*theta_1)*rotational_internal_forces[k] +
-                                             (beta-delta_t*(1.0-mTheta1))*rotational_internal_forces_old[k] +
+                                             (beta-delta_t*(1.0-theta_1))*rotational_internal_forces_old[k] +
                                              delta_t*beta*rotational_nodal_stiffness*angular_velocity[k];
             }
         }
