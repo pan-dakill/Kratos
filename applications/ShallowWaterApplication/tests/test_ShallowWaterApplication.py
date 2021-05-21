@@ -20,6 +20,7 @@ from shallow_water_test_factory import TestDamBreakBenchmark
 from shallow_water_test_factory import TestDryDamBreakBenchmark
 from shallow_water_test_factory import TestPlanarSurfaceInParabolaBenchmark
 from processes_tests.test_convergence_output_process import TestConvergenceOutputProcess
+from utilities_tests.test_move_shallow_water_particle_utility import TestMoveShallowWaterParticleUtility
 
 def AssembleTestSuites():
     ''' Populates the test suites to run.
@@ -47,6 +48,7 @@ def AssembleTestSuites():
     smallSuite.addTest(TestDryDamBreakBenchmark('test_execution'))
     smallSuite.addTest(TestPlanarSurfaceInParabolaBenchmark('test_execution'))
     smallSuite.addTests(_loadTestsFromTestCases(TestConvergenceOutputProcess))
+    smallSuite.addTests(_loadTestsFromTestCases(TestMoveShallowWaterParticleUtility))
 
     # Create a test suit with the selected tests plus all small tests
     nightlySuite = suites['nightly']
