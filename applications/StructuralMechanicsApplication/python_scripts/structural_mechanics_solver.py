@@ -240,6 +240,24 @@ class MechanicalSolver(PythonSolver):
     def FinalizeSolutionStep(self):
         self.get_mechanical_solution_strategy().FinalizeSolutionStep()
 
+        #TODO
+        # submodelpart_top = self.main_model_part.GetSubModelPart("DISPLACEMENT_imposed_dispZ_top")
+        # submodelpart_bot = self.main_model_part.GetSubModelPart("DISPLACEMENT_imposed_dispZ_bot")
+        # surface = 0.000011401
+        # reaction_top = 0.0
+        # reaction_bot = 0.0
+        # for node in submodelpart_top.Nodes:
+        #     reaction_top += -1.0*node.GetSolutionStepValue(KratosMultiphysics.REACTION_Z)
+        # for node in submodelpart_bot.Nodes:
+        #     reaction_bot += node.GetSolutionStepValue(KratosMultiphysics.REACTION_Z)
+        # stress_top = 1.0e-6 * reaction_top / surface
+        # stress_bot = 1.0e-6 * reaction_bot / surface
+        # mean_stress = 0.5*(stress_bot+stress_top)
+        # print("Stresses at epsilon = 1.0% (in MPa)")
+        # print("stress_top: ", stress_top)
+        # print("stress_bot: ", stress_bot)
+        # print("mean_stress: ", mean_stress)
+
     def AdvanceInTime(self, current_time):
         dt = self.ComputeDeltaTime()
         new_time = current_time + dt
