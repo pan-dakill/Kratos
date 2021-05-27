@@ -90,6 +90,7 @@ public:
     using BaseType::mDeltaTime;
     using BaseType::mAlpha;
     using BaseType::mBeta;
+    using BaseType::mTheta;
 
     /// Counted pointer of PoroExplicitOCDScheme
     KRATOS_CLASS_POINTER_DEFINITION(PoroExplicitOCDScheme);
@@ -123,7 +124,7 @@ public:
 
         const ProcessInfo& r_current_process_info = rModelPart.GetProcessInfo();
 
-        mg_factor = r_current_process_info[G_FACTOR];
+        mg_coefficient = r_current_process_info[G_COEFFICIENT];
 
         BaseType::Initialize(rModelPart);
 
@@ -152,7 +153,7 @@ public:
         const double nodal_mass = itCurrentNode->GetValue(NODAL_MASS);
 
         const array_1d<double, 3>& r_external_forces = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE);
-        // const array_1d<double, 3>& r_previous_external_forces = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE,1);
+        const array_1d<double, 3>& r_previous_external_forces = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE,1);
         // const array_1d<double, 3>& r_actual_previous_external_forces = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE,2);
         const array_1d<double, 3>& r_current_internal_force = itCurrentNode->FastGetSolutionStepValue(INTERNAL_FORCE);
         const array_1d<double, 3>& r_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(INTERNAL_FORCE,1);
@@ -166,12 +167,12 @@ public:
 
         for (IndexType j = 0; j < DomainSize; j++) {
             if (fix_displacements[j] == false) {
-                r_current_displacement[j] = ( (2.0*(1.0+mg_factor*mDeltaTime)-mAlpha*mDeltaTime)*nodal_mass*r_current_displacement[j]
-                                            + (mAlpha*mDeltaTime-(1.0+mg_factor*mDeltaTime))*nodal_mass*r_actual_previous_displacement[j]
-                                            - mDeltaTime*(mBeta+mDeltaTime)*r_current_internal_force[j]
-                                            + mDeltaTime*mBeta*r_previous_internal_force[j]
-                                            + mDeltaTime*mDeltaTime*r_external_forces[j] ) /
-                                            (nodal_mass*(1.0+mg_factor*mDeltaTime));
+                r_current_displacement[j] = ( (2.0*(1.0+mg_coefficient*mDeltaTime)-mAlpha*mDeltaTime)*nodal_mass*r_current_displacement[j]
+                                            + (mAlpha*mDeltaTime-(1.0+mg_coefficient*mDeltaTime))*nodal_mass*r_actual_previous_displacement[j]
+                                            - mDeltaTime*(mBeta+mTheta*mDeltaTime)*r_current_internal_force[j]
+                                            + mDeltaTime*(mBeta-mDeltaTime*(1.0-mTheta))*r_previous_internal_force[j]
+                                            + mDeltaTime*mDeltaTime*(mTheta*r_external_forces[j]+(1.0-mTheta)*r_previous_external_forces[j]) ) /
+                                            (nodal_mass*(1.0+mg_coefficient*mDeltaTime));
             }
         }
 
@@ -231,7 +232,7 @@ protected:
     ///@name Protected member Variables
     ///@{
 
-    double mg_factor;
+    double mg_coefficient;
 
     ///@}
     ///@name Protected Operators

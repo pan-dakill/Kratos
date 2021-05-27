@@ -253,11 +253,16 @@ void SphericParticle::CalculateRightHandSide(const ProcessInfo& r_process_info, 
     array_1d<double, 3>& internal_force = this_node.FastGetSolutionStepValue(INTERNAL_FORCE);
     array_1d<double, 3>& internal_force_old = this_node.FastGetSolutionStepValue(INTERNAL_FORCE_OLD);
     array_1d<double, 3>& external_force = this_node.FastGetSolutionStepValue(EXTERNAL_FORCE);
+    array_1d<double, 3>& external_force_old = this_node.FastGetSolutionStepValue(EXTERNAL_FORCE_OLD);
     array_1d<double, 3>& internal_moment = this_node.FastGetSolutionStepValue(PARTICLE_INTERNAL_MOMENT);
     array_1d<double, 3>& internal_moment_old = this_node.FastGetSolutionStepValue(PARTICLE_INTERNAL_MOMENT_OLD);
     array_1d<double, 3>& external_moment = this_node.FastGetSolutionStepValue(PARTICLE_EXTERNAL_MOMENT);
+    array_1d<double, 3>& external_moment_old = this_node.FastGetSolutionStepValue(PARTICLE_EXTERNAL_MOMENT_OLD);
+    // TODO: these parameters should be assigned once only...
     double& alpha = this_node.FastGetSolutionStepValue(RAYLEIGH_ALPHA);
     double& beta = this_node.FastGetSolutionStepValue(RAYLEIGH_BETA);
+    double& theta_factor = this_node.FastGetSolutionStepValue(THETA_FACTOR);
+    double& g_coefficient = this_node.FastGetSolutionStepValue(G_COEFFICIENT);
 
     mContactMoment.clear();
     elastic_force.clear();
@@ -302,14 +307,18 @@ void SphericParticle::CalculateRightHandSide(const ProcessInfo& r_process_info, 
     total_moment[2] = mContactMoment[2] + additionally_applied_moment[2];
 
     internal_force_old = internal_force;
+    external_force_old = external_force;
     internal_force = -1.0*elastic_force;
     external_force = additional_forces;
     internal_moment_old = internal_moment;
+    external_moment_old = external_moment;
     internal_moment = -1.0*mContactMoment; // TODO: here I am supposing ViscoLocalRotationalMoment is zero
     external_moment = additionally_applied_moment;
     // NOTE: we define alpha and beta constant for all particles
     alpha = r_process_info[RAYLEIGH_ALPHA];
     beta = r_process_info[RAYLEIGH_BETA];
+    theta_factor = r_process_info[THETA_FACTOR];
+    g_coefficient = r_process_info[G_COEFFICIENT];
     
     ApplyGlobalDampingToContactForcesAndMoments(total_forces, total_moment);
 

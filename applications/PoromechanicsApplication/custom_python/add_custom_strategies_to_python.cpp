@@ -28,7 +28,6 @@
 #include "custom_strategies/schemes/newmark_quasistatic_damped_U_Pw_scheme.hpp"
 #include "custom_strategies/schemes/newmark_dynamic_U_Pw_scheme.hpp"
 #include "custom_strategies/schemes/poro_explicit_cd_scheme.hpp"
-#include "custom_strategies/schemes/poro_explicit_ocd_scheme.hpp"
 #include "custom_strategies/schemes/poro_explicit_vv_scheme.hpp"
 #include "custom_strategies/schemes/poro_explicit_ovv_scheme.hpp"
 #include "custom_strategies/schemes/poro_explicit_cd_fic_scheme.hpp"
@@ -60,7 +59,6 @@ void  AddCustomStrategiesToPython(pybind11::module& m)
     typedef NewmarkQuasistaticDampedUPwScheme< SparseSpaceType, LocalSpaceType >  NewmarkQuasistaticDampedUPwSchemeType;
     typedef NewmarkDynamicUPwScheme< SparseSpaceType, LocalSpaceType >  NewmarkDynamicUPwSchemeType;
     typedef PoroExplicitCDScheme< SparseSpaceType, LocalSpaceType >  PoroExplicitCDSchemeType;
-    typedef PoroExplicitOCDScheme< SparseSpaceType, LocalSpaceType >  PoroExplicitOCDSchemeType;
     typedef PoroExplicitVVScheme< SparseSpaceType, LocalSpaceType >  PoroExplicitVVSchemeType;
     typedef PoroExplicitOVVScheme< SparseSpaceType, LocalSpaceType >  PoroExplicitOVVSchemeType;
     typedef PoroExplicitCDFICScheme< SparseSpaceType, LocalSpaceType >  PoroExplicitCDFICSchemeType;
@@ -85,9 +83,6 @@ void  AddCustomStrategiesToPython(pybind11::module& m)
     .def( py::init<  double, double, double >());
     py::class_< PoroExplicitCDSchemeType,typename PoroExplicitCDSchemeType::Pointer, BaseSchemeType >
     (m,"PoroExplicitCDScheme")
-    .def(py::init< >());
-    py::class_< PoroExplicitOCDSchemeType,typename PoroExplicitOCDSchemeType::Pointer, BaseSchemeType >
-    (m,"PoroExplicitOCDScheme")
     .def(py::init< >());
     py::class_< PoroExplicitVVSchemeType,typename PoroExplicitVVSchemeType::Pointer, BaseSchemeType >
     (m,"PoroExplicitVVScheme")

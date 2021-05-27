@@ -184,14 +184,32 @@ class DEMAnalysisStage(AnalysisStage):
         elif self.DEM_parameters["TranslationalIntegrationScheme"].GetString() == 'Velocity_Verlet':
             return VelocityVerletScheme()
         elif self.DEM_parameters["TranslationalIntegrationScheme"].GetString() == 'Central_Differences':
+
+            g_factor = self.DEM_parameters["g_factor"].GetDouble()
+            Dt = self.DEM_parameters["MaxTimeStep"].GetDouble()
+            omega_1 = self.DEM_parameters["omega_1"].GetDouble()
+            omega_n = self.DEM_parameters["omega_n"].GetDouble()
+            if g_factor >= 1.0:
+                theta_factor = 0.5
+                g_coefficient = Dt*omega_n*omega_n*0.25*g_factor
+            else:
+                theta_factor = self.DEM_parameters["theta_factor"].GetDouble()
+                g_coefficient = 0.0
             if self.DEM_parameters["calculate_alpha_beta"].GetBool():
-                xi_1 = self.DEM_parameters["xi_1"].GetDouble()
-                xi_n = self.DEM_parameters["xi_n"].GetDouble()
-                omega_1 = self.DEM_parameters["omega_1"].GetDouble()
-                omega_n = self.DEM_parameters["omega_n"].GetDouble()
+                if self.DEM_parameters["calculate_xi"].GetBool():
+                    xi_1_factor = self.DEM_parameters["xi_1_factor"].GetDouble()                
+                    import numpy as np
+                    xi_1 = (np.sqrt(1+g_coefficient*Dt)-theta_factor*omega_1*Dt*0.5)*xi_1_factor
+                    xi_n = (np.sqrt(1+g_coefficient*Dt)-theta_factor*omega_n*Dt*0.5)
+                else:
+                    xi_1 = self.settings["xi_1"].GetDouble()
+                    xi_n = self.settings["xi_n"].GetDouble()
                 beta = 2.0*(xi_n*omega_n-xi_1*omega_1)/(omega_n*omega_n-omega_1*omega_1)
                 alpha = 2.0*xi_1*omega_1-beta*omega_1*omega_1
                 print('Info:')
+                print('Dt: ',Dt)
+                print('theta_factor: ',theta_factor)
+                print('g_coefficient: ',g_coefficient)
                 print('omega_1: ',omega_1)
                 print('omega_n: ',omega_n)
                 print('xi_1: ',xi_1)
@@ -204,6 +222,8 @@ class DEMAnalysisStage(AnalysisStage):
                 beta = self.DEM_parameters["rayleigh_beta"].GetDouble()
             self.spheres_model_part.ProcessInfo.SetValue(RAYLEIGH_ALPHA, alpha)
             self.spheres_model_part.ProcessInfo.SetValue(RAYLEIGH_BETA, beta)
+            self.spheres_model_part.ProcessInfo.SetValue(G_COEFFICIENT, g_coefficient)
+            self.spheres_model_part.ProcessInfo.SetValue(THETA_FACTOR, theta_factor)
             return CentralDifferencesScheme()
 
         return None

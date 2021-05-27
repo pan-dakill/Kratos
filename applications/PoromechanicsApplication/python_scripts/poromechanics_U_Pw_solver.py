@@ -68,6 +68,8 @@ class UPwSolver(PythonSolver):
             "calculate_alpha_beta"       : false,
             "omega_1"                    : 1.0,
             "omega_n"                    : 10.0,
+            "calculate_xi"               : false,
+            "xi_1_factor"                : 1.0,
             "xi_1"                       : 1.0,
             "xi_n"                       : 0.05,
             "rayleigh_alpha": 0.0,
@@ -392,8 +394,14 @@ class UPwSolver(PythonSolver):
             if self.settings["calculate_alpha_beta"].GetBool():
                 omega_1 = self.settings["omega_1"].GetDouble()
                 omega_n = self.settings["omega_n"].GetDouble()
-                xi_1 = self.settings["xi_1"].GetDouble()
-                xi_n = self.settings["xi_n"].GetDouble()
+                if self.settings["calculate_xi"].GetBool():
+                    Dt = self.settings["time_step"].GetDouble()
+                    xi_1_factor = self.settings["xi_1_factor"].GetDouble()
+                    xi_1 = (1.0-1.0*omega_1*Dt*0.5)*xi_1_factor
+                    xi_n = (1.0-1.0*omega_n*Dt*0.5)
+                else:
+                    xi_1 = self.settings["xi_1"].GetDouble()
+                    xi_n = self.settings["xi_n"].GetDouble()
                 rayleigh_beta = 2.0*(xi_n*omega_n-xi_1*omega_1)/(omega_n*omega_n-omega_1*omega_1)
                 rayleigh_alpha = 2.0*xi_1*omega_1-rayleigh_beta*omega_1*omega_1
                 print('Info:')

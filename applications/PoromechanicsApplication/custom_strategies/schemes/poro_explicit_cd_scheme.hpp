@@ -149,6 +149,8 @@ public:
         mDeltaTime = r_current_process_info[DELTA_TIME];
         mAlpha = r_current_process_info[RAYLEIGH_ALPHA];
         mBeta = r_current_process_info[RAYLEIGH_BETA];
+        mTheta = r_current_process_info[THETA_FACTOR];
+        mg_coefficient = r_current_process_info[G_COEFFICIENT];
 
         /// Working in 2D/3D (the definition of DOMAIN_SIZE is check in the Check method)
         const SizeType dim = r_current_process_info[DOMAIN_SIZE];
@@ -453,7 +455,7 @@ public:
         const double nodal_mass = itCurrentNode->GetValue(NODAL_MASS);
 
         const array_1d<double, 3>& r_external_forces = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE);
-        // const array_1d<double, 3>& r_previous_external_forces = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE,1);
+        const array_1d<double, 3>& r_previous_external_forces = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE,1);
         // const array_1d<double, 3>& r_actual_previous_external_forces = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE,2);
         const array_1d<double, 3>& r_current_internal_force = itCurrentNode->FastGetSolutionStepValue(INTERNAL_FORCE);
         const array_1d<double, 3>& r_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(INTERNAL_FORCE,1);
@@ -467,12 +469,12 @@ public:
 
         for (IndexType j = 0; j < DomainSize; j++) {
             if (fix_displacements[j] == false) {
-                r_current_displacement[j] = ( (2.0-mDeltaTime*mAlpha)*nodal_mass*r_current_displacement[j]
-                                            + (mDeltaTime*mAlpha-1.0)*nodal_mass*r_actual_previous_displacement[j]
-                                            - mDeltaTime*(mBeta+mDeltaTime)*r_current_internal_force[j]
-                                            + mDeltaTime*mBeta*r_previous_internal_force[j]
-                                            + mDeltaTime*mDeltaTime*r_external_forces[j] ) /
-                                            nodal_mass;
+                r_current_displacement[j] = ( (2.0*(1.0+mg_coefficient*mDeltaTime)-mAlpha*mDeltaTime)*nodal_mass*r_current_displacement[j]
+                                            + (mAlpha*mDeltaTime-(1.0+mg_coefficient*mDeltaTime))*nodal_mass*r_actual_previous_displacement[j]
+                                            - mDeltaTime*(mBeta+mTheta*mDeltaTime)*r_current_internal_force[j]
+                                            + mDeltaTime*(mBeta-mDeltaTime*(1.0-mTheta))*r_previous_internal_force[j]
+                                            + mDeltaTime*mDeltaTime*(mTheta*r_external_forces[j]+(1.0-mTheta)*r_previous_external_forces[j]) ) /
+                                            (nodal_mass*(1.0+mg_coefficient*mDeltaTime));
             }
         }
 
@@ -646,6 +648,8 @@ protected:
     double mDeltaTime;
     double mAlpha;
     double mBeta;
+    double mTheta;
+    double mg_coefficient;
 
     ///@}
     ///@name Protected Operators

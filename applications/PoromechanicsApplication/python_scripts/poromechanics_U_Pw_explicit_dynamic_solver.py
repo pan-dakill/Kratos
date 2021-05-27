@@ -37,10 +37,10 @@ class ExplicitUPwSolver(UPwSolver):
         this_defaults = KratosMultiphysics.Parameters("""{
             "scheme_type"                : "ocd",
             "rebuild_level"              : 0,
-            "theta_1"                    : 1.0,
-            "g_factor"                   : 1.0,
-            "delta_1"                      : 0.0,
-            "delta_2"                      : 0.0,
+            "theta_factor"               : 1.0,
+            "g_factor"                   : 0.0,
+            "delta_1"                    : 0.0,
+            "delta_2"                    : 0.0,
             "gamma"                      : 0.0
         }""")
         this_defaults.AddMissingParameters(super().GetDefaultParameters())
@@ -126,16 +126,31 @@ class ExplicitUPwSolver(UPwSolver):
 
         # Setting the Rayleigh damping parameters
         process_info = self.main_model_part.ProcessInfo
-
+        g_factor = self.settings["g_factor"].GetDouble()
+        Dt = self.settings["time_step"].GetDouble()
+        omega_1 = self.settings["omega_1"].GetDouble()
+        omega_n = self.settings["omega_n"].GetDouble()
+        if g_factor >= 1.0:
+            theta_factor = 0.5
+            g_coeff = Dt*omega_n*omega_n*0.25*g_factor
+        else:
+            theta_factor = self.settings["theta_factor"].GetDouble()
+            g_coeff = 0.0
         if self.settings["calculate_alpha_beta"].GetBool():
-            xi_1 = self.settings["xi_1"].GetDouble()
-            xi_n = self.settings["xi_n"].GetDouble()
-            omega_1 = self.settings["omega_1"].GetDouble()
-            omega_n = self.settings["omega_n"].GetDouble()
+            if self.settings["calculate_xi"].GetBool():
+                xi_1_factor = self.settings["xi_1_factor"].GetDouble()                
+                import numpy as np
+                xi_1 = (np.sqrt(1+g_coeff*Dt)-theta_factor*omega_1*Dt*0.5)*xi_1_factor
+                xi_n = (np.sqrt(1+g_coeff*Dt)-theta_factor*omega_n*Dt*0.5)
+            else:
+                xi_1 = self.settings["xi_1"].GetDouble()
+                xi_n = self.settings["xi_n"].GetDouble()
             beta = 2.0*(xi_n*omega_n-xi_1*omega_1)/(omega_n*omega_n-omega_1*omega_1)
             alpha = 2.0*xi_1*omega_1-beta*omega_1*omega_1
             print('Info:')
             print('dt: ',self.settings["time_step"].GetDouble())
+            print('theta_factor: ',theta_factor)
+            print('g_coeff: ',g_coeff)
             print('gamma: ',self.settings["gamma"].GetDouble())
             print('delta1: ',self.settings["delta_1"].GetDouble())
             print('delta2: ',self.settings["delta_2"].GetDouble())
@@ -152,7 +167,8 @@ class ExplicitUPwSolver(UPwSolver):
         
         process_info.SetValue(StructuralMechanicsApplication.RAYLEIGH_ALPHA, alpha)
         process_info.SetValue(StructuralMechanicsApplication.RAYLEIGH_BETA, beta)
-        process_info.SetValue(KratosPoro.G_FACTOR, self.settings["g_factor"].GetDouble())
+        process_info.SetValue(KratosPoro.G_COEFFICIENT, g_coeff)
+        process_info.SetValue(KratosPoro.THETA_FACTOR, theta_factor)
         process_info.SetValue(KratosPoro.DELTA1, self.settings["delta_1"].GetDouble())
         process_info.SetValue(KratosPoro.DELTA2, self.settings["delta_2"].GetDouble())
         process_info.SetValue(KratosPoro.FIC_GAMMA, self.settings["gamma"].GetDouble())
@@ -160,8 +176,6 @@ class ExplicitUPwSolver(UPwSolver):
         # Setting the time integration schemes
         if(scheme_type == "cd"):
             scheme = KratosPoro.PoroExplicitCDScheme()
-        elif(scheme_type == "ocd"):
-            scheme = KratosPoro.PoroExplicitOCDScheme()
         elif(scheme_type == "vv"):
             scheme = KratosPoro.PoroExplicitVVScheme()
         elif(scheme_type == "ovv"):
