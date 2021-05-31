@@ -202,8 +202,8 @@ class DEMAnalysisStage(AnalysisStage):
                     xi_1 = (np.sqrt(1+g_coefficient*Dt)-theta_factor*omega_1*Dt*0.5)*xi_1_factor
                     xi_n = (np.sqrt(1+g_coefficient*Dt)-theta_factor*omega_n*Dt*0.5)
                 else:
-                    xi_1 = self.settings["xi_1"].GetDouble()
-                    xi_n = self.settings["xi_n"].GetDouble()
+                    xi_1 = self.DEM_parameters["xi_1"].GetDouble()
+                    xi_n = self.DEM_parameters["xi_n"].GetDouble()
                 beta = 2.0*(xi_n*omega_n-xi_1*omega_1)/(omega_n*omega_n-omega_1*omega_1)
                 alpha = 2.0*xi_1*omega_1-beta*omega_1*omega_1
                 print('Info:')
