@@ -322,7 +322,7 @@ void SphericParticle::CalculateRightHandSide(const ProcessInfo& r_process_info, 
     
     ApplyGlobalDampingToContactForcesAndMoments(total_forces, total_moment);
 
-    ApplyGlobalDampingToContactForcesAndMoments(internal_force, internal_moment);
+    ApplyNegGlobalDampingToContactForcesAndMoments(internal_force, internal_moment);
     ApplyGlobalDampingToContactForcesAndMoments(external_force, external_moment);
 
     #ifdef KRATOS_DEBUG
@@ -2073,6 +2073,36 @@ void SphericParticle::ApplyGlobalDampingToContactForcesAndMoments(array_1d<doubl
         }
         if (this->GetGeometry()[0].IsNot(DEMFlags::FIXED_ANG_VEL_Z)) {
             total_moment[2] *= (1.0 - mGlobalDamping * GeometryFunctions::sign(total_moment[2] * angular_velocity[2]));
+        }
+
+        KRATOS_CATCH("")
+    }
+
+void SphericParticle::ApplyNegGlobalDampingToContactForcesAndMoments(array_1d<double,3>& internal_forces, array_1d<double,3>& internal_moment) {
+
+        KRATOS_TRY
+
+        const array_1d<double, 3> velocity =         this->GetGeometry()[0].FastGetSolutionStepValue(VELOCITY);
+        const array_1d<double, 3> angular_velocity = this->GetGeometry()[0].FastGetSolutionStepValue(ANGULAR_VELOCITY);
+
+        if (this->GetGeometry()[0].IsNot(DEMFlags::FIXED_VEL_X)) {
+            internal_forces[0] *= (1.0 + mGlobalDamping * GeometryFunctions::sign(internal_forces[0] * velocity[0]));
+        }
+        if (this->GetGeometry()[0].IsNot(DEMFlags::FIXED_VEL_Y)) {
+            internal_forces[1] *= (1.0 + mGlobalDamping * GeometryFunctions::sign(internal_forces[1] * velocity[1]));
+        }
+        if (this->GetGeometry()[0].IsNot(DEMFlags::FIXED_VEL_Z)) {
+            internal_forces[2] *= (1.0 + mGlobalDamping * GeometryFunctions::sign(internal_forces[2] * velocity[2]));
+        }
+
+        if (this->GetGeometry()[0].IsNot(DEMFlags::FIXED_ANG_VEL_X)) {
+            internal_moment[0] *= (1.0 + mGlobalDamping * GeometryFunctions::sign(internal_moment[0] * angular_velocity[0]));
+        }
+        if (this->GetGeometry()[0].IsNot(DEMFlags::FIXED_ANG_VEL_Y)) {
+            internal_moment[1] *= (1.0 + mGlobalDamping * GeometryFunctions::sign(internal_moment[1] * angular_velocity[1]));
+        }
+        if (this->GetGeometry()[0].IsNot(DEMFlags::FIXED_ANG_VEL_Z)) {
+            internal_moment[2] *= (1.0 + mGlobalDamping * GeometryFunctions::sign(internal_moment[2] * angular_velocity[2]));
         }
 
         KRATOS_CATCH("")
