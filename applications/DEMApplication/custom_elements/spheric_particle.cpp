@@ -322,6 +322,9 @@ void SphericParticle::CalculateRightHandSide(const ProcessInfo& r_process_info, 
     
     ApplyGlobalDampingToContactForcesAndMoments(total_forces, total_moment);
 
+    ApplyGlobalDampingToContactForcesAndMoments(internal_force, internal_moment);
+    ApplyGlobalDampingToContactForcesAndMoments(external_force, external_moment);
+
     #ifdef KRATOS_DEBUG
     DemDebugFunctions::CheckIfNan(total_forces, "NAN in Total Forces in RHS of Ball");
     DemDebugFunctions::CheckIfNan(total_moment, "NAN in Total Torque in RHS of Ball");
