@@ -253,8 +253,34 @@ public:
 
         // TODO: here we should erase the residual and recalculate it...
         // InitializeResidual(rModelPart);
-
         // this-> CalculateAndAddRHS(rModelPart);
+
+        // The array of nodes
+        NodesArrayType& r_nodes = rModelPart.Nodes();
+
+        // Auxiliar values
+        const array_1d<double, 3> zero_array = ZeroVector(3);
+        // Initializing the variables
+        VariableUtils().SetVariable(FORCE_RESIDUAL, zero_array,r_nodes);
+
+        const ProcessInfo& r_current_process_info = rModelPart.GetProcessInfo();
+        ConditionsArrayType& r_conditions = rModelPart.Conditions();
+        ElementsArrayType& r_elements = rModelPart.Elements();
+
+        LocalSystemVectorType RHS_Contribution = LocalSystemVectorType(0);
+        Element::EquationIdVectorType equation_id_vector_dummy; // Dummy
+
+        #pragma omp parallel for firstprivate(RHS_Contribution, equation_id_vector_dummy), schedule(guided,512)
+        for (int i = 0; i < static_cast<int>(r_conditions.size()); ++i) {
+            auto it_cond = r_conditions.begin() + i;
+            CalculateRHSContributionResidual(*it_cond, RHS_Contribution, equation_id_vector_dummy, r_current_process_info);
+        }
+
+        #pragma omp parallel for firstprivate(RHS_Contribution, equation_id_vector_dummy), schedule(guided,512)
+        for (int i = 0; i < static_cast<int>(r_elements.size()); ++i) {
+            auto it_elem = r_elements.begin() + i;
+            CalculateRHSContributionResidual(*it_elem, RHS_Contribution, equation_id_vector_dummy, r_current_process_info);
+        }
 
         KRATOS_CATCH("")
     }
@@ -496,48 +522,6 @@ public:
         KRATOS_CATCH("")
     }
 
-    /**
-     * @brief This function is designed to calculate just the RHS contribution
-     * @param rCurrentElement The element to compute
-     * @param RHS_Contribution The RHS vector contribution
-     * @param EquationId The ID's of the element degrees of freedom
-     * @param rCurrentProcessInfo The current process info instance
-     */
-    void CalculateRHSContribution(
-        Element& rCurrentElement,
-        LocalSystemVectorType& RHS_Contribution,
-        Element::EquationIdVectorType& EquationId,
-        const ProcessInfo& rCurrentProcessInfo
-        ) override
-    {
-        KRATOS_TRY
-
-        this->TCalculateRHSContribution(rCurrentElement, RHS_Contribution, rCurrentProcessInfo);
-        KRATOS_CATCH("")
-    }
-
-    /**
-     * @brief Functions that calculates the RHS of a "condition" object
-     * @param rCurrentCondition The condition to compute
-     * @param RHS_Contribution The RHS vector contribution
-     * @param EquationId The ID's of the condition degrees of freedom
-     * @param rCurrentProcessInfo The current process info instance
-     */
-    void CalculateRHSContribution(
-        Condition& rCurrentCondition,
-        LocalSystemVectorType& RHS_Contribution,
-        Element::EquationIdVectorType& EquationId,
-        const ProcessInfo& rCurrentProcessInfo
-        ) override
-    {
-        KRATOS_TRY
-
-        this->TCalculateRHSContribution(rCurrentCondition, RHS_Contribution, rCurrentProcessInfo);
-
-        KRATOS_CATCH("")
-    }
-
-
     virtual void CalculateAndAddRHS(ModelPart& rModelPart)
     {
         KRATOS_TRY
@@ -564,7 +548,92 @@ public:
         KRATOS_CATCH("")
     }
 
+    /**
+     * @brief This function is designed to calculate just the RHS contribution
+     * @param rCurrentElement The element to compute
+     * @param RHS_Contribution The RHS vector contribution
+     * @param EquationId The ID's of the element degrees of freedom
+     * @param rCurrentProcessInfo The current process info instance
+     */
+    void CalculateRHSContribution(
+        Element& rCurrentElement,
+        LocalSystemVectorType& RHS_Contribution,
+        Element::EquationIdVectorType& EquationId,
+        const ProcessInfo& rCurrentProcessInfo
+        ) override
+    {
+        KRATOS_TRY
 
+        // this->TCalculateRHSContribution(rCurrentElement, RHS_Contribution, rCurrentProcessInfo);
+        rCurrentElement.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
+        rCurrentElement.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, MIDDLE_VELOCITY , rCurrentProcessInfo);
+        KRATOS_CATCH("")
+    }
+
+    /**
+     * @brief Functions that calculates the RHS of a "condition" object
+     * @param rCurrentCondition The condition to compute
+     * @param RHS_Contribution The RHS vector contribution
+     * @param EquationId The ID's of the condition degrees of freedom
+     * @param rCurrentProcessInfo The current process info instance
+     */
+    void CalculateRHSContribution(
+        Condition& rCurrentCondition,
+        LocalSystemVectorType& RHS_Contribution,
+        Element::EquationIdVectorType& EquationId,
+        const ProcessInfo& rCurrentProcessInfo
+        ) override
+    {
+        KRATOS_TRY
+
+        // this->TCalculateRHSContribution(rCurrentCondition, RHS_Contribution, rCurrentProcessInfo);
+        rCurrentCondition.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
+        rCurrentCondition.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, FORCE_RESIDUAL, rCurrentProcessInfo);
+        KRATOS_CATCH("")
+    }
+
+    /**
+     * @brief This function is designed to calculate just the RHS contribution
+     * @param rCurrentElement The element to compute
+     * @param RHS_Contribution The RHS vector contribution
+     * @param EquationId The ID's of the element degrees of freedom
+     * @param rCurrentProcessInfo The current process info instance
+     */
+    virtual void CalculateRHSContributionResidual(
+        Element& rCurrentElement,
+        LocalSystemVectorType& RHS_Contribution,
+        Element::EquationIdVectorType& EquationId,
+        const ProcessInfo& rCurrentProcessInfo
+        ) 
+    {
+        KRATOS_TRY
+
+        rCurrentElement.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
+        rCurrentElement.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, REACTION, rCurrentProcessInfo);
+        KRATOS_CATCH("")
+    }
+
+    /**
+     * @brief Functions that calculates the RHS of a "condition" object
+     * @param rCurrentCondition The condition to compute
+     * @param RHS_Contribution The RHS vector contribution
+     * @param EquationId The ID's of the condition degrees of freedom
+     * @param rCurrentProcessInfo The current process info instance
+     */
+    virtual void CalculateRHSContributionResidual(
+        Condition& rCurrentCondition,
+        LocalSystemVectorType& RHS_Contribution,
+        Element::EquationIdVectorType& EquationId,
+        const ProcessInfo& rCurrentProcessInfo
+        ) 
+    {
+        KRATOS_TRY
+
+        rCurrentCondition.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
+        rCurrentCondition.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, REACTION, rCurrentProcessInfo);
+
+        KRATOS_CATCH("")
+    }
 
     ///@}
     ///@name Operations
@@ -632,17 +701,16 @@ protected:
     * @param RHS_Contribution The RHS vector contribution
     * @param rCurrentProcessInfo The current process info instance
     */
-    template <typename TObjectType>
-    void TCalculateRHSContribution(
-        TObjectType& rCurrentEntity,
-        LocalSystemVectorType& RHS_Contribution,
-        const ProcessInfo& rCurrentProcessInfo
-        )
-    {
-        rCurrentEntity.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
-
-        rCurrentEntity.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, FORCE_RESIDUAL, rCurrentProcessInfo);
-    }
+    // template <typename TObjectType>
+    // void TCalculateRHSContribution(
+    //     TObjectType& rCurrentEntity,
+    //     LocalSystemVectorType& RHS_Contribution,
+    //     const ProcessInfo& rCurrentProcessInfo
+    //     )
+    // {
+    //     rCurrentEntity.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
+    //     rCurrentEntity.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, FORCE_RESIDUAL, rCurrentProcessInfo);
+    // }
 
     ///@}
     ///@name Protected Operations

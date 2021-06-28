@@ -499,7 +499,7 @@ public:
         LocalSystemVectorType& RHS_Contribution,
         Element::EquationIdVectorType& EquationId,
         const ProcessInfo& rCurrentProcessInfo
-        )
+        ) override
     {
         KRATOS_TRY
 
@@ -522,7 +522,7 @@ public:
         LocalSystemVectorType& RHS_Contribution,
         Element::EquationIdVectorType& EquationId,
         const ProcessInfo& rCurrentProcessInfo
-        )
+        ) override
     {
         KRATOS_TRY
 
