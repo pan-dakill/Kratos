@@ -109,7 +109,7 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
 {
     KRATOS_TRY;
 
-    if (rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == MIDDLE_VELOCITY) {
+    if (rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == FORCE_RESIDUAL) {
 
         // internal_forces = Ka
         BoundedVector<double, msLocalSize> element_internal_forces = ZeroVector(msLocalSize);
@@ -169,90 +169,8 @@ void TrussFICElementLinear3D2N::AddExplicitContribution(
             }
         }
 
-    } else if (rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == FORCE_RESIDUAL) {
+    } else if (rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == MIDDLE_VELOCITY) {
 
-        Vector internal_force = ZeroVector(msLocalSize);
-        Vector damping_force = ZeroVector(msLocalSize);
-        Vector external_forces = ZeroVector(msLocalSize);
-        Vector mass_vector = ZeroVector(msLocalSize);
-        Vector num_neigh_elems_vector = ZeroVector(msLocalSize);
-
-        for (size_t i = 0; i < msNumberOfNodes; ++i) {
-            size_t index = msDimension * i;
-
-            const double& r_nodal_mass = GetGeometry()[i].GetValue(NODAL_MASS);
-            const double& r_number_neigh_elems = GetGeometry()[i].GetValue(NUMBER_OF_NEIGHBOUR_ELEMENTS);
-            const array_1d<double, 3>& r_internal_force = GetGeometry()[i].FastGetSolutionStepValue(NODAL_INERTIA);
-            const array_1d<double, 3>& r_damping_force = GetGeometry()[i].FastGetSolutionStepValue(NODAL_DISPLACEMENT_STIFFNESS);
-            const array_1d<double, 3>& r_external_forces = GetGeometry()[i].FastGetSolutionStepValue(EXTERNAL_FORCE);
-            
-            for (size_t j = 0; j < msDimension; ++j) {
-
-                mass_vector[index+j] = r_nodal_mass;
-
-                num_neigh_elems_vector[index+j] = r_number_neigh_elems;
-
-                internal_force[index+j] = r_internal_force[j]; // Assembled internal_force
-
-                damping_force[index+j] = r_damping_force[j]; // Assembled damping_force
-
-                external_forces[index+j] = r_external_forces[j]; // External Forces coming from condition, elements and reactions
-            }
-        }
-
-        MatrixType H1( msLocalSize, msLocalSize );
-        MatrixType H2( msLocalSize, msLocalSize );
-        this->CalculateFrequencyMatrix(H1, H2, mass_vector, num_neigh_elems_vector, rCurrentProcessInfo);
-      
-        Vector delta_internal_force = ZeroVector(msLocalSize);
-        noalias(delta_internal_force) = prod(H1,internal_force);
-
-        Vector delta_damping_force = ZeroVector(msLocalSize);
-        noalias(delta_damping_force) = prod(H1,damping_force);
-
-        Vector delta_external_force = ZeroVector(msLocalSize);
-        noalias(delta_external_force) = prod(H1,external_forces);
-
-        Vector delta2_internal_force = ZeroVector(msLocalSize);
-        noalias(delta2_internal_force) = prod(H2,internal_force);
-
-        Vector delta2_damping_force = ZeroVector(msLocalSize);
-        noalias(delta2_damping_force) = prod(H2,damping_force);
-
-        Vector delta2_external_force = ZeroVector(msLocalSize);
-        noalias(delta2_external_force) = prod(H2,external_forces);
-
-        for (size_t i = 0; i < msNumberOfNodes; ++i) {
-            size_t index = msDimension * i;
-            
-            array_1d<double, 3>& r_delta_internal_force = GetGeometry()[i].FastGetSolutionStepValue(MIDDLE_VELOCITY); // H1Kd
-            array_1d<double, 3>& r_delta_damping_force = GetGeometry()[i].FastGetSolutionStepValue(MIDDLE_ANGULAR_VELOCITY); // H1Cd
-            array_1d<double, 3>& r_delta_external_force = GetGeometry()[i].FastGetSolutionStepValue(FRACTIONAL_ACCELERATION); // H1f
-            array_1d<double, 3>& r_delta2_internal_force = GetGeometry()[i].FastGetSolutionStepValue(DELTA_2_INTERNAL_FORCE); // H2Kd
-            array_1d<double, 3>& r_delta2_damping_force = GetGeometry()[i].FastGetSolutionStepValue(DELTA_2_DAMPING_FORCE); // H2Cd
-            array_1d<double, 3>& r_delta2_external_force = GetGeometry()[i].FastGetSolutionStepValue(DELTA_2_EXTERNAL_FORCE); // H2f
-
-            for (size_t j = 0; j < msDimension; ++j) {
-
-                #pragma omp atomic
-                r_delta_internal_force[j] += delta_internal_force[index + j];
-
-                #pragma omp atomic
-                r_delta_damping_force[j] += delta_damping_force[index + j];
-
-                #pragma omp atomic
-                r_delta_external_force[j] += delta_external_force[index + j];
-
-                #pragma omp atomic
-                r_delta2_internal_force[j] += delta2_internal_force[index + j];
-
-                #pragma omp atomic
-                r_delta2_damping_force[j] += delta2_damping_force[index + j];
-
-                #pragma omp atomic
-                r_delta2_external_force[j] += delta2_external_force[index + j];
-            }
-        }
     } else if (rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == REACTION) {
 
         // // Stiffness matrix

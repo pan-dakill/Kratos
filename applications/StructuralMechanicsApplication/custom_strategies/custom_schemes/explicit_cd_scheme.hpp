@@ -124,7 +124,7 @@ public:
 
         BaseType::Check(rModelPart);
 
-        KRATOS_ERROR_IF(rModelPart.GetBufferSize() < 3) << "Insufficient buffer size for CD Scheme. It has to be >= 3" << std::endl;
+        KRATOS_ERROR_IF(rModelPart.GetBufferSize() < 2) << "Insufficient buffer size for CD Scheme. It has to be >= 3" << std::endl;
 
         KRATOS_ERROR_IF_NOT(rModelPart.GetProcessInfo().Has(DOMAIN_SIZE)) << "DOMAIN_SIZE not defined on ProcessInfo. Please define" << std::endl;
 
@@ -149,7 +149,8 @@ public:
         mDeltaTime = r_current_process_info[DELTA_TIME];
         mAlpha = r_current_process_info[RAYLEIGH_ALPHA];
         mBeta = r_current_process_info[RAYLEIGH_BETA];
-        mTheta1 = r_current_process_info[THETA_1];
+        mTheta = r_current_process_info[THETA_S];
+        mGCoefficient = r_current_process_info[G_COEFFICIENT_S];
 
         /// Working in 2D/3D (the definition of DOMAIN_SIZE is check in the Check method)
         const SizeType dim = r_current_process_info[DOMAIN_SIZE];
@@ -418,16 +419,17 @@ public:
         )
     {
         array_1d<double, 3>& r_current_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT);
+        array_1d<double, 3> displacement_aux;
+        noalias(displacement_aux) = r_current_displacement;
+        array_1d<double, 3>& r_displacement_old = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT_OLD_S);
+        array_1d<double, 3>& r_displacement_older = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT_OLDER_S);
         // const array_1d<double, 3>& r_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,1);
-        const array_1d<double, 3>& r_actual_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,2);
         const double nodal_mass = itCurrentNode->GetValue(NODAL_MASS);
 
         const array_1d<double, 3>& r_external_forces = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE);
         const array_1d<double, 3>& r_previous_external_forces = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE,1);
-        // const array_1d<double, 3>& r_actual_previous_external_forces = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE,2);
         const array_1d<double, 3>& r_current_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA);
         const array_1d<double, 3>& r_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA,1);
-        // const array_1d<double, 3>& r_actual_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA,2);
 
         std::array<bool, 3> fix_displacements = {false, false, false};
         fix_displacements[0] = (itCurrentNode->GetDof(DISPLACEMENT_X, DisplacementPosition).IsFixed());
@@ -435,15 +437,16 @@ public:
         if (DomainSize == 3)
             fix_displacements[2] = (itCurrentNode->GetDof(DISPLACEMENT_Z, DisplacementPosition + 2).IsFixed());
 
+        // TODO: seguir
         // Solution of the explicit equation:
         if ( nodal_mass > numerical_limit ){
             for (IndexType j = 0; j < DomainSize; j++) {
                 if (fix_displacements[j] == false) {
                     r_current_displacement[j] = ( (2.0-mDeltaTime*mAlpha)*nodal_mass*r_current_displacement[j]
                                                 + (mDeltaTime*mAlpha-1.0)*nodal_mass*r_actual_previous_displacement[j]
-                                                - mDeltaTime*(mBeta+mTheta1*mDeltaTime)*r_current_internal_force[j]
-                                                + mDeltaTime*(mBeta-(1.0-mTheta1)*mDeltaTime)*r_previous_internal_force[j]
-                                                + mDeltaTime*mDeltaTime*(mTheta1*r_external_forces[j]+(1.0-mTheta1)*r_previous_external_forces[j]) ) /
+                                                - mDeltaTime*(mBeta+mTheta*mDeltaTime)*r_current_internal_force[j]
+                                                + mDeltaTime*(mBeta-(1.0-mTheta)*mDeltaTime)*r_previous_internal_force[j]
+                                                + mDeltaTime*mDeltaTime*(mTheta*r_external_forces[j]+(1.0-mTheta)*r_previous_external_forces[j]) ) /
                                                 nodal_mass;
                 }
             }
@@ -566,7 +569,7 @@ public:
 
         // this->TCalculateRHSContribution(rCurrentElement, RHS_Contribution, rCurrentProcessInfo);
         rCurrentElement.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
-        rCurrentElement.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, MIDDLE_VELOCITY , rCurrentProcessInfo);
+        rCurrentElement.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, FORCE_RESIDUAL , rCurrentProcessInfo);
         KRATOS_CATCH("")
     }
 
@@ -689,7 +692,8 @@ protected:
     double mDeltaTime;
     double mAlpha;
     double mBeta;
-    double mTheta1;
+    double mTheta;
+    double mGCoefficient;
 
     ///@}
     ///@name Protected Operators

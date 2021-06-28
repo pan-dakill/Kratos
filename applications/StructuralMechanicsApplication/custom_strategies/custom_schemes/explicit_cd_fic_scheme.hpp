@@ -64,6 +64,7 @@ public:
     ///@{
 
     /// The definition of the base type
+    typedef Scheme<TSparseSpace, TDenseSpace> BaseofBaseType;
     typedef ExplicitCDScheme<TSparseSpace, TDenseSpace> BaseType;
 
     /// Some definitions related with the base class
@@ -174,12 +175,6 @@ public:
             noalias(r_delta_damping_force) = ZeroVector(3);
             noalias(r_delta_external_force) = ZeroVector(3);
             noalias(r_damping_force) = ZeroVector(3);
-            array_1d<double, 3>& r_delta2_internal_force = it_node->FastGetSolutionStepValue(DELTA_2_INTERNAL_FORCE); // H2Kd
-            array_1d<double, 3>& r_delta2_damping_force = it_node->FastGetSolutionStepValue(DELTA_2_DAMPING_FORCE); // H2Cd
-            array_1d<double, 3>& r_delta2_external_force = it_node->FastGetSolutionStepValue(DELTA_2_EXTERNAL_FORCE); // H2f
-            noalias(r_delta2_internal_force) = ZeroVector(3);
-            noalias(r_delta2_damping_force) = ZeroVector(3);
-            noalias(r_delta2_external_force) = ZeroVector(3);
         }
 
         KRATOS_CATCH("")
@@ -205,9 +200,6 @@ public:
         VariableUtils().SetVariable(MIDDLE_ANGULAR_VELOCITY, zero_array,r_nodes);
         VariableUtils().SetVariable(FRACTIONAL_ACCELERATION, zero_array,r_nodes);
         VariableUtils().SetVariable(NODAL_DISPLACEMENT_STIFFNESS, zero_array,r_nodes);
-        VariableUtils().SetVariable(DELTA_2_INTERNAL_FORCE, zero_array,r_nodes);
-        VariableUtils().SetVariable(DELTA_2_DAMPING_FORCE, zero_array,r_nodes);
-        VariableUtils().SetVariable(DELTA_2_EXTERNAL_FORCE, zero_array,r_nodes);
 
         KRATOS_CATCH("")
     }
@@ -244,10 +236,6 @@ public:
         const array_1d<double, 3>& r_current_delta_damping_force = itCurrentNode->FastGetSolutionStepValue(MIDDLE_ANGULAR_VELOCITY);
         const array_1d<double, 3>& r_previous_delta_damping_force = itCurrentNode->FastGetSolutionStepValue(MIDDLE_ANGULAR_VELOCITY,1);
         // const array_1d<double, 3>& r_actual_previous_delta_damping_force = itCurrentNode->FastGetSolutionStepValue(MIDDLE_ANGULAR_VELOCITY,2);
-        const array_1d<double, 3>& r_delta2_internal_force = itCurrentNode->FastGetSolutionStepValue(DELTA_2_INTERNAL_FORCE);
-        const array_1d<double, 3>& r_delta2_damping_force = itCurrentNode->FastGetSolutionStepValue(DELTA_2_DAMPING_FORCE);
-        const array_1d<double, 3>& r_previous_delta2_damping_force = itCurrentNode->FastGetSolutionStepValue(DELTA_2_DAMPING_FORCE,1);
-        const array_1d<double, 3>& r_delta2_external_force = itCurrentNode->FastGetSolutionStepValue(DELTA_2_EXTERNAL_FORCE);
 
         std::array<bool, 3> fix_displacements = {false, false, false};
         fix_displacements[0] = (itCurrentNode->GetDof(DISPLACEMENT_X, DisplacementPosition).IsFixed());
@@ -461,7 +449,7 @@ public:
 
         rCurrentElement.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
 
-        rCurrentElement.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, MIDDLE_VELOCITY , rCurrentProcessInfo);
+        rCurrentElement.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, FORCE_RESIDUAL , rCurrentProcessInfo);
         KRATOS_CATCH("")
     }
 

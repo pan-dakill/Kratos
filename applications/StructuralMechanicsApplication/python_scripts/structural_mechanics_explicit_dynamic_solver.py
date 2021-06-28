@@ -66,16 +66,10 @@ class ExplicitMechanicalSolver(MechanicalSolver):
             self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.FRACTIONAL_ACCELERATION)
             if (self.settings["rotation_dofs"].GetBool()):
                 self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.FRACTIONAL_ANGULAR_ACCELERATION)
-        if(scheme_type == "cd" or scheme_type == "ocd" or scheme_type == "vv" or scheme_type == "ovv" or scheme_type == "omdp" or scheme_type == "cd_fic"):
+        if(scheme_type == "cd" or scheme_type == "vv" or scheme_type == "ovv" or scheme_type == "cd_fic"):
             self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.NODAL_INERTIA) # Kd: internal forces
-            self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.MIDDLE_VELOCITY) # H1Kd
-            self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.MIDDLE_ANGULAR_VELOCITY) # H1Cd
-            self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.FRACTIONAL_ACCELERATION) # H1f
-            self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.NODAL_DISPLACEMENT_STIFFNESS) # Cd
+            # self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.NODAL_DISPLACEMENT_STIFFNESS) # Cd
             # self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.NUMBER_OF_NEIGHBOUR_ELEMENTS)
-            self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.DELTA_2_INTERNAL_FORCE) # H2Kd
-            self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.DELTA_2_DAMPING_FORCE) # H2Cd
-            self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.DELTA_2_EXTERNAL_FORCE) # H2f
 
         self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.NODAL_MASS)
         self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.FORCE_RESIDUAL) # -R=f-Ma-Cv-Kd
@@ -148,7 +142,7 @@ class ExplicitMechanicalSolver(MechanicalSolver):
 
         process_info.SetValue(StructuralMechanicsApplication.RAYLEIGH_ALPHA, alpha)
         process_info.SetValue(StructuralMechanicsApplication.RAYLEIGH_BETA, beta)
-        process_info.SetValue(StructuralMechanicsApplication.THETA_1, self.settings["theta_1"].GetDouble())
+        process_info.SetValue(StructuralMechanicsApplication.THETA_S, self.settings["theta_1"].GetDouble())
         process_info.SetValue(StructuralMechanicsApplication.DELTA_2, self.settings["delta_2"].GetDouble())
         process_info.SetValue(StructuralMechanicsApplication.GAMMA, self.settings["gamma"].GetDouble())
         process_info.SetValue(StructuralMechanicsApplication.THETA_3, self.settings["theta_3"].GetDouble())
@@ -166,10 +160,6 @@ class ExplicitMechanicalSolver(MechanicalSolver):
             mechanical_scheme = StructuralMechanicsApplication.ExplicitMultiStageKimScheme(self.settings["fraction_delta_time"].GetDouble())
         elif(scheme_type == "cd"):
             mechanical_scheme = StructuralMechanicsApplication.ExplicitCDScheme()
-        elif(scheme_type == "ocd"):
-            mechanical_scheme = StructuralMechanicsApplication.ExplicitOCDScheme()
-        elif(scheme_type == "omdp"):
-            mechanical_scheme = StructuralMechanicsApplication.ExplicitOMDPScheme()
         elif(scheme_type == "cd_fic"):
             mechanical_scheme = StructuralMechanicsApplication.ExplicitCDFICScheme()
         elif(scheme_type == "vv"):
