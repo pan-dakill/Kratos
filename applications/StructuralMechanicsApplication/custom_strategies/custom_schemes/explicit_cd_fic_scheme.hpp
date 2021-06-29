@@ -167,6 +167,24 @@ public:
         if (DomainSize == 3)
             fix_displacements[2] = (itCurrentNode->GetDof(DISPLACEMENT_Z, DisplacementPosition + 2).IsFixed());
 
+        // KRATOS_WATCH("Before Solving")
+        // KRATOS_WATCH(mDeltaTime)
+        // KRATOS_WATCH(nodal_mass)
+        // KRATOS_WATCH(mEpsilon)
+        // KRATOS_WATCH(mDelta)
+        // KRATOS_WATCH(mGCoefficient)
+        // KRATOS_WATCH(mAlpha)
+        // KRATOS_WATCH(mBeta)
+        // KRATOS_WATCH(mAlpha1)
+        // KRATOS_WATCH(mBeta1)
+        // KRATOS_WATCH(r_displacement)
+        // KRATOS_WATCH(r_displacement_old)
+        // KRATOS_WATCH(r_displacement_older)
+        // KRATOS_WATCH(r_internal_force)
+        // KRATOS_WATCH(r_internal_force_old)
+        // KRATOS_WATCH(r_external_force)
+        // KRATOS_WATCH(r_external_force_old)
+
         // Solution of the explicit equation:
         if ( nodal_mass > numerical_limit ){
             for (IndexType j = 0; j < DomainSize; j++) {
@@ -187,7 +205,10 @@ public:
                 }
             }
         }
-        
+
+        // KRATOS_WATCH("After Solving")
+        // KRATOS_WATCH(r_displacement)
+
         noalias(r_displacement_older) = r_displacement_old;
         noalias(r_displacement_old) = displacement_aux;
         const array_1d<double, 3>& r_velocity_old = itCurrentNode->FastGetSolutionStepValue(VELOCITY,1);
@@ -196,202 +217,6 @@ public:
 
         noalias(r_velocity) = (1.0/mDeltaTime) * (r_displacement - r_displacement_old);
         noalias(r_acceleration) = (1.0/mDeltaTime) * (r_velocity - r_velocity_old);
-    }
-
-    void CalculateAndAddRHS(ModelPart& rModelPart) override
-    {
-        KRATOS_TRY
-
-        const ProcessInfo& r_current_process_info = rModelPart.GetProcessInfo();
-        ConditionsArrayType& r_conditions = rModelPart.Conditions();
-        ElementsArrayType& r_elements = rModelPart.Elements();
-
-        LocalSystemVectorType RHS_Contribution = LocalSystemVectorType(0);
-        Element::EquationIdVectorType equation_id_vector_dummy; // Dummy
-
-        #pragma omp parallel for firstprivate(RHS_Contribution, equation_id_vector_dummy), schedule(guided,512)
-        for (int i = 0; i < static_cast<int>(r_conditions.size()); ++i) {
-            auto it_cond = r_conditions.begin() + i;
-            CalculateRHSContribution(*it_cond, RHS_Contribution, equation_id_vector_dummy, r_current_process_info);
-        }
-
-        #pragma omp parallel for firstprivate(RHS_Contribution, equation_id_vector_dummy), schedule(guided,512)
-        for (int i = 0; i < static_cast<int>(r_elements.size()); ++i) {
-            auto it_elem = r_elements.begin() + i;
-            CalculateRHSContribution(*it_elem, RHS_Contribution, equation_id_vector_dummy, r_current_process_info);
-        }
-
-        // Adding previous reactions to external forces
-        auto& r_nodes = rModelPart.Nodes();
-        const auto it_node_begin = r_nodes.begin();
-        #pragma omp parallel for schedule(guided,512)
-        for(int i=0; i<static_cast<int>(r_nodes.size()); ++i) {
-            auto it_node = it_node_begin + i;
-            array_1d<double, 3>& r_external_force = it_node->FastGetSolutionStepValue(EXTERNAL_FORCE);
-            const array_1d<double, 3>& r_reaction = it_node->FastGetSolutionStepValue(REACTION,0); // It doesn't matter whether this is ,0 or ,1 (it's the same at this point)
-            // const array_1d<double, 3>& r_previous_reaction = it_node->FastGetSolutionStepValue(REACTION,1);
-            // KRATOS_WATCH(r_reaction)
-            // KRATOS_WATCH(r_previous_reaction)
-            // NOTE: comment this to recover CD
-            noalias(r_external_force) += r_reaction;
-            // KRATOS_WATCH("reactions:")
-            // KRATOS_WATCH(it_node->Id())
-            // KRATOS_WATCH(r_external_force)
-        }
-
-        #pragma omp parallel for firstprivate(RHS_Contribution, equation_id_vector_dummy), schedule(guided,512)
-        for (int i = 0; i < static_cast<int>(r_elements.size()); ++i) {
-            auto it_elem = r_elements.begin() + i;
-            CalculateRHSContributionFinal(*it_elem, RHS_Contribution, equation_id_vector_dummy, r_current_process_info);
-        }
-
-        KRATOS_CATCH("")
-    }
-
-    void CalculateAndAddRHSFinal(ModelPart& rModelPart) override
-    {
-        KRATOS_TRY
-
-        // The array of nodes
-        NodesArrayType& r_nodes = rModelPart.Nodes();
-
-        // Auxiliar values
-        const array_1d<double, 3> zero_array = ZeroVector(3);
-        // Initializing the variables
-        VariableUtils().SetVariable(FORCE_RESIDUAL, zero_array,r_nodes);
-
-        const ProcessInfo& r_current_process_info = rModelPart.GetProcessInfo();
-        ConditionsArrayType& r_conditions = rModelPart.Conditions();
-        ElementsArrayType& r_elements = rModelPart.Elements();
-
-        LocalSystemVectorType RHS_Contribution = LocalSystemVectorType(0);
-        Element::EquationIdVectorType equation_id_vector_dummy; // Dummy
-
-        #pragma omp parallel for firstprivate(RHS_Contribution, equation_id_vector_dummy), schedule(guided,512)
-        for (int i = 0; i < static_cast<int>(r_conditions.size()); ++i) {
-            auto it_cond = r_conditions.begin() + i;
-            CalculateRHSContributionResidual(*it_cond, RHS_Contribution, equation_id_vector_dummy, r_current_process_info);
-        }
-
-        #pragma omp parallel for firstprivate(RHS_Contribution, equation_id_vector_dummy), schedule(guided,512)
-        for (int i = 0; i < static_cast<int>(r_elements.size()); ++i) {
-            auto it_elem = r_elements.begin() + i;
-            CalculateRHSContributionResidual(*it_elem, RHS_Contribution, equation_id_vector_dummy, r_current_process_info);
-        }
-
-        KRATOS_CATCH("")
-    }
-
-    /**
-     * @brief Functions that calculates the RHS of a "condition" object
-     * @param rCurrentCondition The condition to compute
-     * @param RHS_Contribution The RHS vector contribution
-     * @param EquationId The ID's of the condition degrees of freedom
-     * @param rCurrentProcessInfo The current process info instance
-     */
-    void CalculateRHSContribution(
-        Condition& rCurrentCondition,
-        LocalSystemVectorType& RHS_Contribution,
-        Element::EquationIdVectorType& EquationId,
-        const ProcessInfo& rCurrentProcessInfo
-        ) override
-    {
-        KRATOS_TRY
-
-        rCurrentCondition.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
-
-        rCurrentCondition.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, FORCE_RESIDUAL, rCurrentProcessInfo);
-
-        KRATOS_CATCH("")
-    }
-
-    /**
-     * @brief This function is designed to calculate just the RHS contribution
-     * @param rCurrentElement The element to compute
-     * @param RHS_Contribution The RHS vector contribution
-     * @param EquationId The ID's of the element degrees of freedom
-     * @param rCurrentProcessInfo The current process info instance
-     */
-    void CalculateRHSContribution(
-        Element& rCurrentElement,
-        LocalSystemVectorType& RHS_Contribution,
-        Element::EquationIdVectorType& EquationId,
-        const ProcessInfo& rCurrentProcessInfo
-        ) override
-    {
-        KRATOS_TRY
-
-        rCurrentElement.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
-
-        rCurrentElement.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, FORCE_RESIDUAL , rCurrentProcessInfo);
-        KRATOS_CATCH("")
-    }
-
-    /**
-     * @brief This function is designed to calculate just the RHS contribution
-     * @param rCurrentElement The element to compute
-     * @param RHS_Contribution The RHS vector contribution
-     * @param EquationId The ID's of the element degrees of freedom
-     * @param rCurrentProcessInfo The current process info instance
-     */
-    void CalculateRHSContributionFinal(
-        Element& rCurrentElement,
-        LocalSystemVectorType& RHS_Contribution,
-        Element::EquationIdVectorType& EquationId,
-        const ProcessInfo& rCurrentProcessInfo
-        )
-    {
-        KRATOS_TRY
-
-        rCurrentElement.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
-
-        rCurrentElement.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, FORCE_RESIDUAL, rCurrentProcessInfo);
-        KRATOS_CATCH("")
-    }
-
-    /**
-     * @brief Functions that calculates the RHS of a "condition" object
-     * @param rCurrentCondition The condition to compute
-     * @param RHS_Contribution The RHS vector contribution
-     * @param EquationId The ID's of the condition degrees of freedom
-     * @param rCurrentProcessInfo The current process info instance
-     */
-    void CalculateRHSContributionResidual(
-        Condition& rCurrentCondition,
-        LocalSystemVectorType& RHS_Contribution,
-        Element::EquationIdVectorType& EquationId,
-        const ProcessInfo& rCurrentProcessInfo
-        ) override
-    {
-        KRATOS_TRY
-
-        rCurrentCondition.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
-
-        rCurrentCondition.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, REACTION, rCurrentProcessInfo);
-
-        KRATOS_CATCH("")
-    }
-
-    /**
-     * @brief This function is designed to calculate just the RHS contribution
-     * @param rCurrentElement The element to compute
-     * @param RHS_Contribution The RHS vector contribution
-     * @param EquationId The ID's of the element degrees of freedom
-     * @param rCurrentProcessInfo The current process info instance
-     */
-    void CalculateRHSContributionResidual(
-        Element& rCurrentElement,
-        LocalSystemVectorType& RHS_Contribution,
-        Element::EquationIdVectorType& EquationId,
-        const ProcessInfo& rCurrentProcessInfo
-        ) override
-    {
-        KRATOS_TRY
-
-        rCurrentElement.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
-
-        rCurrentElement.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, REACTION, rCurrentProcessInfo);
-        KRATOS_CATCH("")
     }
 
     ///@}

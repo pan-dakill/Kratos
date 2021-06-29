@@ -132,7 +132,7 @@ class ExplicitMechanicalSolver(MechanicalSolver):
             omega_n = self.settings["omega_n"].GetDouble()
             beta = 2.0*(xi_n*omega_n-xi_1*omega_1)/(omega_n*omega_n-omega_1*omega_1)
             alpha = 2.0*xi_1*omega_1-beta*omega_1*omega_1
-            if(scheme_type == "cd-fic"):
+            if(scheme_type == "cd_fic"):
                 xi1_1 = self.settings["xi1_1"].GetDouble()
                 xi1_n = self.settings["xi1_n"].GetDouble()
                 beta1 = 2.0*(xi1_n*omega_n-xi1_1*omega_1)/(omega_n*omega_n-omega_1*omega_1)
