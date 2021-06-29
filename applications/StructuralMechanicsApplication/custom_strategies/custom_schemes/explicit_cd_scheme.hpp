@@ -444,7 +444,7 @@ public:
                                           + (mAlpha*mDeltaTime-(1.0+mGCoefficient*mDeltaTime))*nodal_mass*r_displacement_old[j]
                                           - mDeltaTime*(mBeta+mTheta*mDeltaTime)*r_internal_force[j]
                                           + mDeltaTime*(mBeta-mDeltaTime*(1.0-mTheta))*r_internal_force_old[j]
-                                          + mDeltaTime*mDeltaTime*(mTheta*r_external_force[j]+(1.0-mTheta)*external_force_old[j])
+                                          + mDeltaTime*mDeltaTime*(mTheta*r_external_force[j]+(1.0-mTheta)*r_external_force_old[j])
                                         ) / ( nodal_mass*(1.0+mGCoefficient*mDeltaTime) );
                 }
             }

@@ -123,6 +123,8 @@ class ExplicitMechanicalSolver(MechanicalSolver):
         beta = 0.0
         alpha1 = 0.0
         beta1 = 0.0
+        xi1_1 = 0.0
+        xi1_n = 0.0
         if self.settings["calculate_alpha_beta"].GetBool():
             xi_1 = self.settings["xi_1"].GetDouble()
             xi_n = self.settings["xi_n"].GetDouble()
@@ -136,10 +138,6 @@ class ExplicitMechanicalSolver(MechanicalSolver):
                 beta1 = 2.0*(xi1_n*omega_n-xi1_1*omega_1)/(omega_n*omega_n-omega_1*omega_1)
                 alpha1 = 2.0*xi1_1*omega_1-beta1*omega_1*omega_1
             print('Info:')
-            print('dt: ',self.settings["time_stepping"]["time_step"].GetDouble())
-            print('gamma: ',self.settings["gamma"].GetDouble())
-            print('delta1: ',self.settings["delta_1"].GetDouble())
-            print('delta2: ',self.settings["delta_2"].GetDouble())
             print('omega_1: ',omega_1)
             print('omega_n: ',omega_n)
             print('xi_1: ',xi_1)
@@ -151,6 +149,10 @@ class ExplicitMechanicalSolver(MechanicalSolver):
             print('beta: ',beta)
             print('alpha1: ',alpha1)
             print('beta1: ',beta1)
+            print('epsilon: ',self.settings["epsilon"].GetDouble())
+            print('delta: ',self.settings["delta"].GetDouble())
+            print('g: ',self.settings["g_coefficient"].GetDouble())
+            print('dt: ',self.settings["time_stepping"]["time_step"].GetDouble())
         else:
             alpha = self.settings["rayleigh_alpha"].GetDouble()
             beta = self.settings["rayleigh_beta"].GetDouble()
