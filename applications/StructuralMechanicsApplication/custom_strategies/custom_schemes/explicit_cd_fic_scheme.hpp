@@ -92,7 +92,8 @@ public:
     using BaseType::mDeltaTime;
     using BaseType::mAlpha;
     using BaseType::mBeta;
-    using BaseType::mTheta1;
+    using BaseType::mTheta;
+    using BaseType::mGCoefficient;
 
     /// Counted pointer of ExplicitCDFICScheme
     KRATOS_CLASS_POINTER_DEFINITION(ExplicitCDFICScheme);
@@ -126,80 +127,12 @@ public:
 
         const ProcessInfo& r_current_process_info = rModelPart.GetProcessInfo();
 
-        mDelta1 = r_current_process_info[LOAD_FACTOR];
-        mGamma = r_current_process_info[GAMMA];
-        mDelta2 = r_current_process_info[DELTA_2];
-        // mDelta2 = (1.0-mGamma)*0.25;
+        mDelta = r_current_process_info[DELTA_S];
+        mAlpha1 = r_current_process_info[RAYLEIGH_ALPHA_1_S];
+        mBeta1 = r_current_process_info[RAYLEIGH_BETA_1_S];
+        mEpsilon = r_current_process_info[EPSILON_S];
 
         BaseType::Initialize(rModelPart);
-
-        KRATOS_CATCH("")
-    }
-
-    /**
-     * @brief This method initializes some rutines related with the explicit scheme
-     * @param rModelPart The model of the problem to solve
-     * @param DomainSize The current dimention of the problem
-     */
-    void InitializeExplicitScheme(
-        ModelPart& rModelPart,
-        const SizeType DomainSize = 3
-        ) override
-    {
-        KRATOS_TRY
-
-        /// The array of ndoes
-        NodesArrayType& r_nodes = rModelPart.Nodes();
-
-        // The first iterator of the array of nodes
-        const auto it_node_begin = rModelPart.NodesBegin();
-
-        /// Initialise the database of the nodes
-        #pragma omp parallel for schedule(guided,512)
-        for (int i = 0; i < static_cast<int>(r_nodes.size()); ++i) {
-            auto it_node = (it_node_begin + i);
-            it_node->SetValue(NODAL_MASS, 0.0);
-            it_node->SetValue(NUMBER_OF_NEIGHBOUR_ELEMENTS, 0.0);
-            array_1d<double, 3>& r_force_residual = it_node->FastGetSolutionStepValue(FORCE_RESIDUAL);
-            array_1d<double, 3>& r_external_forces = it_node->FastGetSolutionStepValue(EXTERNAL_FORCE);
-            array_1d<double, 3>& r_current_internal_force = it_node->FastGetSolutionStepValue(NODAL_INERTIA); // K*d (internal_forces)
-            noalias(r_force_residual) = ZeroVector(3);
-            noalias(r_external_forces) = ZeroVector(3);
-            noalias(r_current_internal_force) = ZeroVector(3);
-
-            array_1d<double, 3>& r_delta_internal_force = it_node->FastGetSolutionStepValue(MIDDLE_VELOCITY); // H1Kd
-            array_1d<double, 3>& r_delta_damping_force = it_node->FastGetSolutionStepValue(MIDDLE_ANGULAR_VELOCITY); // H1Cd
-            array_1d<double, 3>& r_delta_external_force = it_node->FastGetSolutionStepValue(FRACTIONAL_ACCELERATION); // H1f
-            array_1d<double, 3>& r_damping_force = it_node->FastGetSolutionStepValue(NODAL_DISPLACEMENT_STIFFNESS); // C*d
-            noalias(r_delta_internal_force) = ZeroVector(3);
-            noalias(r_delta_damping_force) = ZeroVector(3);
-            noalias(r_delta_external_force) = ZeroVector(3);
-            noalias(r_damping_force) = ZeroVector(3);
-        }
-
-        KRATOS_CATCH("")
-    }
-
-    /**
-     * @brief This method initializes the residual in the nodes of the model part
-     * @param rModelPart The model of the problem to solve
-     */
-    void InitializeResidual(ModelPart& rModelPart) override
-    {
-        KRATOS_TRY
-
-        BaseType::InitializeResidual(rModelPart);
-
-        // The array of nodes
-        NodesArrayType& r_nodes = rModelPart.Nodes();
-
-        // Auxiliar values
-        const array_1d<double, 3> zero_array = ZeroVector(3);
-        // Initializing the variables
-        VariableUtils().SetVariable(MIDDLE_VELOCITY, zero_array,r_nodes);
-        VariableUtils().SetVariable(MIDDLE_ANGULAR_VELOCITY, zero_array,r_nodes);
-        VariableUtils().SetVariable(FRACTIONAL_ACCELERATION, zero_array,r_nodes);
-        VariableUtils().SetVariable(NODAL_DISPLACEMENT_STIFFNESS, zero_array,r_nodes);
 
         KRATOS_CATCH("")
     }
@@ -216,26 +149,17 @@ public:
         const SizeType DomainSize = 3
         ) override
     {
-        array_1d<double, 3>& r_current_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT);
-        // const array_1d<double, 3>& r_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,1);
-        const array_1d<double, 3>& r_actual_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,2);
-
+        array_1d<double, 3>& r_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT);
+        array_1d<double, 3> displacement_aux;
+        noalias(displacement_aux) = r_displacement;
+        array_1d<double, 3>& r_displacement_old = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT_OLD_S);
+        array_1d<double, 3>& r_displacement_older = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT_OLDER_S);
         const double nodal_mass = itCurrentNode->GetValue(NODAL_MASS);
 
         const array_1d<double, 3>& r_external_force = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE);
-        // const array_1d<double, 3>& r_previous_external_force = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE,1);
-        // const array_1d<double, 3>& r_actual_previous_external_forces = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE,2);
-        const array_1d<double, 3>& r_current_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA);
-        // const array_1d<double, 3>& r_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA,1);
-        // const array_1d<double, 3>& r_actual_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA,2);
-        const array_1d<double, 3>& r_current_damping_force = itCurrentNode->FastGetSolutionStepValue(NODAL_DISPLACEMENT_STIFFNESS);
-        const array_1d<double, 3>& r_previous_damping_force = itCurrentNode->FastGetSolutionStepValue(NODAL_DISPLACEMENT_STIFFNESS,1);
-
-        const array_1d<double, 3>& r_delta_external_force = itCurrentNode->FastGetSolutionStepValue(FRACTIONAL_ACCELERATION);
-        const array_1d<double, 3>& r_delta_internal_force = itCurrentNode->FastGetSolutionStepValue(MIDDLE_VELOCITY);
-        const array_1d<double, 3>& r_current_delta_damping_force = itCurrentNode->FastGetSolutionStepValue(MIDDLE_ANGULAR_VELOCITY);
-        const array_1d<double, 3>& r_previous_delta_damping_force = itCurrentNode->FastGetSolutionStepValue(MIDDLE_ANGULAR_VELOCITY,1);
-        // const array_1d<double, 3>& r_actual_previous_delta_damping_force = itCurrentNode->FastGetSolutionStepValue(MIDDLE_ANGULAR_VELOCITY,2);
+        const array_1d<double, 3>& r_external_force_old = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE,1);
+        const array_1d<double, 3>& r_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA);
+        const array_1d<double, 3>& r_internal_force_old = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA,1);
 
         std::array<bool, 3> fix_displacements = {false, false, false};
         fix_displacements[0] = (itCurrentNode->GetDof(DISPLACEMENT_X, DisplacementPosition).IsFixed());
@@ -243,85 +167,35 @@ public:
         if (DomainSize == 3)
             fix_displacements[2] = (itCurrentNode->GetDof(DISPLACEMENT_Z, DisplacementPosition + 2).IsFixed());
 
-        // TODO
-        // KRATOS_WATCH(itCurrentNode->Id())
-        // KRATOS_WATCH(mDeltaTime)
-        // KRATOS_WATCH(mAlpha)
-        // KRATOS_WATCH(mBeta)
-        // KRATOS_WATCH(nodal_mass)
-        // KRATOS_WATCH(r_current_displacement)
-        // KRATOS_WATCH(r_actual_previous_displacement)
-        // KRATOS_WATCH(r_current_internal_force)
-        // KRATOS_WATCH(r_previous_internal_force)
-        // KRATOS_WATCH(r_external_force)
-
-        //TODO
-        // KRATOS_WATCH("Before solving")
-        // KRATOS_WATCH(mDeltaTime)
-        // KRATOS_WATCH(mDelta1)
-        // KRATOS_WATCH(mDelta2)
-        // KRATOS_WATCH(mAlpha)
-        // KRATOS_WATCH(mBeta)
-        // KRATOS_WATCH(nodal_mass)
-        // KRATOS_WATCH(r_current_displacement)
-        // KRATOS_WATCH(r_actual_previous_displacement)
-        // KRATOS_WATCH(r_current_internal_force)
-        // KRATOS_WATCH(r_damping_force)
-        // KRATOS_WATCH(r_delta_internal_force)
-        // KRATOS_WATCH(r_current_delta_damping_force)
-        // KRATOS_WATCH(r_previous_internal_force)
-        // KRATOS_WATCH(r_previous_delta_damping_force)
-        // KRATOS_WATCH(r_delta_external_force)
-        // KRATOS_WATCH(r_external_force)
-        // KRATOS_WATCH(r_previous_external_force)
-        // KRATOS_WATCH(r_delta2_internal_force)
-        // KRATOS_WATCH(r_delta2_damping_force)
-        // KRATOS_WATCH(r_previous_delta2_damping_force)
-        // KRATOS_WATCH(r_delta2_external_force)
-
-        for (IndexType j = 0; j < DomainSize; j++) {
-            if (fix_displacements[j] == false) {
-                r_current_displacement[j] = ( 2.0*(1.0+2.0*mDelta1)*nodal_mass*r_current_displacement[j]
-                                            - (1.0+2.0*mDelta1)*mDeltaTime*mDeltaTime*r_current_internal_force[j]
-                                            - (1.0+2.0*mDelta1)*mDeltaTime*r_current_damping_force[j]
-                                            + mDeltaTime*mDeltaTime*r_delta_internal_force[j]
-                                            + mDeltaTime*r_current_delta_damping_force[j]
-                                            - (1.0+2.0*mDelta1)*nodal_mass*r_actual_previous_displacement[j]
-                                            + (1.0+2.0*mDelta1)*mDeltaTime*r_previous_damping_force[j]
-                                            - mDeltaTime*r_previous_delta_damping_force[j]
-                                            + (1.0+2.0*mDelta1)*mDeltaTime*mDeltaTime*r_external_force[j]
-                                            - mDeltaTime*mDeltaTime*r_delta_external_force[j]
-                                            + (1.0+2.0*mDelta1)*mDelta2*mDelta2*(
-                                                mDeltaTime*mDeltaTime*r_delta2_internal_force[j]
-                                                + mDeltaTime*r_delta2_damping_force[j]
-                                                - mDeltaTime*mDeltaTime*r_delta2_external_force[j]
-                                                - mDeltaTime*r_previous_delta2_damping_force[j]
-                                                )
-                                            + (1.0+2.0*mDelta1)*mGamma*mDeltaTime*mDeltaTime*(
-                                                r_current_internal_force[j]
-                                                - r_external_force[j]
-                                                )
-                                            ) / ( nodal_mass*(1.0+2.0*mDelta1) );
+        // Solution of the explicit equation:
+        if ( nodal_mass > numerical_limit ){
+            for (IndexType j = 0; j < DomainSize; j++) {
+                if (fix_displacements[j] == false) {
+                    r_displacement[j] = ( (2.0+mDelta-mDeltaTime*(mAlpha+mDelta*mAlpha1))*nodal_mass*r_displacement[j]
+                                          + (mDelta*(1.0+mDelta*mGCoefficient)-1.0+mDeltaTime*(mAlpha+mDelta*mAlpha1))*nodal_mass*r_displacement_old[j]
+                                          - mDelta*nodal_mass*r_displacement_older[j]
+                                          - (0.5*mDeltaTime*mDeltaTime*(1.0+mDelta*mEpsilon)+mDeltaTime*(mBeta+mDelta*mBeta1))*r_internal_force[j]
+                                          - (0.5*mDeltaTime*mDeltaTime*(1.0+mDelta*mEpsilon)-mDeltaTime*(mBeta+mDelta*mBeta1))*r_internal_force_old[j]
+                                          + 0.5*mDeltaTime*mDeltaTime*(1.0+mDelta*mEpsilon)*(r_external_force[j]+r_external_force_old[j])
+                                        ) / ( (1.0+mDelta*(1.0+mDelta*mGCoefficient))*nodal_mass );
+                }
+            }
+        } else{
+            for (IndexType j = 0; j < DomainSize; j++) {
+                if (fix_displacements[j] == false) {
+                    r_displacement[j] = 0.0;
+                }
             }
         }
+        
+        noalias(r_displacement_older) = r_displacement_old;
+        noalias(r_displacement_old) = displacement_aux;
+        const array_1d<double, 3>& r_velocity_old = itCurrentNode->FastGetSolutionStepValue(VELOCITY,1);
+        array_1d<double, 3>& r_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY);
+        array_1d<double, 3>& r_acceleration = itCurrentNode->FastGetSolutionStepValue(ACCELERATION);
 
-        const array_1d<double, 3>& r_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,1);
-        const array_1d<double, 3>& r_previous_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY,1);
-        array_1d<double, 3>& r_current_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY);
-        array_1d<double, 3>& r_current_acceleration = itCurrentNode->FastGetSolutionStepValue(ACCELERATION);
-
-        noalias(r_current_velocity) = (1.0/mDeltaTime) * (r_current_displacement - r_previous_displacement);
-        noalias(r_current_acceleration) = (1.0/mDeltaTime) * (r_current_velocity - r_previous_velocity);
-
-        //TODO
-        // KRATOS_WATCH("After solving")
-        // KRATOS_WATCH(r_current_displacement)
-        // KRATOS_WATCH(r_previous_displacement)
-        // KRATOS_WATCH(r_actual_previous_displacement)
-        // KRATOS_WATCH(r_current_velocity)
-        // KRATOS_WATCH(r_previous_velocity)
-        // KRATOS_WATCH(r_current_acceleration)
-
+        noalias(r_velocity) = (1.0/mDeltaTime) * (r_displacement - r_displacement_old);
+        noalias(r_acceleration) = (1.0/mDeltaTime) * (r_velocity - r_velocity_old);
     }
 
     void CalculateAndAddRHS(ModelPart& rModelPart) override
@@ -559,9 +433,10 @@ protected:
     ///@name Protected member Variables
     ///@{
 
-    double mDelta1;
-    double mDelta2;
-    double mGamma;
+    double mDelta;
+    double mAlpha1;
+    double mBeta1;
+    double mEpsilon;
 
     ///@}
     ///@name Protected Operators

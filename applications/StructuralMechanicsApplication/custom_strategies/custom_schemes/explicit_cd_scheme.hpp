@@ -331,10 +331,10 @@ public:
             auto it_node = (it_node_begin + i);
             it_node->SetValue(NODAL_MASS, 0.0);
             array_1d<double, 3>& r_force_residual = it_node->FastGetSolutionStepValue(FORCE_RESIDUAL);
-            array_1d<double, 3>& r_external_forces = it_node->FastGetSolutionStepValue(EXTERNAL_FORCE);
-            array_1d<double, 3>& r_current_internal_force = it_node->FastGetSolutionStepValue(NODAL_INERTIA); // K*a (internal_forces)
-            noalias(r_external_forces) = ZeroVector(3);
-            noalias(r_current_internal_force) = ZeroVector(3);
+            array_1d<double, 3>& r_external_force = it_node->FastGetSolutionStepValue(EXTERNAL_FORCE);
+            array_1d<double, 3>& r_internal_force = it_node->FastGetSolutionStepValue(NODAL_INERTIA); // K*a (internal_forces)
+            noalias(r_external_force) = ZeroVector(3);
+            noalias(r_internal_force) = ZeroVector(3);
             noalias(r_force_residual) = ZeroVector(3);
         }
 
@@ -418,18 +418,17 @@ public:
         const SizeType DomainSize = 3
         )
     {
-        array_1d<double, 3>& r_current_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT);
+        array_1d<double, 3>& r_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT);
         array_1d<double, 3> displacement_aux;
-        noalias(displacement_aux) = r_current_displacement;
+        noalias(displacement_aux) = r_displacement;
         array_1d<double, 3>& r_displacement_old = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT_OLD_S);
-        array_1d<double, 3>& r_displacement_older = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT_OLDER_S);
-        // const array_1d<double, 3>& r_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,1);
+        // array_1d<double, 3>& r_displacement_older = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT_OLDER_S);
         const double nodal_mass = itCurrentNode->GetValue(NODAL_MASS);
 
-        const array_1d<double, 3>& r_external_forces = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE);
-        const array_1d<double, 3>& r_previous_external_forces = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE,1);
-        const array_1d<double, 3>& r_current_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA);
-        const array_1d<double, 3>& r_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA,1);
+        const array_1d<double, 3>& r_external_force = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE);
+        const array_1d<double, 3>& r_external_force_old = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE,1);
+        const array_1d<double, 3>& r_internal_force = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA);
+        const array_1d<double, 3>& r_internal_force_old = itCurrentNode->FastGetSolutionStepValue(NODAL_INERTIA,1);
 
         std::array<bool, 3> fix_displacements = {false, false, false};
         fix_displacements[0] = (itCurrentNode->GetDof(DISPLACEMENT_X, DisplacementPosition).IsFixed());
@@ -437,35 +436,33 @@ public:
         if (DomainSize == 3)
             fix_displacements[2] = (itCurrentNode->GetDof(DISPLACEMENT_Z, DisplacementPosition + 2).IsFixed());
 
-        // TODO: seguir
         // Solution of the explicit equation:
         if ( nodal_mass > numerical_limit ){
             for (IndexType j = 0; j < DomainSize; j++) {
                 if (fix_displacements[j] == false) {
-                    r_current_displacement[j] = ( (2.0-mDeltaTime*mAlpha)*nodal_mass*r_current_displacement[j]
-                                                + (mDeltaTime*mAlpha-1.0)*nodal_mass*r_actual_previous_displacement[j]
-                                                - mDeltaTime*(mBeta+mTheta*mDeltaTime)*r_current_internal_force[j]
-                                                + mDeltaTime*(mBeta-(1.0-mTheta)*mDeltaTime)*r_previous_internal_force[j]
-                                                + mDeltaTime*mDeltaTime*(mTheta*r_external_forces[j]+(1.0-mTheta)*r_previous_external_forces[j]) ) /
-                                                nodal_mass;
+                    r_displacement[j] = ( (2.0*(1.0+mGCoefficient*mDeltaTime)-mAlpha*mDeltaTime)*nodal_mass*r_displacement[j]
+                                          + (mAlpha*mDeltaTime-(1.0+mGCoefficient*mDeltaTime))*nodal_mass*r_displacement_old[j]
+                                          - mDeltaTime*(mBeta+mTheta*mDeltaTime)*r_internal_force[j]
+                                          + mDeltaTime*(mBeta-mDeltaTime*(1.0-mTheta))*r_internal_force_old[j]
+                                          + mDeltaTime*mDeltaTime*(mTheta*r_external_force[j]+(1.0-mTheta)*external_force_old[j])
+                                        ) / ( nodal_mass*(1.0+mGCoefficient*mDeltaTime) );
                 }
             }
         } else{
             for (IndexType j = 0; j < DomainSize; j++) {
                 if (fix_displacements[j] == false) {
-                    r_current_displacement[j] = 0.0;
+                    r_displacement[j] = 0.0;
                 }
             }
         }
+        
+        noalias(r_displacement_old) = displacement_aux;
+        const array_1d<double, 3>& r_velocity_old = itCurrentNode->FastGetSolutionStepValue(VELOCITY,1);
+        array_1d<double, 3>& r_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY);
+        array_1d<double, 3>& r_acceleration = itCurrentNode->FastGetSolutionStepValue(ACCELERATION);
 
-        const array_1d<double, 3>& r_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,1);
-        const array_1d<double, 3>& r_previous_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY,1);
-        array_1d<double, 3>& r_current_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY);
-        array_1d<double, 3>& r_current_acceleration = itCurrentNode->FastGetSolutionStepValue(ACCELERATION);
-
-        noalias(r_current_velocity) = (1.0/mDeltaTime) * (r_current_displacement - r_previous_displacement);
-        noalias(r_current_acceleration) = (1.0/mDeltaTime) * (r_current_velocity - r_previous_velocity);
-
+        noalias(r_velocity) = (1.0/mDeltaTime) * (r_displacement - r_displacement_old);
+        noalias(r_acceleration) = (1.0/mDeltaTime) * (r_velocity - r_velocity_old);
     }
 
     void CheckStopCriterion(ModelPart& rModelPart)
@@ -479,12 +476,12 @@ public:
         #pragma omp parallel for reduction(+:l2_numerator,l2_denominator)
         for (int i = 0; i < static_cast<int>(r_nodes.size()); ++i) {
             NodeIterator itCurrentNode = it_node_begin + i;
-            const array_1d<double, 3>& r_current_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT);
-            const array_1d<double, 3>& r_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,1);
+            const array_1d<double, 3>& r_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT);
+            const array_1d<double, 3>& r_displacement_old = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,1);
             array_1d<double, 3> delta_displacement;
-            noalias(delta_displacement) = r_current_displacement-r_previous_displacement;
+            noalias(delta_displacement) = r_displacement-r_displacement_old;
             const double norm_2_du = inner_prod(delta_displacement,delta_displacement);
-            const double norm_2_u_old = inner_prod(r_previous_displacement,r_previous_displacement);
+            const double norm_2_u_old = inner_prod(r_displacement_old,r_displacement_old);
 
             l2_numerator += norm_2_du;
             l2_denominator += norm_2_u_old;

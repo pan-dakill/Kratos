@@ -31,9 +31,7 @@
 #include "custom_strategies/custom_schemes/explicit_central_differences_scheme.hpp"
 #include "custom_strategies/custom_schemes/explicit_multi_stage_kim_scheme.hpp"
 #include "custom_strategies/custom_schemes/explicit_cd_scheme.hpp"
-#include "custom_strategies/custom_schemes/explicit_ocd_scheme.hpp"
 #include "custom_strategies/custom_schemes/explicit_cd_fic_scheme.hpp"
-#include "custom_strategies/custom_schemes/explicit_omdp_scheme.hpp"
 #include "custom_strategies/custom_schemes/eigensolver_dynamic_scheme.hpp"
 
 // Convergence criterias
@@ -81,8 +79,6 @@ void  AddCustomStrategiesToPython(pybind11::module& m)
     typedef ExplicitCentralDifferencesScheme< SparseSpaceType, LocalSpaceType >  ExplicitCentralDifferencesSchemeType;
     typedef ExplicitMultiStageKimScheme< SparseSpaceType, LocalSpaceType >  ExplicitMultiStageKimSchemeType;
     typedef ExplicitCDScheme< SparseSpaceType, LocalSpaceType >  ExplicitCDSchemeType;
-    typedef ExplicitOCDScheme< SparseSpaceType, LocalSpaceType >  ExplicitOCDSchemeType;
-    typedef ExplicitOMDPScheme< SparseSpaceType, LocalSpaceType >  ExplicitOMDPSchemeType;
     typedef ExplicitCDFICScheme< SparseSpaceType, LocalSpaceType >  ExplicitCDFICSchemeType;
 
     // Custom convergence criterion types
@@ -164,14 +160,6 @@ void  AddCustomStrategiesToPython(pybind11::module& m)
         ;
 
     py::class_< ExplicitCDSchemeType,typename ExplicitCDSchemeType::Pointer, BaseSchemeType >(m,"ExplicitCDScheme")
-        .def(py::init< >())
-        ;
-
-    py::class_< ExplicitOCDSchemeType,typename ExplicitOCDSchemeType::Pointer, BaseSchemeType >(m,"ExplicitOCDScheme")
-        .def(py::init< >())
-        ;
-        
-    py::class_< ExplicitOMDPSchemeType,typename ExplicitOMDPSchemeType::Pointer, BaseSchemeType >(m,"ExplicitOMDPScheme")
         .def(py::init< >())
         ;
 

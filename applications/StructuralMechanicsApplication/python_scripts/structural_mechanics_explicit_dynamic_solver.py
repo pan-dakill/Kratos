@@ -36,17 +36,17 @@ class ExplicitMechanicalSolver(MechanicalSolver):
             "fraction_delta_time"        : 0.333333333333333333333333333333333333,
             "rayleigh_alpha"             : 0.0,
             "rayleigh_beta"              : 0.0,
-            "theta_1"                    : 1.0,
-            "theta_2"                    : 0.0,
-            "theta_3"                    : 0.0,
-            "delta_1"                      : 1.0,
-            "delta_2"                      : 1.0,
-            "gamma"                      : 1.0,
             "calculate_alpha_beta"       : false,
             "xi_1"                       : 1.0,
             "xi_n"                       : 1.0,
             "omega_1"                    : 1.0,
             "omega_n"                    : 1.0,
+            "theta"                      : 1.0,
+            "g_coefficient"              : 0.0,
+            "delta"                      : 1.0,
+            "epsilon"                    : 1.0,
+            "xi1_1"                      : 1.0,
+            "xi1_n"                      : 1.0,
             "l2_rel_tolerance"                : 1.0e-4,
             "l2_abs_tolerance"                : 1.0e-9
         }""")
@@ -68,6 +68,8 @@ class ExplicitMechanicalSolver(MechanicalSolver):
                 self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.FRACTIONAL_ANGULAR_ACCELERATION)
         if(scheme_type == "cd" or scheme_type == "vv" or scheme_type == "ovv" or scheme_type == "cd_fic"):
             self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.NODAL_INERTIA) # Kd: internal forces
+            self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.DISPLACEMENT_OLD_S)
+            self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.DISPLACEMENT_OLDER_S)
             # self.main_model_part.AddNodalSolutionStepVariable(StructuralMechanicsApplication.NODAL_DISPLACEMENT_STIFFNESS) # Cd
             # self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.NUMBER_OF_NEIGHBOUR_ELEMENTS)
 
@@ -117,6 +119,10 @@ class ExplicitMechanicalSolver(MechanicalSolver):
         process_info = self.main_model_part.ProcessInfo
         # process_info[StructuralMechanicsApplication.RAYLEIGH_ALPHA] = self.settings["rayleigh_alpha"].GetDouble()
         # process_info[StructuralMechanicsApplication.RAYLEIGH_BETA] = self.settings["rayleigh_beta"].GetDouble()
+        alpha = 0.0
+        beta = 0.0
+        alpha1 = 0.0
+        beta1 = 0.0
         if self.settings["calculate_alpha_beta"].GetBool():
             xi_1 = self.settings["xi_1"].GetDouble()
             xi_n = self.settings["xi_n"].GetDouble()
@@ -124,6 +130,11 @@ class ExplicitMechanicalSolver(MechanicalSolver):
             omega_n = self.settings["omega_n"].GetDouble()
             beta = 2.0*(xi_n*omega_n-xi_1*omega_1)/(omega_n*omega_n-omega_1*omega_1)
             alpha = 2.0*xi_1*omega_1-beta*omega_1*omega_1
+            if(scheme_type == "cd-fic"):
+                xi1_1 = self.settings["xi1_1"].GetDouble()
+                xi1_n = self.settings["xi1_n"].GetDouble()
+                beta1 = 2.0*(xi1_n*omega_n-xi1_1*omega_1)/(omega_n*omega_n-omega_1*omega_1)
+                alpha1 = 2.0*xi1_1*omega_1-beta1*omega_1*omega_1
             print('Info:')
             print('dt: ',self.settings["time_stepping"]["time_step"].GetDouble())
             print('gamma: ',self.settings["gamma"].GetDouble())
@@ -133,20 +144,25 @@ class ExplicitMechanicalSolver(MechanicalSolver):
             print('omega_n: ',omega_n)
             print('xi_1: ',xi_1)
             print('xi_n: ',xi_n)
+            print('xi1_1: ',xi1_1)
+            print('xi1_n: ',xi1_n)
             print('Alpha and Beta output:')
             print('alpha: ',alpha)
             print('beta: ',beta)
+            print('alpha1: ',alpha1)
+            print('beta1: ',beta1)
         else:
             alpha = self.settings["rayleigh_alpha"].GetDouble()
             beta = self.settings["rayleigh_beta"].GetDouble()
 
         process_info.SetValue(StructuralMechanicsApplication.RAYLEIGH_ALPHA, alpha)
         process_info.SetValue(StructuralMechanicsApplication.RAYLEIGH_BETA, beta)
-        process_info.SetValue(StructuralMechanicsApplication.THETA_S, self.settings["theta_1"].GetDouble())
-        process_info.SetValue(StructuralMechanicsApplication.DELTA_2, self.settings["delta_2"].GetDouble())
-        process_info.SetValue(StructuralMechanicsApplication.GAMMA, self.settings["gamma"].GetDouble())
-        process_info.SetValue(StructuralMechanicsApplication.THETA_3, self.settings["theta_3"].GetDouble())
-        process_info.SetValue(StructuralMechanicsApplication.LOAD_FACTOR, self.settings["delta_1"].GetDouble())
+        process_info.SetValue(StructuralMechanicsApplication.RAYLEIGH_ALPHA_1_S, alpha1)
+        process_info.SetValue(StructuralMechanicsApplication.RAYLEIGH_BETA_1_S, beta1)
+        process_info.SetValue(StructuralMechanicsApplication.THETA_S, self.settings["theta"].GetDouble())
+        process_info.SetValue(StructuralMechanicsApplication.DELTA_S, self.settings["delta"].GetDouble())
+        process_info.SetValue(StructuralMechanicsApplication.G_COEFFICIENT_S, self.settings["g_coefficient"].GetDouble())
+        process_info.SetValue(StructuralMechanicsApplication.EPSILON_S, self.settings["epsilon"].GetDouble())
         process_info.SetValue(KratosMultiphysics.ERROR_RATIO, self.settings["l2_rel_tolerance"].GetDouble())
         process_info.SetValue(KratosMultiphysics.ERROR_INTEGRATION_POINT, self.settings["l2_abs_tolerance"].GetDouble())
         process_info.SetValue(KratosMultiphysics.DELTA_TIME, self.settings["time_stepping"]["time_step"].GetDouble())
