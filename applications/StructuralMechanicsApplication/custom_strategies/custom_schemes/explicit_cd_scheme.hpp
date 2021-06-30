@@ -436,6 +436,23 @@ public:
         if (DomainSize == 3)
             fix_displacements[2] = (itCurrentNode->GetDof(DISPLACEMENT_Z, DisplacementPosition + 2).IsFixed());
 
+        // if(itCurrentNode->Id()==585){
+        //     KRATOS_WATCH("Before Solving")
+        //     KRATOS_WATCH(itCurrentNode->Id())
+        //     KRATOS_WATCH(mDeltaTime)
+        //     KRATOS_WATCH(nodal_mass)
+        //     KRATOS_WATCH(mGCoefficient)
+        //     KRATOS_WATCH(mTheta)
+        //     KRATOS_WATCH(mAlpha)
+        //     KRATOS_WATCH(mBeta)
+        //     KRATOS_WATCH(r_displacement)
+        //     KRATOS_WATCH(r_displacement_old)
+        //     KRATOS_WATCH(r_internal_force)
+        //     KRATOS_WATCH(r_internal_force_old)
+        //     KRATOS_WATCH(r_external_force)
+        //     KRATOS_WATCH(r_external_force_old)
+        // }
+
         // Solution of the explicit equation:
         if ( nodal_mass > numerical_limit ){
             for (IndexType j = 0; j < DomainSize; j++) {
@@ -455,7 +472,12 @@ public:
                 }
             }
         }
-        
+
+        // if(itCurrentNode->Id()==585){
+        //     KRATOS_WATCH("After Solving")
+        //     KRATOS_WATCH(r_displacement)
+        // }
+
         noalias(r_displacement_old) = displacement_aux;
         const array_1d<double, 3>& r_velocity_old = itCurrentNode->FastGetSolutionStepValue(VELOCITY,1);
         array_1d<double, 3>& r_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY);

@@ -193,7 +193,7 @@ void SmallDisplacementExplicitSplitScheme::AddExplicitContribution(
         for (IndexType i = 0; i < number_of_nodes; ++i) {
             const IndexType index = dimension * i;
             array_1d<double, 3>& r_internal_forces = GetGeometry()[i].FastGetSolutionStepValue(NODAL_INERTIA);
-            array_1d<double, 3>& r_damping_force = GetGeometry()[i].FastGetSolutionStepValue(NODAL_DISPLACEMENT_STIFFNESS);
+            // array_1d<double, 3>& r_damping_force = GetGeometry()[i].FastGetSolutionStepValue(NODAL_DISPLACEMENT_STIFFNESS);
             array_1d<double, 3>& r_external_forces = GetGeometry()[i].FastGetSolutionStepValue(EXTERNAL_FORCE);
 
             for (IndexType j = 0; j < dimension; ++j) {
@@ -201,8 +201,8 @@ void SmallDisplacementExplicitSplitScheme::AddExplicitContribution(
                 #pragma omp atomic
                 r_internal_forces[j] += element_internal_forces[index + j];
 
-                #pragma omp atomic
-                r_damping_force[j] += damping_force[index + j];
+                // #pragma omp atomic
+                // r_damping_force[j] += damping_force[index + j];
 
                 #pragma omp atomic
                 r_external_forces[j] += external_forces[index + j];
