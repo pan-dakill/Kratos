@@ -61,7 +61,7 @@ public:
         }
 
         const int system_size = TSparseSpace::Size1(A);
-
+        
         const unsigned int NumThreads = ParallelUtilities::GetNumThreads();
 
         // Defining a temporary vector to gather all of the values needed
