@@ -347,30 +347,10 @@ void UPwCondition<TDim,TNumNodes>::AddExplicitContribution(
     GeometryType& rGeom = GetGeometry();
 
     if( rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == FORCE_RESIDUAL ) {
-        // CD, OCD, VV, OVV
+        // CD, VV
 
         for(SizeType i=0; i< TNumNodes; ++i) {
 
-            SizeType index = (TDim + 1) * i;
-            array_1d<double, 3 >& r_force_residual = rGeom[i].FastGetSolutionStepValue(FORCE_RESIDUAL);
-            array_1d<double, 3 >& r_external_force = rGeom[i].FastGetSolutionStepValue(EXTERNAL_FORCE);
-            double& r_flux_residual = rGeom[i].FastGetSolutionStepValue(FLUX_RESIDUAL);
-
-            for(SizeType j=0; j<TDim; ++j) {
-                #pragma omp atomic
-                r_force_residual[j] += rRHSVector[index + j];
-
-                #pragma omp atomic
-                r_external_force[j] += rRHSVector[index + j];
-            }
-
-            #pragma omp atomic
-            r_flux_residual += rRHSVector[index + TDim];
-        }
-    } else if(rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == EXTERNAL_FORCE ) {
-        
-        // CD-FIC_1
-        for(SizeType i=0; i< TNumNodes; ++i) {
             SizeType index = (TDim + 1) * i;
             array_1d<double, 3 >& r_external_force = rGeom[i].FastGetSolutionStepValue(EXTERNAL_FORCE);
 
@@ -380,8 +360,8 @@ void UPwCondition<TDim,TNumNodes>::AddExplicitContribution(
             }
         }
     } else if(rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == REACTION ) {
-        
-        // CD-FIC_2
+        // Residual/Reactions
+
         for(SizeType i=0; i< TNumNodes; ++i) {
             SizeType index = (TDim + 1) * i;
             array_1d<double, 3 >& r_force_residual = rGeom[i].FastGetSolutionStepValue(FORCE_RESIDUAL);

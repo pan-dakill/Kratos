@@ -124,7 +124,7 @@ public:
 
         BaseType::Check(rModelPart);
 
-        KRATOS_ERROR_IF(rModelPart.GetBufferSize() < 3) << "Insufficient buffer size for CD Scheme. It has to be >= 3" << std::endl;
+        KRATOS_ERROR_IF(rModelPart.GetBufferSize() < 2) << "Insufficient buffer size for CD Scheme. It has to be >= 2" << std::endl;
 
         KRATOS_ERROR_IF_NOT(rModelPart.GetProcessInfo().Has(DOMAIN_SIZE)) << "DOMAIN_SIZE not defined on ProcessInfo. Please define" << std::endl;
 
@@ -145,12 +145,11 @@ public:
 
         // Preparing the time values for the first step (where time = initial_time +
         // dt)
-        // mTime.Current = r_current_process_info[TIME] + r_current_process_info[DELTA_TIME];
         mDeltaTime = r_current_process_info[DELTA_TIME];
         mAlpha = r_current_process_info[RAYLEIGH_ALPHA];
         mBeta = r_current_process_info[RAYLEIGH_BETA];
         mTheta = r_current_process_info[THETA_FACTOR];
-        mg_coefficient = r_current_process_info[G_COEFFICIENT];
+        mGCoefficient = r_current_process_info[G_COEFFICIENT];
 
         /// Working in 2D/3D (the definition of DOMAIN_SIZE is check in the Check method)
         const SizeType dim = r_current_process_info[DOMAIN_SIZE];
@@ -255,10 +254,9 @@ public:
 
         // Auxiliar values
         const array_1d<double, 3> zero_array = ZeroVector(3);
-        double zero_double = 0.0;
         // Initializing the variables
         VariableUtils().SetVariable(FORCE_RESIDUAL, zero_array,r_nodes);
-        VariableUtils().SetVariable(FLUX_RESIDUAL, zero_double,r_nodes);
+        VariableUtils().SetVariable(FLUX_RESIDUAL, 0.0,r_nodes);
         VariableUtils().SetVariable(EXTERNAL_FORCE, zero_array,r_nodes);
         VariableUtils().SetVariable(INTERNAL_FORCE, zero_array,r_nodes);
 
@@ -445,21 +443,21 @@ public:
         const SizeType DomainSize = 3
         )
     {
-        array_1d<double, 3>& r_current_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT);
-        // const array_1d<double, 3>& r_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,1);
+        array_1d<double, 3>& r_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT);
+        array_1d<double, 3> displacement_aux;
+        noalias(displacement_aux) = r_displacement;
+        array_1d<double, 3>& r_displacement_old = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT_OLD);
+        // array_1d<double, 3>& r_displacement_older = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT_OLDER);
         const array_1d<double, 3>& r_actual_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,2);
-
-        double& r_current_water_pressure = itCurrentNode->FastGetSolutionStepValue(WATER_PRESSURE);
-        double& r_current_dt_water_pressure = itCurrentNode->FastGetSolutionStepValue(DT_WATER_PRESSURE);
-
         const double nodal_mass = itCurrentNode->GetValue(NODAL_MASS);
 
-        const array_1d<double, 3>& r_external_forces = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE);
-        const array_1d<double, 3>& r_previous_external_forces = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE,1);
-        // const array_1d<double, 3>& r_actual_previous_external_forces = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE,2);
-        const array_1d<double, 3>& r_current_internal_force = itCurrentNode->FastGetSolutionStepValue(INTERNAL_FORCE);
-        const array_1d<double, 3>& r_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(INTERNAL_FORCE,1);
-        // const array_1d<double, 3>& r_actual_previous_internal_force = itCurrentNode->FastGetSolutionStepValue(INTERNAL_FORCE,2);
+        double& r_current_water_pressure = itCurrentNode->FastGetSolutionStepValue(WATER_PRESSURE);
+        double& r_current_dt_water_pressure = itCurrentNode->FastGetSolutionStepValue(DT_WATER_PRESSURE);      
+
+        const array_1d<double, 3>& r_external_force = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE);
+        const array_1d<double, 3>& r_external_force_old = itCurrentNode->FastGetSolutionStepValue(EXTERNAL_FORCE,1);
+        const array_1d<double, 3>& r_internal_force = itCurrentNode->FastGetSolutionStepValue(INTERNAL_FORCE);
+        const array_1d<double, 3>& r_internal_force_old = itCurrentNode->FastGetSolutionStepValue(INTERNAL_FORCE,1);
 
         std::array<bool, 3> fix_displacements = {false, false, false};
         fix_displacements[0] = (itCurrentNode->GetDof(DISPLACEMENT_X, DisplacementPosition).IsFixed());
@@ -469,12 +467,12 @@ public:
 
         for (IndexType j = 0; j < DomainSize; j++) {
             if (fix_displacements[j] == false) {
-                r_current_displacement[j] = ( (2.0*(1.0+mg_coefficient*mDeltaTime)-mAlpha*mDeltaTime)*nodal_mass*r_current_displacement[j]
-                                            + (mAlpha*mDeltaTime-(1.0+mg_coefficient*mDeltaTime))*nodal_mass*r_actual_previous_displacement[j]
-                                            - mDeltaTime*(mBeta+mTheta*mDeltaTime)*r_current_internal_force[j]
-                                            + mDeltaTime*(mBeta-mDeltaTime*(1.0-mTheta))*r_previous_internal_force[j]
-                                            + mDeltaTime*mDeltaTime*(mTheta*r_external_forces[j]+(1.0-mTheta)*r_previous_external_forces[j]) ) /
-                                            (nodal_mass*(1.0+mg_coefficient*mDeltaTime));
+                    r_displacement[j] = ( (2.0*(1.0+mGCoefficient*mDeltaTime)-mAlpha*mDeltaTime)*nodal_mass*r_displacement[j]
+                                          + (mAlpha*mDeltaTime-(1.0+mGCoefficient*mDeltaTime))*nodal_mass*r_displacement_old[j]
+                                          - mDeltaTime*(mBeta+mTheta*mDeltaTime)*r_internal_force[j]
+                                          + mDeltaTime*(mBeta-mDeltaTime*(1.0-mTheta))*r_internal_force_old[j]
+                                          + mDeltaTime*mDeltaTime*(mTheta*r_external_force[j]+(1.0-mTheta)*r_external_force_old[j])
+                                        ) / ( nodal_mass*(1.0+mGCoefficient*mDeltaTime) );
             }
         }
 
@@ -485,14 +483,13 @@ public:
             r_current_dt_water_pressure = 0.0;
         }
 
-        const array_1d<double, 3>& r_previous_displacement = itCurrentNode->FastGetSolutionStepValue(DISPLACEMENT,1);
-        const array_1d<double, 3>& r_previous_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY,1);
-        array_1d<double, 3>& r_current_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY);
-        array_1d<double, 3>& r_current_acceleration = itCurrentNode->FastGetSolutionStepValue(ACCELERATION);
+        noalias(r_displacement_old) = displacement_aux;
+        const array_1d<double, 3>& r_velocity_old = itCurrentNode->FastGetSolutionStepValue(VELOCITY,1);
+        array_1d<double, 3>& r_velocity = itCurrentNode->FastGetSolutionStepValue(VELOCITY);
+        array_1d<double, 3>& r_acceleration = itCurrentNode->FastGetSolutionStepValue(ACCELERATION);
 
-        noalias(r_current_velocity) = (1.0/mDeltaTime) * (r_current_displacement - r_previous_displacement);
-        noalias(r_current_acceleration) = (1.0/mDeltaTime) * (r_current_velocity - r_previous_velocity);
-
+        noalias(r_velocity) = (1.0/mDeltaTime) * (r_displacement - r_displacement_old);
+        noalias(r_acceleration) = (1.0/mDeltaTime) * (r_velocity - r_velocity_old);
     }
 
     /**
@@ -513,19 +510,85 @@ public:
 
         BaseType::FinalizeNonLinIteration(rModelPart, A, Dx, b);
         
-        this->CalculateAndAddRHSBeforeReactions(rModelPart);
+        this->CalculateAndAddRHSFinal(rModelPart);
 
         KRATOS_CATCH("")
     }
 
-    virtual void CalculateAndAddRHSBeforeReactions(ModelPart& rModelPart)
+    virtual void CalculateAndAddRHSFinal(ModelPart& rModelPart)
     {
         KRATOS_TRY
 
-        // TODO: here we should erase the residual and recalculate it...
-        // InitializeResidual(rModelPart);
+        // The array of nodes
+        NodesArrayType& r_nodes = rModelPart.Nodes();
 
-        // this->CalculateAndAddRHS(rModelPart);
+        // Auxiliar values
+        const array_1d<double, 3> zero_array = ZeroVector(3);
+        // Initializing the variables
+        VariableUtils().SetVariable(FORCE_RESIDUAL, zero_array, r_nodes);
+        VariableUtils().SetVariable(FLUX_RESIDUAL, 0.0, r_nodes);
+
+        const ProcessInfo& r_current_process_info = rModelPart.GetProcessInfo();
+        ConditionsArrayType& r_conditions = rModelPart.Conditions();
+        ElementsArrayType& r_elements = rModelPart.Elements();
+
+        LocalSystemVectorType RHS_Contribution = LocalSystemVectorType(0);
+        Element::EquationIdVectorType equation_id_vector_dummy; // Dummy
+
+        #pragma omp parallel for firstprivate(RHS_Contribution, equation_id_vector_dummy), schedule(guided,512)
+        for (int i = 0; i < static_cast<int>(r_conditions.size()); ++i) {
+            auto it_cond = r_conditions.begin() + i;
+            CalculateRHSContributionResidual(*it_cond, RHS_Contribution, equation_id_vector_dummy, r_current_process_info);
+        }
+
+        #pragma omp parallel for firstprivate(RHS_Contribution, equation_id_vector_dummy), schedule(guided,512)
+        for (int i = 0; i < static_cast<int>(r_elements.size()); ++i) {
+            auto it_elem = r_elements.begin() + i;
+            CalculateRHSContributionResidual(*it_elem, RHS_Contribution, equation_id_vector_dummy, r_current_process_info);
+        }
+
+        KRATOS_CATCH("")
+    }
+
+    /**
+     * @brief This function is designed to calculate just the RHS contribution
+     * @param rCurrentElement The element to compute
+     * @param RHS_Contribution The RHS vector contribution
+     * @param EquationId The ID's of the element degrees of freedom
+     * @param rCurrentProcessInfo The current process info instance
+     */
+    virtual void CalculateRHSContributionResidual(
+        Element& rCurrentElement,
+        LocalSystemVectorType& RHS_Contribution,
+        Element::EquationIdVectorType& EquationId,
+        const ProcessInfo& rCurrentProcessInfo
+        ) 
+    {
+        KRATOS_TRY
+
+        // rCurrentElement.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
+        rCurrentElement.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, REACTION, rCurrentProcessInfo);
+        KRATOS_CATCH("")
+    }
+
+    /**
+     * @brief Functions that calculates the RHS of a "condition" object
+     * @param rCurrentCondition The condition to compute
+     * @param RHS_Contribution The RHS vector contribution
+     * @param EquationId The ID's of the condition degrees of freedom
+     * @param rCurrentProcessInfo The current process info instance
+     */
+    virtual void CalculateRHSContributionResidual(
+        Condition& rCurrentCondition,
+        LocalSystemVectorType& RHS_Contribution,
+        Element::EquationIdVectorType& EquationId,
+        const ProcessInfo& rCurrentProcessInfo
+        ) 
+    {
+        KRATOS_TRY
+
+        // rCurrentCondition.CalculateRightHandSide(RHS_Contribution, rCurrentProcessInfo);
+        rCurrentCondition.AddExplicitContribution(RHS_Contribution, RESIDUAL_VECTOR, REACTION, rCurrentProcessInfo);
 
         KRATOS_CATCH("")
     }
@@ -556,6 +619,8 @@ public:
                 if(rNodalStress.size1() != Dim)
                     rNodalStress.resize(Dim,Dim,false);
                 noalias(rNodalStress) = ZeroMatrix(Dim,Dim);
+                array_1d<double,3>& r_nodal_grad_pressure = itNode->FastGetSolutionStepValue(NODAL_WATER_PRESSURE_GRADIENT);
+                noalias(r_nodal_grad_pressure) = ZeroVector(3);
                 itNode->FastGetSolutionStepValue(NODAL_DAMAGE_VARIABLE) = 0.0;
                 itNode->FastGetSolutionStepValue(NODAL_JOINT_AREA) = 0.0;
                 itNode->FastGetSolutionStepValue(NODAL_JOINT_WIDTH) = 0.0;
@@ -575,8 +640,10 @@ public:
                 {
                     const double InvNodalArea = 1.0/NodalArea;
                     Matrix& rNodalStress = itNode->FastGetSolutionStepValue(NODAL_EFFECTIVE_STRESS_TENSOR);
+                    array_1d<double,3>& r_nodal_grad_pressure = itNode->FastGetSolutionStepValue(NODAL_WATER_PRESSURE_GRADIENT);
                     for(unsigned int i = 0; i<Dim; i++)
                     {
+                        r_nodal_grad_pressure[i] *= InvNodalArea;
                         for(unsigned int j = 0; j<Dim; j++)
                         {
                             rNodalStress(i,j) *= InvNodalArea;
@@ -649,7 +716,7 @@ protected:
     double mAlpha;
     double mBeta;
     double mTheta;
-    double mg_coefficient;
+    double mGCoefficient;
 
     ///@}
     ///@name Protected Operators

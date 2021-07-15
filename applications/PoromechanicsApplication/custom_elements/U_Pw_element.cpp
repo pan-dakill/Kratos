@@ -829,88 +829,6 @@ void UPwElement<TDim,TNumNodes>::CalculateDampingForce( VectorType& rRightHandSi
     KRATOS_CATCH( "" )
 }
 
-//----------------------------------------------------------------------------------------
-
-template< unsigned int TDim, unsigned int TNumNodes >
-void UPwElement<TDim,TNumNodes>::CalculateDampingDForce( VectorType& rRightHandSideVector, const ProcessInfo& rCurrentProcessInfo )
-{
-    KRATOS_TRY
-
-    const unsigned int element_size = TNumNodes * (TDim + 1);
-
-    //Resetting the RHS
-    if ( rRightHandSideVector.size() != element_size )
-        rRightHandSideVector.resize( element_size, false );
-    noalias( rRightHandSideVector ) = ZeroVector( element_size );
-
-    // Compute Damping Matrix
-    MatrixType DampingMatrix(element_size,element_size);
-    this->CalculateDampingMatrixWithLumpedMass(DampingMatrix,rCurrentProcessInfo);
-
-    VectorType DisplacementVector(element_size);
-    this->GetValuesVector(DisplacementVector,0);
-
-    noalias(rRightHandSideVector) = prod(DampingMatrix,DisplacementVector);
-
-    KRATOS_CATCH( "" )
-}
-
-//----------------------------------------------------------------------------------------
-
-template< unsigned int TDim, unsigned int TNumNodes >
-void UPwElement<TDim,TNumNodes>::CalculateHMatrices( 
-    MatrixType& rH1Matrix,
-    MatrixType& rH2Matrix,
-    const VectorType& rMassVector,
-    const ProcessInfo& rCurrentProcessInfo )
-{
-    KRATOS_TRY
-
-    const SizeType element_size = TNumNodes * (TDim + 1);
-
-    //Resizing matrices
-    if ( rH1Matrix.size1() != element_size )
-        rH1Matrix.resize( element_size, element_size, false );
-    noalias( rH1Matrix ) = ZeroMatrix( element_size, element_size );
-    if ( rH2Matrix.size1() != element_size )
-        rH2Matrix.resize( element_size, element_size, false );
-    noalias( rH2Matrix ) = ZeroMatrix( element_size, element_size );
-
-    // Compute Damping Matrix with Rayleigh Method (Damping Matrix = alpha*M + beta*K)
-    MatrixType DampingMatrix(element_size,element_size);
-    // Compute Mass Matrix
-    MatrixType MassMatrix(element_size,element_size);
-    this->CalculateLumpedMassMatrix(MassMatrix,rCurrentProcessInfo);
-    // Compute Stiffness matrix
-    MatrixType StiffnessMatrix(element_size,element_size);
-    this->CalculateStiffnessMatrix(StiffnessMatrix,rCurrentProcessInfo);
-    // Damping Matrix
-    if ( DampingMatrix.size1() != element_size )
-        DampingMatrix.resize( element_size, element_size, false );
-    noalias( DampingMatrix ) = ZeroMatrix( element_size, element_size );
-    noalias(DampingMatrix) += rCurrentProcessInfo[RAYLEIGH_ALPHA] * MassMatrix;
-    noalias(DampingMatrix) += rCurrentProcessInfo[RAYLEIGH_BETA] * StiffnessMatrix;
-
-    // Inverse of lumped mass matrix taking into account global assembly
-    Matrix MassMatrixInverse(element_size,element_size);
-    noalias(MassMatrixInverse) = ZeroMatrix(element_size,element_size);
-    for (SizeType i=0; i< TNumNodes; ++i) {
-        SizeType index = (TDim + 1) * i;
-        for (SizeType j=0; j<TDim; ++j) {
-            MassMatrixInverse(index+j,index+j) = 1.0/rMassVector[index+j];
-        }
-    }
-
-    const double delta1 = rCurrentProcessInfo[DELTA1];
-    const double delta_time = rCurrentProcessInfo[DELTA_TIME];
-
-    noalias(rH1Matrix) = delta1*delta_time*prod(DampingMatrix,MassMatrixInverse);
-    noalias(rH2Matrix) = delta_time*delta_time*prod(StiffnessMatrix,MassMatrixInverse);
-
-    KRATOS_CATCH( "" )
-}
-
-
 //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 template< unsigned int TDim, unsigned int TNumNodes >
@@ -938,9 +856,6 @@ void UPwElement<TDim,TNumNodes>::AddExplicitContribution(
 
             #pragma omp atomic
             rGeom[i].GetValue(NODAL_MASS) += lumped_mass_matrix(index,index);
-
-            // #pragma omp atomic
-            // rGeom[i].GetValue(NUMBER_OF_NEIGHBOUR_ELEMENTS) += 1.0;
         }
     }
 
@@ -964,8 +879,7 @@ void UPwElement<TDim,TNumNodes>::AddExplicitContribution(
     const unsigned int element_size = TNumNodes * (TDim + 1);
 
     if( rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == FORCE_RESIDUAL ) {
-
-        // CD,OCD
+        // CD
 
         Vector flux_residual = ZeroVector(element_size);
         // this->CalculateFluxResidual(flux_residual,rCurrentProcessInfo);
@@ -973,7 +887,58 @@ void UPwElement<TDim,TNumNodes>::AddExplicitContribution(
         // this->CalculateMixBodyForce(body_force,rCurrentProcessInfo);
         Vector neg_internal_force = ZeroVector(element_size);
         // this->CalculateNegInternalForce(neg_internal_force,rCurrentProcessInfo);
-        // TODO: is this more efficient?
+        this->CalculateExplicitContributions(flux_residual,body_force,neg_internal_force,rCurrentProcessInfo);
+
+        for(SizeType i=0; i< TNumNodes; ++i) {
+
+            SizeType index = (TDim + 1) * i;
+
+            array_1d<double, 3 >& r_external_force = rGeom[i].FastGetSolutionStepValue(EXTERNAL_FORCE);
+            array_1d<double, 3 >& r_internal_force = rGeom[i].FastGetSolutionStepValue(INTERNAL_FORCE);
+
+            for(SizeType j=0; j<TDim; ++j) {
+                #pragma omp atomic
+                r_external_force[j] += body_force[index + j];
+
+                #pragma omp atomic
+                r_internal_force[j] += -neg_internal_force[index + j];
+            }
+        }
+    } else if( rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == DAMPING_FORCE ) {
+        // VV
+
+        Vector flux_residual = ZeroVector(element_size);
+        Vector body_force = ZeroVector(element_size);
+        Vector neg_internal_force = ZeroVector(element_size);
+        this->CalculateExplicitContributions(flux_residual,body_force,neg_internal_force,rCurrentProcessInfo);
+        Vector damping_force = ZeroVector(element_size);
+        this->CalculateDampingForce(damping_force,rCurrentProcessInfo);
+
+        for(SizeType i=0; i< TNumNodes; ++i) {
+
+            SizeType index = (TDim + 1) * i;
+
+            array_1d<double, 3 >& r_external_force = rGeom[i].FastGetSolutionStepValue(EXTERNAL_FORCE);
+            array_1d<double, 3 >& r_internal_force = rGeom[i].FastGetSolutionStepValue(INTERNAL_FORCE);
+            array_1d<double, 3 >& r_damping_force = rGeom[i].FastGetSolutionStepValue(DAMPING_FORCE);
+
+            for(SizeType j=0; j<TDim; ++j) {
+                #pragma omp atomic
+                r_external_force[j] += body_force[index + j];
+
+                #pragma omp atomic
+                r_internal_force[j] += -neg_internal_force[index + j];
+
+                #pragma omp atomic
+                r_damping_force[j] += damping_force[index + j];
+            }
+        }
+    } else if(rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == REACTION ) {
+        // Residual/Reactions
+
+        Vector flux_residual = ZeroVector(element_size);
+        Vector body_force = ZeroVector(element_size);
+        Vector neg_internal_force = ZeroVector(element_size);
         this->CalculateExplicitContributions(flux_residual,body_force,neg_internal_force,rCurrentProcessInfo);
         // Vector damping_force = ZeroVector(element_size);
         // this->CalculateDampingForce(damping_force,rCurrentProcessInfo);
@@ -985,182 +950,11 @@ void UPwElement<TDim,TNumNodes>::AddExplicitContribution(
             SizeType index = (TDim + 1) * i;
 
             array_1d<double, 3 >& r_force_residual = rGeom[i].FastGetSolutionStepValue(FORCE_RESIDUAL);
-            array_1d<double, 3 >& r_external_force = rGeom[i].FastGetSolutionStepValue(EXTERNAL_FORCE);
-            array_1d<double, 3 >& r_internal_force = rGeom[i].FastGetSolutionStepValue(INTERNAL_FORCE);
             double& r_flux_residual = rGeom[i].FastGetSolutionStepValue(FLUX_RESIDUAL);
 
             for(SizeType j=0; j<TDim; ++j) {
                 #pragma omp atomic
-                r_force_residual[j] += body_force[index + j] + neg_internal_force[index + j];// - damping_force[index + j] - inertial_force[index + j];
-
-                #pragma omp atomic
-                r_external_force[j] += body_force[index + j];
-
-                #pragma omp atomic
-                r_internal_force[j] += -neg_internal_force[index + j];
-            }
-
-            #pragma omp atomic
-            r_flux_residual += flux_residual[index + TDim];
-        }
-    } else if( rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == DAMPING_FORCE ) {
-
-        // VV,OVV
-
-        Vector flux_residual = ZeroVector(element_size);
-        Vector body_force = ZeroVector(element_size);
-        Vector neg_internal_force = ZeroVector(element_size);
-        this->CalculateExplicitContributions(flux_residual,body_force,neg_internal_force,rCurrentProcessInfo);
-        Vector damping_force = ZeroVector(element_size);
-        this->CalculateDampingForce(damping_force,rCurrentProcessInfo);
-        // Vector inertial_force = ZeroVector(element_size);
-        // this->CalculateInertialForce(inertial_force,rCurrentProcessInfo);
-
-        for(SizeType i=0; i< TNumNodes; ++i) {
-
-            SizeType index = (TDim + 1) * i;
-
-            array_1d<double, 3 >& r_force_residual = rGeom[i].FastGetSolutionStepValue(FORCE_RESIDUAL);
-            array_1d<double, 3 >& r_external_force = rGeom[i].FastGetSolutionStepValue(EXTERNAL_FORCE);
-            array_1d<double, 3 >& r_internal_force = rGeom[i].FastGetSolutionStepValue(INTERNAL_FORCE);
-            array_1d<double, 3 >& r_damping_force = rGeom[i].FastGetSolutionStepValue(DAMPING_FORCE);
-            double& r_flux_residual = rGeom[i].FastGetSolutionStepValue(FLUX_RESIDUAL);
-
-            for(SizeType j=0; j<TDim; ++j) {
-                #pragma omp atomic
-                r_force_residual[j] += body_force[index + j] + neg_internal_force[index + j];// - damping_force[index + j] - inertial_force[index + j];
-
-                #pragma omp atomic
-                r_external_force[j] += body_force[index + j];
-
-                #pragma omp atomic
-                r_internal_force[j] += -neg_internal_force[index + j];
-
-                #pragma omp atomic
-                r_damping_force[j] += damping_force[index + j];
-            }
-
-            #pragma omp atomic
-            r_flux_residual += flux_residual[index + TDim];
-        }
-    } else if(rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == DAMPING_D_FORCE ) {
-
-        // CD-FIC_1
-
-        Vector flux_residual = ZeroVector(element_size);
-        Vector body_force = ZeroVector(element_size);
-        Vector neg_internal_force = ZeroVector(element_size);
-        this->CalculateExplicitContributions(flux_residual,body_force,neg_internal_force,rCurrentProcessInfo);
-        Vector damping_d_force = ZeroVector(element_size);
-        this->CalculateDampingDForce(damping_d_force,rCurrentProcessInfo);
-
-        for(SizeType i=0; i< TNumNodes; ++i) {
-
-            SizeType index = (TDim + 1) * i;
-
-            array_1d<double, 3 >& r_external_force = rGeom[i].FastGetSolutionStepValue(EXTERNAL_FORCE);
-            array_1d<double, 3 >& r_internal_force = rGeom[i].FastGetSolutionStepValue(INTERNAL_FORCE);
-            array_1d<double, 3 >& r_damping_d_force = rGeom[i].FastGetSolutionStepValue(DAMPING_D_FORCE);
-
-            for(SizeType j=0; j<TDim; ++j) {
-                #pragma omp atomic
-                r_external_force[j] += body_force[index + j];
-
-                #pragma omp atomic
-                r_internal_force[j] += -neg_internal_force[index + j];
-
-                #pragma omp atomic
-                r_damping_d_force[j] += damping_d_force[index + j];
-            }
-        }
-    } else if(rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == DELTA1_DAMPING_D_FORCE ) {
-        // CD-FIC_2
-
-        Vector mass_vector = ZeroVector(element_size);
-        Vector external_force = ZeroVector(element_size);
-        Vector internal_force = ZeroVector(element_size);
-        Vector damping_d_force = ZeroVector(element_size);
-        
-        for (SizeType i=0; i< TNumNodes; ++i) {
-
-            SizeType index = (TDim + 1) * i;
-
-            const double& r_nodal_mass = rGeom[i].GetValue(NODAL_MASS);
-            const array_1d<double, 3>& r_external_force = rGeom[i].FastGetSolutionStepValue(EXTERNAL_FORCE);
-            const array_1d<double, 3>& r_internal_force = rGeom[i].FastGetSolutionStepValue(INTERNAL_FORCE);
-            const array_1d<double, 3>& r_damping_d_force = rGeom[i].FastGetSolutionStepValue(DAMPING_D_FORCE);
-
-            for (SizeType j=0; j<TDim; ++j) {
-                mass_vector[index+j] = r_nodal_mass;
-                external_force[index+j] = r_external_force[j]; // External Forces coming from condition, elements and reactions
-                internal_force[index+j] = r_internal_force[j]; // Assembled internal_force
-                damping_d_force[index+j] = r_damping_d_force[j]; // Assembled damping_force
-            }
-        }
-
-        MatrixType H1( element_size, element_size );
-        MatrixType H2( element_size, element_size );
-        this->CalculateHMatrices(H1, H2, mass_vector, rCurrentProcessInfo);
-
-        Vector delta1_external_force = ZeroVector(element_size);
-        noalias(delta1_external_force) = prod(H1,external_force);
-        Vector delta1_internal_force = ZeroVector(element_size);
-        noalias(delta1_internal_force) = prod(H1,internal_force);
-        Vector delta1_damping_d_force = ZeroVector(element_size);
-        noalias(delta1_damping_d_force) = prod(H1,damping_d_force);
-
-        Vector delta2_external_force = ZeroVector(element_size);
-        noalias(delta2_external_force) = prod(H2,external_force);
-        Vector delta2_internal_force = ZeroVector(element_size);
-        noalias(delta2_internal_force) = prod(H2,internal_force);
-        Vector delta2_damping_d_force = ZeroVector(element_size);
-        noalias(delta2_damping_d_force) = prod(H2,damping_d_force);
-
-        for(SizeType i=0; i< TNumNodes; ++i) {
-
-            SizeType index = (TDim + 1) * i;
-
-            array_1d<double, 3 >& r_delta1_external_force = rGeom[i].FastGetSolutionStepValue(DELTA1_EXTERNAL_FORCE);
-            array_1d<double, 3 >& r_delta1_internal_force = rGeom[i].FastGetSolutionStepValue(DELTA1_INTERNAL_FORCE);
-            array_1d<double, 3 >& r_delta1_damping_d_force = rGeom[i].FastGetSolutionStepValue(DELTA1_DAMPING_D_FORCE);
-            array_1d<double, 3 >& r_delta2_external_force = rGeom[i].FastGetSolutionStepValue(DELTA2_EXTERNAL_FORCE);
-            array_1d<double, 3 >& r_delta2_internal_force = rGeom[i].FastGetSolutionStepValue(DELTA2_INTERNAL_FORCE);
-            array_1d<double, 3 >& r_delta2_damping_d_force = rGeom[i].FastGetSolutionStepValue(DELTA2_DAMPING_D_FORCE);
-
-            for(SizeType j=0; j<TDim; ++j) {
-                #pragma omp atomic
-                r_delta1_external_force[j] += delta1_external_force[index + j];
-                #pragma omp atomic
-                r_delta1_internal_force[j] += delta1_internal_force[index + j];
-                #pragma omp atomic
-                r_delta1_damping_d_force[j] += delta1_damping_d_force[index + j];
-
-                #pragma omp atomic
-                r_delta2_external_force[j] += delta2_external_force[index + j];
-                #pragma omp atomic
-                r_delta2_internal_force[j] += delta2_internal_force[index + j];
-                #pragma omp atomic
-                r_delta2_damping_d_force[j] += delta2_damping_d_force[index + j];
-            }
-        }
-    } else if(rRHSVariable == RESIDUAL_VECTOR && rDestinationVariable == REACTION ) {
-        // CD-FIC_3
-
-        Vector flux_residual = ZeroVector(element_size);
-        Vector body_force = ZeroVector(element_size);
-        Vector neg_internal_force = ZeroVector(element_size);
-        this->CalculateExplicitContributions(flux_residual,body_force,neg_internal_force,rCurrentProcessInfo);
-
-        for(SizeType i=0; i< TNumNodes; ++i) {
-
-            SizeType index = (TDim + 1) * i;
-
-            array_1d<double, 3 >& r_force_residual = rGeom[i].FastGetSolutionStepValue(FORCE_RESIDUAL);
-            double& r_flux_residual = rGeom[i].FastGetSolutionStepValue(FLUX_RESIDUAL);
-
-            for(SizeType j=0; j<TDim; ++j) {
-                #pragma omp atomic
-                r_force_residual[j] += body_force[index + j] + neg_internal_force[index + j];
+                r_force_residual[j] += body_force[index + j] + neg_internal_force[index + j]; // - damping_force[index + j] - inertial_force[index + j];
             }
 
             #pragma omp atomic

@@ -70,8 +70,6 @@ class UPwSolver(PythonSolver):
             "calculate_alpha_beta"       : false,
             "omega_1"                    : 1.0,
             "omega_n"                    : 10.0,
-            "calculate_xi"               : false,
-            "xi_1_factor"                : 1.0,
             "xi_1"                       : 1.0,
             "xi_n"                       : 0.05,
             "rayleigh_alpha": 0.0,
@@ -412,17 +410,13 @@ class UPwSolver(PythonSolver):
             beta = self.settings["newmark_beta"].GetDouble()
             gamma = self.settings["newmark_gamma"].GetDouble()
             theta = self.settings["newmark_theta"].GetDouble()
+            rayleigh_alpha = self.settings["rayleigh_alpha"].GetDouble()
+            rayleigh_beta = self.settings["rayleigh_beta"].GetDouble()
             if self.settings["calculate_alpha_beta"].GetBool():
                 omega_1 = self.settings["omega_1"].GetDouble()
                 omega_n = self.settings["omega_n"].GetDouble()
-                if self.settings["calculate_xi"].GetBool():
-                    Dt = self.settings["time_step"].GetDouble()
-                    xi_1_factor = self.settings["xi_1_factor"].GetDouble()
-                    xi_1 = (1.0-1.0*omega_1*Dt*0.5)*xi_1_factor
-                    xi_n = (1.0-1.0*omega_n*Dt*0.5)
-                else:
-                    xi_1 = self.settings["xi_1"].GetDouble()
-                    xi_n = self.settings["xi_n"].GetDouble()
+                xi_1 = self.settings["xi_1"].GetDouble()
+                xi_n = self.settings["xi_n"].GetDouble()
                 rayleigh_beta = 2.0*(xi_n*omega_n-xi_1*omega_1)/(omega_n*omega_n-omega_1*omega_1)
                 rayleigh_alpha = 2.0*xi_1*omega_1-rayleigh_beta*omega_1*omega_1
                 print('Info:')
@@ -433,9 +427,7 @@ class UPwSolver(PythonSolver):
                 print('Alpha and Beta output:')
                 print('rayleigh_alpha: ',rayleigh_alpha)
                 print('rayleigh_beta: ',rayleigh_beta)
-            else:
-                rayleigh_alpha = self.settings["rayleigh_alpha"].GetDouble()
-                rayleigh_beta = self.settings["rayleigh_beta"].GetDouble()
+            
             self.main_model_part.ProcessInfo.SetValue(KratosStructural.RAYLEIGH_ALPHA,rayleigh_alpha)
             self.main_model_part.ProcessInfo.SetValue(KratosStructural.RAYLEIGH_BETA,rayleigh_beta)
             if(solution_type == "implicit_quasi_static"):

@@ -157,10 +157,6 @@ protected:
 
     virtual void CalculateDampingForce (VectorType& rRightHandSideVector, const ProcessInfo& rCurrentProcessInfo);
 
-    virtual void CalculateHMatrices( MatrixType& rH1Matrix, MatrixType& rH2Matrix, const VectorType& rMassVector, const ProcessInfo& rCurrentProcessInfo );
-
-    virtual void CalculateDampingDForce( VectorType& rRightHandSideVector, const ProcessInfo& rCurrentProcessInfo );
-
 ///----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 private:

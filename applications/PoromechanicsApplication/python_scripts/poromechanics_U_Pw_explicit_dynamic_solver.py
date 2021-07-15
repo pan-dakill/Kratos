@@ -21,12 +21,7 @@ class ExplicitUPwSolver(UPwSolver):
         # Construct the base solver.
         super().__init__(model, custom_settings)
 
-        # TODO: check
-        scheme_type = self.settings["scheme_type"].GetString()
-        if(scheme_type == "cd" or scheme_type == "ocd"):
-            self.min_buffer_size = 3
-        else:
-            self.min_buffer_size = 2
+        self.min_buffer_size = 2           
 
         # Lumped mass-matrix is necessary for explicit analysis
         self.main_model_part.ProcessInfo[KratosMultiphysics.COMPUTE_LUMPED_MASS_MATRIX] = True
@@ -35,13 +30,12 @@ class ExplicitUPwSolver(UPwSolver):
     @classmethod
     def GetDefaultParameters(cls):
         this_defaults = KratosMultiphysics.Parameters("""{
-            "scheme_type"                : "ocd",
+            "scheme_type"                : "Explicit_Central_Differences",
             "rebuild_level"              : 0,
             "theta_factor"               : 1.0,
             "g_factor"                   : 0.0,
-            "delta_1"                    : 0.0,
-            "delta_2"                    : 0.0,
-            "gamma"                      : 0.0
+            "calculate_xi"               : false,
+            "xi_1_factor"                : 1.0
         }""")
         this_defaults.AddMissingParameters(super().GetDefaultParameters())
         return this_defaults
@@ -49,25 +43,17 @@ class ExplicitUPwSolver(UPwSolver):
     def AddVariables(self):
         super().AddVariables()
 
+        self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.DISPLACEMENT_OLD)
+        # self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.DISPLACEMENT_OLDER)
         self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.INTERNAL_FORCE)
         self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.EXTERNAL_FORCE)
         self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.FORCE_RESIDUAL)
         self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.FLUX_RESIDUAL)
 
         scheme_type = self.settings["scheme_type"].GetString()
-        if(scheme_type == "vv" or scheme_type == "ovv"):
+        if(scheme_type == "Explicit_Velocity_Verlet"):
             self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.DAMPING_FORCE)
-
-        if(scheme_type == "cd_fic"):
-            self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.DAMPING_D_FORCE)
-            self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.DELTA1_DAMPING_D_FORCE)
-            self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.DELTA1_INTERNAL_FORCE)
-            self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.DELTA1_EXTERNAL_FORCE)
-            self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.DELTA2_DAMPING_D_FORCE)
-            self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.DELTA2_INTERNAL_FORCE)
-            self.main_model_part.AddNodalSolutionStepVariable(KratosPoro.DELTA2_EXTERNAL_FORCE)
         
-        # TODO: check
         # self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.NODAL_MASS)
         # self.main_model_part.AddNodalSolutionStepVariable(KratosMultiphysics.RESIDUAL_VECTOR)
 
@@ -120,6 +106,9 @@ class ExplicitUPwSolver(UPwSolver):
         # Check if everything is assigned correctly
         self.Check()
 
+        # Check and construct gp_to_nodal_variable process
+        self._CheckAndConstructGPtoNodalVariableExtrapolationProcess()
+
     #### Specific internal functions ####
     def _ConstructScheme(self, scheme_type):
         scheme_type = self.settings["scheme_type"].GetString()
@@ -127,64 +116,50 @@ class ExplicitUPwSolver(UPwSolver):
         # Setting the Rayleigh damping parameters
         process_info = self.main_model_part.ProcessInfo
         g_factor = self.settings["g_factor"].GetDouble()
+        theta_factor = self.settings["theta_factor"].GetDouble()
+        g_coeff = 0.0
         Dt = self.settings["time_step"].GetDouble()
         omega_1 = self.settings["omega_1"].GetDouble()
         omega_n = self.settings["omega_n"].GetDouble()
-        if g_factor >= 1.0:
+        rayleigh_alpha = self.settings["rayleigh_alpha"].GetDouble()
+        rayleigh_beta = self.settings["rayleigh_beta"].GetDouble()
+        if (scheme_type == "Explicit_Central_Differences" and g_factor >= 1.0):
             theta_factor = 0.5
             g_coeff = Dt*omega_n*omega_n*0.25*g_factor
-        else:
-            theta_factor = self.settings["theta_factor"].GetDouble()
-            g_coeff = 0.0
         if self.settings["calculate_alpha_beta"].GetBool():
-            if self.settings["calculate_xi"].GetBool():
+            xi_1 = self.settings["xi_1"].GetDouble()
+            xi_n = self.settings["xi_n"].GetDouble()
+            if (scheme_type == "Explicit_Central_Differences" and self.settings["calculate_xi"].GetBool()==True):
                 xi_1_factor = self.settings["xi_1_factor"].GetDouble()                
                 import numpy as np
                 xi_1 = (np.sqrt(1+g_coeff*Dt)-theta_factor*omega_1*Dt*0.5)*xi_1_factor
                 xi_n = (np.sqrt(1+g_coeff*Dt)-theta_factor*omega_n*Dt*0.5)
-            else:
-                xi_1 = self.settings["xi_1"].GetDouble()
-                xi_n = self.settings["xi_n"].GetDouble()
-            beta = 2.0*(xi_n*omega_n-xi_1*omega_1)/(omega_n*omega_n-omega_1*omega_1)
-            alpha = 2.0*xi_1*omega_1-beta*omega_1*omega_1
+            rayleigh_beta = 2.0*(xi_n*omega_n-xi_1*omega_1)/(omega_n*omega_n-omega_1*omega_1)
+            rayleigh_alpha = 2.0*xi_1*omega_1-rayleigh_beta*omega_1*omega_1
             print('Info:')
-            print('dt: ',self.settings["time_step"].GetDouble())
-            print('theta_factor: ',theta_factor)
+            print('dt: ',Dt)
             print('g_coeff: ',g_coeff)
-            print('gamma: ',self.settings["gamma"].GetDouble())
-            print('delta1: ',self.settings["delta_1"].GetDouble())
-            print('delta2: ',self.settings["delta_2"].GetDouble())
             print('omega_1: ',omega_1)
             print('omega_n: ',omega_n)
             print('xi_1: ',xi_1)
             print('xi_n: ',xi_n)
             print('Alpha and Beta output:')
-            print('alpha: ',alpha)
-            print('beta: ',beta)
-        else:
-            alpha = self.settings["rayleigh_alpha"].GetDouble()
-            beta = self.settings["rayleigh_beta"].GetDouble()
+            print('rayleigh_alpha: ',rayleigh_alpha)
+            print('rayleigh_beta: ',rayleigh_beta)
         
-        process_info.SetValue(StructuralMechanicsApplication.RAYLEIGH_ALPHA, alpha)
-        process_info.SetValue(StructuralMechanicsApplication.RAYLEIGH_BETA, beta)
+        process_info.SetValue(StructuralMechanicsApplication.RAYLEIGH_ALPHA, rayleigh_alpha)
+        process_info.SetValue(StructuralMechanicsApplication.RAYLEIGH_BETA, rayleigh_beta)
         process_info.SetValue(KratosPoro.G_COEFFICIENT, g_coeff)
         process_info.SetValue(KratosPoro.THETA_FACTOR, theta_factor)
-        process_info.SetValue(KratosPoro.DELTA1, self.settings["delta_1"].GetDouble())
-        process_info.SetValue(KratosPoro.DELTA2, self.settings["delta_2"].GetDouble())
-        process_info.SetValue(KratosPoro.FIC_GAMMA, self.settings["gamma"].GetDouble())
 
         # Setting the time integration schemes
-        if(scheme_type == "cd"):
+        if(scheme_type == "Explicit_Central_Differences"):
             scheme = KratosPoro.PoroExplicitCDScheme()
-        elif(scheme_type == "vv"):
+        elif(scheme_type == "Explicit_Velocity_Verlet"):
             scheme = KratosPoro.PoroExplicitVVScheme()
-        elif(scheme_type == "ovv"):
-            scheme = KratosPoro.PoroExplicitOVVScheme()
-        elif(scheme_type == "cd_fic"):
-            scheme = KratosPoro.PoroExplicitCDFICScheme()
         else:
             err_msg =  "The requested scheme type \"" + scheme_type + "\" is not available!\n"
-            err_msg += "Available options are: \"cd\", \"ocd\", \"vv\", \"ovv\", \"cd_fic\""
+            err_msg += "Available options are: \"Explicit_Central_Differences\", \"Explicit_Velocity_Verlet\" "
             raise Exception(err_msg)
         return scheme
 
