@@ -204,10 +204,10 @@ namespace Kratos
     double mWidthCoordinate;
     double mHeightReference;
     double mTolerance;
+    std::string mOutputFileName;
     double mTimeInterval;
     double mPreviousPlotTime = 0.0;
 
-    std::string mOutputFileName;
 
     ///@}
     ///@name Private Operations
