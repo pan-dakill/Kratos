@@ -255,6 +255,24 @@ namespace Kratos
 						double currentTime = rCurrentProcessInfo[TIME];
 						double initialTime = mrRemesh.BoundingBoxInitialTime;
 						double finalTime = mrRemesh.BoundingBoxFinalTime;
+
+						double posX = i_node->X();
+						double posZ = i_node->Z();
+						double tolerance = 0.01;
+						double time = currentTime;
+						double timeLimitForPistonMotion = 5;
+						if (currentTime > timeLimitForPistonMotion)
+						{
+							time = timeLimitForPistonMotion;
+						}
+						double velocityCoeffcientPistonMotion = 2.1 * 0.2;
+						double velXwall = velocityCoeffcientPistonMotion * time;
+						double minPosX = velXwall * time * 0.1 - tolerance;
+						double initialSlope = 180.67867 + tolerance;
+						double finalSlope = 236.5 - tolerance;
+						double slope = 3.6 / (236.5 - 180.67867);
+						double minZ = slope * (posX - 180.67867) - tolerance;
+
 						if (currentTime > initialTime && currentTime < finalTime)
 						{
 							array_1d<double, 3> BoundingBoxLowerPoint = mrRemesh.BoundingBoxLowerPoint;
@@ -264,14 +282,18 @@ namespace Kratos
 							{
 								i_node->Set(TO_ERASE);
 							}
+							else if (posX < minPosX)
+							{
+								i_node->Set(TO_ERASE);
+							}
+							else if (posX > initialSlope && posX < finalSlope && posZ < minZ)
+							{
+								i_node->Set(TO_ERASE);
+							}
 							else
 							{
 								(rModelPart.Nodes()).push_back(*(i_node.base()));
 							}
-						}
-						else
-						{
-							(rModelPart.Nodes()).push_back(*(i_node.base()));
 						}
 					}
 					else
@@ -282,6 +304,7 @@ namespace Kratos
 					/////////////////////////////////////////// here for BOUNDING BOX ///////////////////////////////////////////
 				}
 			}
+			std::cout << "         DONE      erase this node " << std::endl;
 
 			rModelPart.Nodes().Sort();
 
@@ -921,7 +944,7 @@ namespace Kratos
 			array_1d<double, 3> RefiningBoxMaximumPoint = mrRemesh.RefiningBoxMaximumPoint;
 
 			double meshSize = mrRemesh.Refine->CriticalRadius;
-			double distance = 2 * meshSize;
+			double distance = 1.0 * meshSize;
 			double seperation = 0;
 			double coefficient = 0;
 			if (meshSize > mrRemesh.RefiningBoxMeshSize)
@@ -958,7 +981,7 @@ namespace Kratos
 			}
 			else
 			{
-				distance = 2.0 * mrRemesh.RefiningBoxMeshSize;
+				distance = 1.0 * mrRemesh.RefiningBoxMeshSize;
 
 				if (NodeCoordinates[0] > (minInternalPoint[0] + distance) && NodeCoordinates[0] < (maxInternalPoint[0] - distance) &&
 					NodeCoordinates[1] > (minInternalPoint[1] + distance) && NodeCoordinates[1] < (maxInternalPoint[1] - distance))
@@ -1008,7 +1031,7 @@ namespace Kratos
 			array_1d<double, 3> RefiningBoxMaximumPoint = mrRemesh.RefiningBoxMaximumPoint;
 
 			double meshSize = mrRemesh.Refine->CriticalRadius;
-			double distance = 2.0 * meshSize;
+			double distance = 1.0 * meshSize;
 			double seperation = 0;
 			double coefficient = 0;
 			if (meshSize > mrRemesh.RefiningBoxMeshSize)
@@ -1059,7 +1082,7 @@ namespace Kratos
 			else
 			{
 
-				distance = 2.0 * mrRemesh.RefiningBoxMeshSize;
+				distance = 1.0 * mrRemesh.RefiningBoxMeshSize;
 
 				if (NodeCoordinates[0] > (minInternalPoint[0] + distance) && NodeCoordinates[0] < (maxInternalPoint[0] - distance) &&
 					NodeCoordinates[1] > (minInternalPoint[1] + distance) && NodeCoordinates[1] < (maxInternalPoint[1] - distance) &&

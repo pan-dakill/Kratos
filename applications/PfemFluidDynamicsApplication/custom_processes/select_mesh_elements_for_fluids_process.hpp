@@ -179,6 +179,7 @@ namespace Kratos
                     unsigned int previouslyIsolatedNodes = 0;
                     unsigned int sumPreviouslyIsolatedFreeSurf = 0;
                     unsigned int sumIsolatedFreeSurf = 0;
+                    unsigned int bottomRigid = 0;
                     std::vector<array_1d<double, 3>> nodesCoordinates;
                     nodesCoordinates.resize(nds);
                     std::vector<array_1d<double, 3>> nodesVelocities;
@@ -237,6 +238,11 @@ namespace Kratos
                             {
                                 countIsolatedWallNodes++;
                             }
+                            double coorZ = vertices.back().Coordinates()[2];
+                            if (coorZ < 3.2 && vertices.back().IsNot(FREE_SURFACE))
+                            {
+                                bottomRigid++;
+                            }
                         }
 
                         if (vertices.back().IsNot(RIGID) && vertices.back().Is(BOUNDARY))
@@ -292,6 +298,17 @@ namespace Kratos
                         if (dimension == 3)
                         {
                             Alpha *= 1.1;
+                            if (bottomRigid > 1 && numfreesurf == 0)
+                            {
+                                if (bottomRigid > 2)
+                                {
+                                    Alpha *= 1.5;
+                                }
+                                else
+                                {
+                                    Alpha *= 1.25;
+                                }
+                            }
                         }
                     }
 
@@ -356,10 +373,10 @@ namespace Kratos
                             }
                         }
                     }
-                    if (firstMesh == true)
-                    {
-                        Alpha *= 1.15;
-                    }
+                    // if (firstMesh == true)
+                    // {
+                    //     Alpha *= 1.15;
+                    // }
 
                     if (numinlet > 0)
                     {
@@ -795,7 +812,7 @@ namespace Kratos
             array_1d<double, 3> minInternalPoint = mrRemesh.RefiningBoxMinInternalPoint;
             array_1d<double, 3> maxExternalPoint = mrRemesh.RefiningBoxMaxExternalPoint;
             array_1d<double, 3> maxInternalPoint = mrRemesh.RefiningBoxMaxInternalPoint;
-            double distance = 2.0 * mrRemesh.Refine->CriticalRadius;
+            double distance = 1.0 * mrRemesh.Refine->CriticalRadius;
             double seperation = 0;
             double coefficient = 0;
 

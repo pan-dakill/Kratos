@@ -1233,7 +1233,7 @@ namespace Kratos
 			double initialTime = mrRemesh.RefiningBoxInitialTime;
 			double finalTime = mrRemesh.RefiningBoxFinalTime;
 			bool refiningBox = mrRemesh.UseRefiningBox;
-			double distance = 2.0 * meanMeshSize;
+			double distance = 1.0 * meanMeshSize;
 			bool penalizationRigid = false;
 			double seperation = 0;
 			double coefficient = 0;
@@ -1308,7 +1308,7 @@ namespace Kratos
 					}
 					else
 					{
-						distance = 2.0 * mrRemesh.RefiningBoxMeshSize;
+						distance = 1.0 * mrRemesh.RefiningBoxMeshSize;
 						if (Element[pn].X() > (minInternalPoint[0] + distance) && Element[pn].X() < (maxInternalPoint[0] - distance) &&
 							Element[pn].Y() > (minInternalPoint[1] + distance) && Element[pn].Y() < (maxInternalPoint[1] - distance))
 						{
@@ -1522,7 +1522,7 @@ namespace Kratos
 			double initialTime = mrRemesh.RefiningBoxInitialTime;
 			double finalTime = mrRemesh.RefiningBoxFinalTime;
 			bool refiningBox = mrRemesh.UseRefiningBox;
-			double distance = 2.0 * meanMeshSize;
+			double distance = 1.0 * meanMeshSize;
 			bool penalizationRigid = false;
 			double seperation = 0;
 			double coefficient = 0;
@@ -1612,7 +1612,7 @@ namespace Kratos
 					}
 					else
 					{
-						distance = 2.0 * mrRemesh.RefiningBoxMeshSize;
+						distance = 1.0 * mrRemesh.RefiningBoxMeshSize;
 						if (Element[pn].X() > (minInternalPoint[0] + distance) && Element[pn].X() < (maxInternalPoint[0] - distance) &&
 							Element[pn].Y() > (minInternalPoint[1] + distance) && Element[pn].Y() < (maxInternalPoint[1] - distance) &&
 							Element[pn].Z() > (minInternalPoint[2] + distance) && Element[pn].Z() < (maxInternalPoint[2] - distance))
