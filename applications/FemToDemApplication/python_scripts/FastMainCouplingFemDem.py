@@ -36,7 +36,6 @@ class MainCoupledFemDem_Solution:
 
         self.domain_size = self.FEM_Solution.main_model_part.ProcessInfo[KratosMultiphysics.DOMAIN_SIZE]
         self.InitializePlotsFiles()
-        self.echo_level = 0
         self.is_slave = False
 
 #============================================================================================================================
@@ -47,11 +46,6 @@ class MainCoupledFemDem_Solution:
 
 #============================================================================================================================
     def Initialize(self):
-        if self.domain_size == 2:
-            self.number_of_nodes_element = 3
-        else: # 3D
-            self.number_of_nodes_element = 4
-            self.FEM_Solution.main_model_part.ProcessInfo[KratosFemDem.ERASED_VOLUME] = 0.0 # Sand Production Calculations
 
         self.FEM_Solution.Initialize()
         self.DEM_Solution.Initialize()
@@ -65,19 +59,10 @@ class MainCoupledFemDem_Solution:
         # Initialize the "flag" RADIUS in all the nodes
         utils.SetNonHistoricalVariable(KratosMultiphysics.RADIUS, 0.0, nodes)
 
-        # Initialize the var to track volume erased for each pressure
-        utils.SetNonHistoricalVariable(KratosFemDem.PRESSURE_VOLUME, 0.0, nodes)
-        utils.SetNonHistoricalVariable(KratosFemDem.PRESSURE_INITIAL_VOLUME, 0.0, nodes)
-
         self.SpheresModelPart = self.DEM_Solution.spheres_model_part
         self.DEMParameters = self.DEM_Solution.DEM_parameters
         self.DEMProperties = self.SpheresModelPart.GetProperties()[1]
-        self.ParticleCreatorDestructor = PCD.FemDemParticleCreatorDestructor(self.SpheresModelPart,
-                                                                           self.DEMProperties,
-                                                                           self.DEMParameters)
 
-        if self.domain_size == 3:
-            self.nodal_neighbour_finder = KratosMultiphysics.FindNodalNeighboursProcess(self.FEM_Solution.main_model_part)
 
         if self.FEM_Solution.ProjectParameters.Has("transfer_dem_contact_forces") == False:
             self.TransferDEMContactForcesToFEM = True
@@ -99,17 +84,6 @@ class MainCoupledFemDem_Solution:
         # Initialize IP variables to zero
         self.InitializeIntegrationPointsVariables()
 
-        if self.PressureLoad:
-            KratosFemDem.AssignPressureIdProcess(self.FEM_Solution.main_model_part).Execute()
-            KratosFemDem.ComputeInitialVolumeProcess(self.FEM_Solution.main_model_part).Execute()
-
-        if self.FEM_Solution.ProjectParameters.Has("tangent_operator") == True:
-            # 0 -> Elastic , 1 -> Secant , 2 -> Tangent , 3 -> Tangent 2nd Order
-            tangent_type = self.FEM_Solution.ProjectParameters["tangent_operator"].GetInt()
-            self.FEM_Solution.main_model_part.ProcessInfo[KratosFemDem.TANGENT_CONSTITUTIVE_TENSOR] = tangent_type
-        else:
-            self.FEM_Solution.main_model_part.ProcessInfo[KratosFemDem.TANGENT_CONSTITUTIVE_TENSOR] = 2
-
         self.SkinDetectionProcessParameters = KratosMultiphysics.Parameters("""
         {
             "name_auxiliar_model_part" : "SkinDEMModelPart",
@@ -121,11 +95,6 @@ class MainCoupledFemDem_Solution:
         # for the dem contact forces coupling
         self.InitializeDummyNodalForces()
 
-        # Just to find neighbours the 1st time
-        self.FEM_Solution.main_model_part.ProcessInfo[KratosFemDem.GENERATE_DEM] = True
-        if self.domain_size == 3:
-            self.FEM_Solution.main_model_part.ProcessInfo[KratosFemDem.RECOMPUTE_NEIGHBOURS] = True
-
         self.FEM_Solution.KratosPrintInfo("")
         self.FEM_Solution.KratosPrintInfo("    ______                 ___    ____                 ")
         self.FEM_Solution.KratosPrintInfo("   / ____/___   ____ ___  |__ \  / __ \ ___   ____ ___ ")
@@ -135,16 +104,6 @@ class MainCoupledFemDem_Solution:
         self.FEM_Solution.KratosPrintInfo("                           Developed by Alejandro Cornejo")
         self.FEM_Solution.KratosPrintInfo("")
 
-        if self.echo_level > 0:
-            self.FEM_Solution.KratosPrintInfo("FEM-DEM Solution initialized")
-
-        if self.domain_size == 3: # only in 3D
-            # We assign the flag to recompute neighbours inside the 3D elements the 1st time
-            utils = KratosMultiphysics.VariableUtils()
-            utils.SetNonHistoricalVariable(KratosFemDem.RECOMPUTE_NEIGHBOURS, True, self.FEM_Solution.main_model_part.Elements)
-            # We assign the flag to recompute neighbours inside the 3D elements the 1st time
-            utils = KratosMultiphysics.VariableUtils()
-            utils.SetNonHistoricalVariable(KratosFemDem.RECOMPUTE_NEIGHBOURS, True, self.FEM_Solution.main_model_part.Elements)
 
         if self.FEM_Solution.ProjectParameters.Has("create_initial_skin") == False:
             self.CreateInitialSkin = False
@@ -166,7 +125,8 @@ class MainCoupledFemDem_Solution:
         if not self.is_slave:
             self.InitializePostProcess()
 
-        self.FindNeighboursIfNecessary()
+        KratosMultiphysics.FindNodalHProcess(self.FEM_Solution.main_model_part).Execute()
+
 
 #============================================================================================================================
     def RunMainTemporalLoop(self):
@@ -191,12 +151,6 @@ class MainCoupledFemDem_Solution:
         self.FEM_Solution.step = self.FEM_Solution.step + 1
         self.FEM_Solution.main_model_part.ProcessInfo[KratosMultiphysics.STEP] = self.FEM_Solution.step
 
-        # self.FindNeighboursIfNecessary()
-        self.PerformRemeshingIfNecessary()
-
-        if self.echo_level > 0:
-            self.FEM_Solution.KratosPrintInfo("FEM-DEM:: InitializeSolutionStep of the FEM part")
-
         self.FEM_Solution.InitializeSolutionStep()
         self.DEM_Solution._GetSolver().AdvanceInTime(self.FEM_Solution.time)
         # self.DEM_Solution.InitializeSolutionStep()
@@ -211,7 +165,6 @@ class MainCoupledFemDem_Solution:
         self.FEM_Solution.solver.Solve()
         ########################################################
 
-        self.ExecuteBeforeGeneratingDEM()
         self.GenerateDEM() # we create the new DEM of this time step
         self.ExecuteAfterGeneratingDEM()
         self.BeforeSolveDEMOperations()
@@ -307,8 +260,6 @@ class MainCoupledFemDem_Solution:
 
 #InitializeDummyNodalForces============================================================================================================================
     def InitializeDummyNodalForces(self):
-        if self.echo_level > 0:
-            self.FEM_Solution.KratosPrintInfo("FEM-DEM:: InitializeDummyNodalForces")
 
         # we fill the submodel part with the nodes and dummy conditions
         max_id = self.GetMaximumConditionId()
@@ -360,51 +311,21 @@ class MainCoupledFemDem_Solution:
 
 #GenerateDEM============================================================================================================================
     def GenerateDEM(self): # This method creates the DEM elements and remove the damaged FEM, Additionally remove the isolated elements
-        if self.echo_level > 0:
-            self.FEM_Solution.KratosPrintInfo("FEM-DEM:: GenerateDEM")
 
-        # If we want to compute sand production
-        # self.CountErasedVolume()
+        dem_generator_process = KratosFemDem.GenerateDemProcess(self.FEM_Solution.main_model_part, self.SpheresModelPart)
+        dem_generator_process.Execute()
 
-        if KratosFemDem.FEMDEMCouplingUtilities().IsGenerateDEMRequired(self.FEM_Solution.main_model_part):
+        # We remove the inactive DEM associated to fem_nodes
+        element_eliminator = KratosMultiphysics.AuxiliarModelPartUtilities(self.FEM_Solution.main_model_part)
+        element_eliminator.RemoveElementsAndBelongings(KratosMultiphysics.TO_ERASE)
 
-            if self.PressureLoad:
-                self.ExpandWetNodes()
-                KratosFemDem.UpdatePressureVolumeProcess(self.FEM_Solution.main_model_part).Execute()
-                self.ExpandWetNodes()
+        self.ComputeSkinSubModelPart()
+        if self.DEMFEM_contact:
+            self.TransferFEMSkinToDEM()
 
-            self.UpdateDEMVariables()
-
-            dem_generator_process = KratosFemDem.GenerateDemProcess(self.FEM_Solution.main_model_part, self.SpheresModelPart)
-            dem_generator_process.Execute()
-
-            # We remove the inactive DEM associated to fem_nodes
-            element_eliminator = KratosMultiphysics.AuxiliarModelPartUtilities(self.FEM_Solution.main_model_part)
-            element_eliminator.RemoveElementsAndBelongings(KratosMultiphysics.TO_ERASE)
-
-            self.FindNeighboursIfNecessary()
-
-            if self.domain_size == 3:
-                # We assign the flag to recompute neighbours inside the 3D elements
-                utils = KratosMultiphysics.VariableUtils()
-                utils.SetNonHistoricalVariable(KratosFemDem.RECOMPUTE_NEIGHBOURS, True, self.FEM_Solution.main_model_part.Elements)
-
-            # We update the skin for the DE-FE contact
-            self.ComputeSkinSubModelPart()
-            if self.DEMFEM_contact:
-                self.TransferFEMSkinToDEM()
-
-            # We reset the flag
-            utils = KratosMultiphysics.VariableUtils()
-            elements = self.FEM_Solution.main_model_part.Elements
-            utils.SetNonHistoricalVariable(KratosFemDem.GENERATE_DEM, False, elements)
-
-            self.ExtrapolatePressureLoad()
-
-            if self.do_stabilization_solve:
-                self.FEM_Solution.KratosPrintInfo("FEM-DEM:: Stabilization Calculation after removing FE...")
-                self.FEM_Solution.solver.Solve()
-                self.ExecuteAfterGeneratingDEM()
+        self.FEM_Solution.KratosPrintInfo("FEM-DEM:: Stabilization Calculation after removing FE...")
+        self.FEM_Solution.solver.Solve()
+        self.ExecuteAfterGeneratingDEM()
 
 
 #UpdateDEMVariables============================================================================================================================
@@ -658,8 +579,6 @@ class MainCoupledFemDem_Solution:
 
 #ExecuteAfterGeneratingDEM============================================================================================================================
     def ExecuteAfterGeneratingDEM(self):
-        # self.ExtrapolatePressureLoad()
-        self.SpheresModelPart = self.ParticleCreatorDestructor.GetSpheresModelPart()
         # We update coordinates, displ and velocities of the DEM according to FEM
         self.UpdateDEMVariables()
 
