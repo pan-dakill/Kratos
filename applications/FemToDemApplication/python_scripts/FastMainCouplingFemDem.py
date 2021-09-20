@@ -258,6 +258,14 @@ class MainCoupledFemDem_Solution:
         nodes = self.FEM_Solution.main_model_part.Nodes
         utils.SetNonHistoricalVariable(MeshingApplication.AUXILIAR_GRADIENT, ZeroVector3, nodes)
 
+#GetMaximumConditionId============================================================================================================================
+    def GetMaximumConditionId(self):
+        max_id = 0
+        for condition in self.FEM_Solution.main_model_part.Conditions:
+            if condition.Id > max_id:
+                max_id = condition.Id
+        return max_id
+
 #InitializeDummyNodalForces============================================================================================================================
     def InitializeDummyNodalForces(self):
 
@@ -323,8 +331,8 @@ class MainCoupledFemDem_Solution:
         if self.DEMFEM_contact:
             self.TransferFEMSkinToDEM()
 
-        self.FEM_Solution.KratosPrintInfo("FEM-DEM:: Stabilization Calculation after removing FE...")
-        self.FEM_Solution.solver.Solve()
+        # self.FEM_Solution.KratosPrintInfo("FEM-DEM:: Stabilization Calculation after removing FE...")
+        # self.FEM_Solution.solver.Solve()
         self.ExecuteAfterGeneratingDEM()
 
 
