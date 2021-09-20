@@ -131,8 +131,10 @@ void GenerateDemProcess::Execute()
         if (damages[0] >= 0.99) { // we remove the FE
             for (int i = 0; i < r_geom.size(); i++) {
                 auto& r_node = r_geom[i];
-                const double nodal_h = r_node.FastGetSolutionStepValue(NODAL_H);
-                this->CreateDEMParticle(r_node.Id(), r_node.Coordinates(), p_DEM_properties,0.5* nodal_h, r_node);
+                if (!r_node.GetValue(IS_DEM)) {
+                    const double nodal_h = r_node.FastGetSolutionStepValue(NODAL_H);
+                    this->CreateDEMParticle(r_node.Id(), r_node.Coordinates(), p_DEM_properties,0.5* nodal_h, r_node);
+                }
             }
             it_elem->Set(TO_ERASE, true);
         }
