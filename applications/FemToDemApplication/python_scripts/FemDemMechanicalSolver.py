@@ -60,6 +60,7 @@ class FemDemMechanicalSolver(object):
             "dofs": [],
             "reform_dofs_at_each_step": true,
             "line_search": false,
+            "use_old_stiffness_in_first_iteration": true,
             "implex": false,
             "stabilization_factor": null,
             "compute_reactions": true,

@@ -308,7 +308,7 @@ class MainCoupledFemDem_Solution:
                 interval_settings = self.FEM_Solution.ProjectParameters["problem_data"]["variable_time_steps"][key]
                 interval = KratosMultiphysics.IntervalUtility(interval_settings)
 
-                 # Getting the time step of the interval
+                # Getting the time step of the interval
                 if interval.IsInInterval(current_time):
                     return interval_settings["time_step"].GetDouble()
             # If we arrive here we raise an error because the intervals are not well defined
@@ -331,9 +331,11 @@ class MainCoupledFemDem_Solution:
         if self.DEMFEM_contact:
             self.TransferFEMSkinToDEM()
 
-        # self.FEM_Solution.KratosPrintInfo("FEM-DEM:: Stabilization Calculation after removing FE...")
-        # self.FEM_Solution.solver.Solve()
-        self.ExecuteAfterGeneratingDEM()
+        if self.FEM_Solution.main_model_part.ProcessInfo[KratosFemDem.GENERATE_DEM]:
+            self.FEM_Solution.KratosPrintInfo("FEM-DEM:: Stabilization Calculation after removing FE...")
+            self.FEM_Solution.solver.Solve()
+            self.ExecuteAfterGeneratingDEM()
+            self.FEM_Solution.main_model_part.ProcessInfo[KratosFemDem.GENERATE_DEM] = False
 
 
 #UpdateDEMVariables============================================================================================================================

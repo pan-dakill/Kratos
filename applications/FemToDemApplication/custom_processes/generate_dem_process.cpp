@@ -121,6 +121,7 @@ void GenerateDemProcess::Execute()
     mIsDynamic = it_element_begin->GetGeometry()[0].SolutionStepsDataHas(VELOCITY);
 
     auto r_process_info = mrModelPart.GetProcessInfo();
+    r_process_info[GENERATE_DEM] = false;
 
     #pragma omp parallel for
     for (int i = 0; i < static_cast<int>(mrModelPart.Elements().size()); i++) {
@@ -128,12 +129,16 @@ void GenerateDemProcess::Execute()
         auto& r_geom = it_elem->GetGeometry();
         std::vector<double> damages(1); // only 1 IP in FEMDEM
         it_elem->CalculateOnIntegrationPoints(DAMAGE, damages, r_process_info);
-        if (damages[0] >= 0.99) { // we remove the FE
+        if (damages[0] >= 0.999) { // we remove the FE
             for (int i = 0; i < r_geom.size(); i++) {
                 auto& r_node = r_geom[i];
                 if (!r_node.GetValue(IS_DEM)) {
                     const double nodal_h = r_node.FastGetSolutionStepValue(NODAL_H);
-                    this->CreateDEMParticle(r_node.Id(), r_node.Coordinates(), p_DEM_properties,0.5* nodal_h, r_node);
+                    #pragma omp critical
+                    {
+                        this->CreateDEMParticle(r_node.Id(), r_node.Coordinates(), p_DEM_properties, 0.4*nodal_h, r_node);
+                        r_process_info[GENERATE_DEM] = true;
+                    }
                 }
             }
             it_elem->Set(TO_ERASE, true);
@@ -145,7 +150,6 @@ void GenerateDemProcess::Execute()
     for (int i = 1; i < static_cast<int>(mrDEMModelPart.Elements().size()); i++) {
         auto it_DEM = it_DEM_begin + i;
         auto& r_geometry = it_DEM->GetGeometry();
-        // r_geometry[0].Id() = max_dem_node_id + i;
         r_geometry[0].SetId(max_dem_node_id + i);
     }
 

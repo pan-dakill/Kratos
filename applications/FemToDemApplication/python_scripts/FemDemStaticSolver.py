@@ -157,7 +157,7 @@ class StaticMechanicalSolver(BaseSolver.FemDemMechanicalSolver):
         mechanical_scheme = self._get_solution_scheme()
         mechanical_convergence_criterion = self._get_convergence_criterion()
         builder_and_solver = self._get_builder_and_solver()
-        return KratosMultiphysics.ResidualBasedNewtonRaphsonStrategy(computing_model_part,
+        strategy = KratosMultiphysics.ResidualBasedNewtonRaphsonStrategy(computing_model_part,
                                                                      mechanical_scheme,
                                                                      mechanical_convergence_criterion,
                                                                      builder_and_solver,
@@ -165,6 +165,9 @@ class StaticMechanicalSolver(BaseSolver.FemDemMechanicalSolver):
                                                                      self.settings["compute_reactions"].GetBool(),
                                                                      self.settings["reform_dofs_at_each_step"].GetBool(),
                                                                      self.settings["move_mesh_flag"].GetBool())
+        strategy.SetUseOldStiffnessInFirstIterationFlag(self.settings["use_old_stiffness_in_first_iteration"].GetBool())
+        return strategy
+
 
     # def _create_newton_raphson_hexaedrons_strategy(self):
     #     computing_model_part = self.GetComputingModelPart()
