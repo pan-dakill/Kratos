@@ -124,6 +124,9 @@ class PfemFluidDynamicsAnalysis(AnalysisStage):
         self.model_processes = ProcessHandler(self.model, process_parameters)
         self.model_processes.ExecuteInitialize()
 
+        self.calculate_wave_first_probe = KratosMultiphysics.PfemFluidDynamicsApplication.CalculateWaveHeightProcess(self.main_model_part,0,1,2, -30, 1.75, 0, 2.5e-1, "WaveHeightProbe1",0.1)
+        self.calculate_wave_second_probe = KratosMultiphysics.PfemFluidDynamicsApplication.CalculateWaveHeightProcess(self.main_model_part,0,1,2, -100, 1.75, 0, 2.5e-1, "WaveHeightProbe2",0.1)
+
         ## here we initialize user-provided processes
         order_processes_initialization = self._GetOrderOfProcessesInitialization()
         self._list_of_processes        = self._CreateProcesses("processes", order_processes_initialization)
@@ -208,6 +211,9 @@ class PfemFluidDynamicsAnalysis(AnalysisStage):
 
         # processes to be executed after witting the output
         self.model_processes.ExecuteAfterOutputStep()
+
+        self.calculate_wave_first_probe.Execute()
+        self.calculate_wave_second_probe.Execute()
 
         for process in self._GetListOfProcesses():
             process.ExecuteAfterOutputStep()

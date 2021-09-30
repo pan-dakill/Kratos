@@ -46,14 +46,17 @@ namespace Kratos
     ///@name Life Cycle
     ///@{
     CalculateWaveHeightProcess(ModelPart &rModelPart,
-                               const int HeightDirection,
                                const int PlaneDirection,
-                               const double PlaneCoordinates = 0.0,
+                               const int HeightDirection,
+                               const int WidthDirection,
+                               const double PlaneCoordinate = 0.0,
+                               const double WidthCoordinate = 0.0,
                                const double HeightReference = 0.0,
                                const double Tolerance = 1.0e-2,
                                const std::string OutputFileName = "WaveHeight",
-                               const double TimeInterval = 0.0) : mrModelPart(rModelPart), mHeightDirection(HeightDirection),
-                                                                  mPlaneDirection(PlaneDirection), mPlaneCoordinates(PlaneCoordinates),
+                               const double TimeInterval = 0.0) : mrModelPart(rModelPart),
+                                                                  mPlaneDirection(PlaneDirection), mHeightDirection(HeightDirection), mWidthDirection(WidthDirection),
+                                                                  mPlaneCoordinate(PlaneCoordinate), mWidthCoordinate(WidthCoordinate),
                                                                   mHeightReference(HeightReference), mTolerance(Tolerance),
                                                                   mOutputFileName(OutputFileName), mTimeInterval(TimeInterval)
     {
@@ -87,42 +90,44 @@ namespace Kratos
       KRATOS_TRY
       const double time = mrModelPart.GetProcessInfo()[TIME];
       const int step = mrModelPart.GetProcessInfo()[STEP];
+      const unsigned int dimension = mrModelPart.ElementsBegin()->GetGeometry().WorkingSpaceDimension();
 
-      if (time - mPreviousPlotTime > mTimeInterval || step == 1) {
+      if (time - mPreviousPlotTime > mTimeInterval || step == 1)
+      {
         // We loop over the nodes...
         const auto it_node_begin = mrModelPart.NodesBegin();
-        const int num_threads = ParallelUtilities::GetNumThreads();
-        std::vector<double> max_vector(num_threads, -1.0);
-
-        #pragma omp parallel for
-        for (int i = 0; i < static_cast<int>(mrModelPart.Nodes().size()); i++) {
+        const int num_threads = OpenMPUtils::GetNumThreads();
+        std::vector<double> max_vector(num_threads, 0);
+        bool found = false;
+#pragma omp parallel for
+        for (int i = 0; i < static_cast<int>(mrModelPart.Nodes().size()); i++)
+        {
           auto it_node = it_node_begin + i;
-
           const int thread_id = OpenMPUtils::ThisThread();
           const auto &r_node_coordinates = it_node->Coordinates();
-          if (it_node->IsNot(ISOLATED) &&
-              it_node->Is(FREE_SURFACE) &&
-              r_node_coordinates(mPlaneDirection) < mPlaneCoordinates + mTolerance &&
-              r_node_coordinates(mPlaneDirection) > mPlaneCoordinates - mTolerance)
+          if (it_node->IsNot(ISOLATED) && it_node->IsNot(RIGID) && it_node->Is(FREE_SURFACE) &&
+              r_node_coordinates(mPlaneDirection) < (mPlaneCoordinate + mTolerance) && r_node_coordinates(mPlaneDirection) > (mPlaneCoordinate - mTolerance) &&
+              ((dimension == 3 && r_node_coordinates(mWidthDirection) < (mWidthCoordinate + mTolerance) && r_node_coordinates(mWidthDirection) > (mWidthCoordinate - mTolerance)) || dimension == 2))
           {
+            found = true;
             const double height = r_node_coordinates(mHeightDirection);
-
-            const double wave_height = std::abs(height - mHeightReference);
-            if (wave_height > max_vector[thread_id])
+            const double wave_height = height - mHeightReference;
+            if (std::abs(wave_height) > std::abs(max_vector[thread_id]))
               max_vector[thread_id] = wave_height;
           }
         }
         const double max_height = *std::max_element(max_vector.begin(), max_vector.end());
 
         // We open the file where we print the wave height values
-        if (max_height > -1.0) {
+        //if (max_height > -1.0)
+        if (found == true)
+        {
           std::ofstream my_file;
           const std::string file_name = mOutputFileName + ".txt";
           my_file.open(file_name, std::ios_base::app);
-          my_file << "  " + std::to_string(time) + "    " + std::to_string(max_height - mHeightReference) << std::endl;
+          my_file << "  " + std::to_string(time) + "    " + std::to_string(max_height) << std::endl;
           mPreviousPlotTime = time;
         }
-
       }
       KRATOS_CATCH("");
     }
@@ -193,14 +198,16 @@ namespace Kratos
     ModelPart &mrModelPart;
     int mHeightDirection;
     int mPlaneDirection;
+    int mWidthDirection;
 
-    double mPlaneCoordinates;
+    double mPlaneCoordinate;
+    double mWidthCoordinate;
     double mHeightReference;
     double mTolerance;
-    std::string mOutputFileName;
     double mTimeInterval;
     double mPreviousPlotTime = 0.0;
 
+    std::string mOutputFileName;
 
     ///@}
     ///@name Private Operations
