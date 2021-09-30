@@ -166,6 +166,9 @@ class PfemFluidDynamicsAnalysis(AnalysisStage):
         self.end_time   = self.project_parameters["problem_data"]["end_time"].GetDouble()
         self.delta_time = self.project_parameters["solver_settings"]["time_stepping"]["time_step"].GetDouble()
 
+        self.wave_process_wg8 = KratosPfemFluid.CalculateWaveHeightProcess(self.computing_model_part, 1, 0,   60,   0.0, 0.4, "WG_08", 0.5)
+        self.wave_process_wg13 = KratosPfemFluid.CalculateWaveHeightProcess(self.computing_model_part, 1, 0, 170,   0.0, 0.4, "WG_13", 0.5)
+        self.wave_process_wg14 = KratosPfemFluid.CalculateWaveHeightProcess(self.computing_model_part, 1, 0, 223.5, 0.0, 0.4, "WG_14", 0.5)
 
     def InitializeSolutionStep(self):
         """This function performs all the required operations that should be executed
@@ -213,6 +216,10 @@ class PfemFluidDynamicsAnalysis(AnalysisStage):
             process.ExecuteAfterOutputStep()
 
         self.StopTimeMeasuring(self.clock_time,"Finalize Step" , self.report);
+
+        self.wave_process_wg8.Execute()
+        self.wave_process_wg13.Execute()
+        self.wave_process_wg14.Execute()
 
     def Finalize(self):
         """This function finalizes the AnalysisStage
