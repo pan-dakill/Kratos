@@ -48,7 +48,6 @@ public:
         Parameters default_parameters( R"(
             {
                 "model_part_name":"PLEASE_CHOOSE_MODEL_PART_NAME",
-                "mesh_id": 0,
                 "variable_name"      : "PLEASE_PRESCRIBE_VARIABLE_NAME",
                 "initial_value"      : 0.0,
                 "input_file_name"    : ""
@@ -62,9 +61,9 @@ public:
         // Now validate agains defaults -- this also ensures no type mismatch
         rParameters.ValidateAndAssignDefaults(default_parameters);
 
-        mMeshId = rParameters["mesh_id"].GetInt();
         mVariableName = rParameters["variable_name"].GetString();
         mInitialValue = rParameters["initial_value"].GetDouble();
+        mInputFile = rParameters["input_file_name"].GetString();
 
         KRATOS_CATCH("");
     }
@@ -77,20 +76,25 @@ public:
 
 //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+    void Execute() override
+    {
+    }
+
+    //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
     void ExecuteInitialize() override
     {
 
         KRATOS_TRY;
 
         const Variable<double>& var = KratosComponents<Variable<double>>::Get(mVariableName);
-        const int nnodes = mrModelPart.GetMesh(mMeshId).Nodes().size();
-        bool numa_convergence = mrModelPart.GetProcessInfo()[IS_RESTARTED];
+        const int nnodes = mrModelPart.GetMesh(0).Nodes().size();
 
         if(nnodes != 0)
         {
-            ModelPart::NodesContainerType::iterator it_begin = mrModelPart.GetMesh(mMeshId).NodesBegin();
+            ModelPart::NodesContainerType::iterator it_begin = mrModelPart.GetMesh(0).NodesBegin();
 
-            if (numa_convergence == false)
+            if ((mInputFile == "") || (mInputFile == "- No file") || (mInputFile == "- Add new file"))
             {
                 #pragma omp parallel for
                 for(int i = 0; i<nnodes; i++)
@@ -125,15 +129,14 @@ public:
         KRATOS_TRY;
 
         const Variable<double>& var = KratosComponents<Variable<double>>::Get(mVariableName);
-        const int nnodes = mrModelPart.GetMesh(mMeshId).Nodes().size();
-        bool numa_convergence = mrModelPart.GetProcessInfo()[IS_RESTARTED];
+        const int nnodes = mrModelPart.GetMesh(0).Nodes().size();
 
 
         if(nnodes != 0)
         {
-            ModelPart::NodesContainerType::iterator it_begin = mrModelPart.GetMesh(mMeshId).NodesBegin();
+            ModelPart::NodesContainerType::iterator it_begin = mrModelPart.GetMesh(0).NodesBegin();
 
-            if (numa_convergence == false)
+            if ((mInputFile == "") || (mInputFile == "- No file") || (mInputFile == "- Add new file"))
             {
                 #pragma omp parallel for
                 for(int i = 0; i<nnodes; i++)
@@ -187,9 +190,9 @@ protected:
 
     ModelPart& mrModelPart;
     TableType& mrTable;
-    std::size_t mMeshId;
     std::string mVariableName;
     double mInitialValue;
+    std::string mInputFile;
 
 //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
