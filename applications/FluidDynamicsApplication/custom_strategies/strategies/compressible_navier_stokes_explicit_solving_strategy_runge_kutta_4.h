@@ -156,6 +156,18 @@ public:
     ///@name Operations
     ///@{
 
+    void InitializeSolutionStep() override
+    {
+        BaseType::InitializeSolutionStep();
+
+        if(mIsFirstStep)
+        {
+            ExecuteShockCapturing();
+        }
+
+        mIsFirstStep = False;
+    }
+
     int Check() override
     {
         int err_code = BaseType::Check();
@@ -269,18 +281,7 @@ public:
             ApplySlipCondition();
         }
 
-        // Postprocess the non-conservative magnitudes
-        // This needs to be done before the shock capturing as it is based on these
-        if (mCalculateNonConservativeMagnitudes) {
-            CalculateNonConservativeMagnitudes();
-        }
-
-        // Perform the shock capturing detection and artificial values calculation
-        // This needs to be done at the end of the step in order to include the future shock
-        // capturing magnitudes in the next automatic dt calculation
-        if (mShockCapturing) {
-            mpShockCapturingProcess->ExecuteFinalizeSolutionStep();
-        }
+        ExecuteShockCapturing();
     }
 
     /// Turn back information as a string.
@@ -356,6 +357,27 @@ protected:
     }
 
     /**
+     * @brief Computes shock capturing and its prerequisites.
+     * In this method we perform the shock capturing.
+     */
+    void ExecuteShockCapturing()
+    {
+        if (mCalculateNonConservativeMagnitudes) {
+            // Postprocess the non-conservative magnitudes
+            // This needs to be done before the shock capturing as it is based on these
+            CalculateNonConservativeMagnitudes();
+        }
+
+        if(mShockCapturing)
+        {
+            // Perform the shock capturing detection and artificial values calculation
+            // This needs to be done at the end of the step in order to include the future shock
+            // capturing magnitudes in the next automatic dt calculation
+            mpShockCapturingProcess->ExecuteFinalizeSolutionStep();
+        }
+    }
+
+    /**
      * @brief Finalize the Runge-Kutta intermediate substep
      * In this method we calculate the linearised time derivatives after the intemediate substep
      */
@@ -407,6 +429,7 @@ private:
     ///@name Member Variables
     ///@{
 
+    bool mIsFirstStep = true;
     bool mShockCapturing = true;
     bool mApplySlipCondition = true;
     bool mCalculateNonConservativeMagnitudes = true;
