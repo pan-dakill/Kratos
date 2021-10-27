@@ -29,6 +29,7 @@
 
 // Application includes
 #include "custom_utilities/fluid_calculation_utilities.h"
+#include "custom_utilities/consistent_L2_element_to_node_projection.h"
 #include "fluid_dynamics_application_variables.h"
 
 namespace Kratos
@@ -230,7 +231,6 @@ private:
         TTLSContainerType &rShockCapturingTLS)
     {
         auto &r_geom = rElement.GetGeometry();
-        const unsigned int n_nodes = r_geom.PointsNumber();
 
         // Initialize artificial magnitudes values
         if (mShockSensor) {rElement.GetValue(ARTIFICIAL_BULK_VISCOSITY) = 0.0;}
@@ -400,14 +400,10 @@ private:
             }
         }
 
-        // Project the shock capturing magnitudes to the nodes
-        const double aux_weight = r_vol / static_cast<double>(n_nodes);
-        for (unsigned int i_node = 0; i_node < n_nodes; ++i_node) {
-            auto &r_node = r_geom[i_node];
-            if (mShockSensor) {AtomicAdd(r_node.GetValue(ARTIFICIAL_BULK_VISCOSITY), aux_weight * rElement.GetValue(ARTIFICIAL_BULK_VISCOSITY));}
-            if (mShearSensor) {AtomicAdd(r_node.GetValue(ARTIFICIAL_DYNAMIC_VISCOSITY), aux_weight * rElement.GetValue(ARTIFICIAL_DYNAMIC_VISCOSITY));}
-            if (mShockSensor || mThermalSensor) {AtomicAdd(r_node.GetValue(ARTIFICIAL_CONDUCTIVITY), aux_weight * rElement.GetValue(ARTIFICIAL_CONDUCTIVITY));}
-        }
+        constexpr std::size_t n_iterations = 50;
+        ConsistentL2ElementToNodeProjection<TDim, TNumNodes>(ARTIFICIAL_BULK_VISCOSITY, mrModelPart).Project(n_iterations);
+        ConsistentL2ElementToNodeProjection<TDim, TNumNodes>(ARTIFICIAL_CONDUCTIVITY, mrModelPart).Project(n_iterations);
+        ConsistentL2ElementToNodeProjection<TDim, TNumNodes>(ARTIFICIAL_DYNAMIC_VISCOSITY, mrModelPart).Project(n_iterations);
     }
 
     /**

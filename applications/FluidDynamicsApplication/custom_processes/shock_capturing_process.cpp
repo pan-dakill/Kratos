@@ -172,14 +172,6 @@ namespace Kratos
         } else {
             KRATOS_ERROR << "Asking for a non-supported geometry. Physics-based shock capturing only supports \'Triangle2D3\' and \'Tetrahedra3D4\' geometries.";
         }
-
-        // Nodal smoothing of the shock capturing magnitudes
-        block_for_each(mrModelPart.Nodes(), [](Node<3>& rNode) {
-            const double nodal_area = rNode.GetValue(NODAL_AREA);
-            rNode.GetValue(ARTIFICIAL_CONDUCTIVITY) /= nodal_area;
-            rNode.GetValue(ARTIFICIAL_BULK_VISCOSITY) /= nodal_area;
-            rNode.GetValue(ARTIFICIAL_DYNAMIC_VISCOSITY) /= nodal_area;
-        });
     }
 
     double ShockCapturingProcess::LimitingFunction(
