@@ -164,8 +164,8 @@ public:
         {
             ExecuteShockCapturing();
         }
-
-        mIsFirstStep = False;
+	
+        mIsFirstStep = false;
     }
 
     int Check() override
