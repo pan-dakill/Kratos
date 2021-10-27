@@ -267,7 +267,7 @@ private:
 
         // Set auxiliary constants
         const double k = 1.0; // Polynomial order of the numerical simulation
-        const double eps = 1.0e-7; // Small constant to avoid division by 0
+        constexpr double eps = std::sqrt(std::numeric_limits<double>::epsilon()); // Small constant to avoid division by 0
 
         // Calculate the midpoint values
         double midpoint_rho, midpoint_tot_ener;
