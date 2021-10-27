@@ -24,7 +24,10 @@ public:
 
 	void Project(const std::size_t NumberOfIterations)
 	{
-		auto system_of_equations = InitialAssembly();
+		VariableUtils().SetNonHistoricalVariableToZero(mrVariable, mrModelPart.Nodes());
+		SystemOfEquations system_of_equations(mrModelPart.NumberOfNodes());
+		
+		InitialAssembly(system_of_equations);
 
 		for(unsigned int i=0; i<NumberOfIterations; ++i)
 		{
@@ -88,9 +91,10 @@ protected:
 	    typedef std::array<unsigned int, TNumNodes> DofType;
 	    typedef array_1d<double, TNumNodes> ArrayType;
 	    typedef std::size_t SizeType;
-	    typedef std::tuple<const DofType, const ArrayType, const SizeType> InputType; 
+	    typedef std::tuple<const DofType, const ArrayType, const SizeType> ReturnType; 
 
 	    value_type mGlobalVector;
+	    bool mVectorIsInitialized = false;
 
 	    return_type GetValue() const
 	    {
@@ -98,59 +102,102 @@ protected:
 	    }
 
 	    /// NON-THREADSAFE (fast) value of reduction, to be used within a single thread
-	    void LocalReduce(const InputType& value)
+	    void LocalReduce(const ReturnType& rLambdaReturn)
 	    {
-	    	const auto& dofs 		 = std::get<0>(value);
-	    	const auto& local_vector = std::get<1>(value);
-	    	const auto system_size 	 = std::get<2>(value);
+	    	const auto& dofs 		 = std::get<0>(rLambdaReturn);
+	    	const auto& local_vector = std::get<1>(rLambdaReturn);
 
-	    	if(mGlobalVector.size() < system_size) mGlobalVector.resize(system_size);
+	    	if(!mVectorIsInitialized)
+    		{
+	    		const auto system_size  = std::get<2>(rLambdaReturn);
+    			mGlobalVector = Vector(system_size, 0.0);
+    			mVectorIsInitialized = true;
+    		}
 
-	        for(unsigned int i=0; i<dofs.size(); ++i)
+	        for(unsigned int i=0; i<TNumNodes; ++i)
 	        {
-	        	mGlobalVector[dofs[i]] += local_vector[i];
+	        	mGlobalVector[dofs[i]] += local_vector(i);
 	        }
+
 	    }
 
 	    /// THREADSAFE (needs some sort of lock guard) reduction, to be used to sync threads
 	    void ThreadSafeReduce(const AssemblyReduction& rOther)
 	    {
+	        if(!rOther.mVectorIsInitialized) return;
+
 	        #pragma omp critical
 	        {
-	        	noalias(mGlobalVector) += rOther.mGlobalVector;
+		        if(!mVectorIsInitialized)
+	        	{
+	        		mGlobalVector = rOther.mGlobalVector;
+	        	} else {
+	        		noalias(mGlobalVector) += rOther.mGlobalVector;
+	        	}
 	    	}
 	    }
+
+	    /** @brief Boilerplate to ensure const-ness is well deduced.
+		 * Automatic template deduction fails to set most types to const, causing the compilation to fail
+		 * or sometimes causing undefined behaviour. This function bypasses it by explicitly stating the types.
+		 */
+	    static const ReturnType AssemblyReturn(
+			const DofType& rDofs,
+			const ArrayType& rVector,
+			const SizeType& rSystemSize)
+	    {
+	    	return std::tie<const DofType, const ArrayType, const SizeType>
+	    	(
+	    		rDofs,
+	    		rVector,
+	    		rSystemSize
+	    	);
+	    }
+
+	    /** @brief Boilerplate to ensure const-ness is well deduced for combined reductions.
+		 * Automatic template deduction fails to set most types to const, causing the compilation to fail.
+		 * This function bypasses it by explicitly stating the types. 
+		 */
+		static const std::tuple<const ReturnType, const ReturnType>
+		DoubleAssemblyReuturn(
+			const DofType& rDofs,
+			const ArrayType& rVector1,
+			const ArrayType& rVector2,
+			const SizeType& rSystemSize)
+		{
+			return std::tie<const ReturnType, const ReturnType>
+			(
+				std::tie(rDofs, rVector1, rSystemSize),
+				std::tie(rDofs, rVector2, rSystemSize)
+			);
+	}
 	};
 
 	/**
 	* Constructs the cached vectors:
-	* - Lumped mass matrix (aka LHS)
+	* - Main diagonal of the lumped mass matrix (aka LHS)
 	* - Q = \int elemental_value* N_i dV
 	* These vectors do not change each iteration and therefore can be cached
 	*/
-	SystemOfEquations InitialAssembly() const
+	void InitialAssembly(SystemOfEquations& rSystemOfEquations) const
 	{
 		KRATOS_TRY
 
-		VariableUtils().SetNonHistoricalVariableToZero(mrVariable, mrModelPart.Nodes());
-
 		const array_1d<double, TNumNodes> N(TNumNodes, 1.0/static_cast<double>(TNumNodes));
 		const BoundedMatrix<double, TNumNodes, TNumNodes> iso_M = outer_prod(N, N);
-
-		SystemOfEquations system(mrModelPart.NumberOfNodes());
 
 		// Mapping form node to dof
 		unsigned int i=0;
 		for(const auto& r_node : mrModelPart.Nodes())
 		{
-			system.mNodeToDof[r_node.Id()] = i;
+			rSystemOfEquations.mNodeToDof[r_node.Id()] = i;
 			++i;
 		}
 
 		// Asembling lumped mass and Q simultaneously
 		using DoubleAssembly = CombinedReduction<AssemblyReduction, AssemblyReduction>;
-		std::tie(system.LHS, system.Q) = 
-		block_for_each<DoubleAssembly>(mrModelPart.Elements(), [&](Element& rElement)
+		std::tie(rSystemOfEquations.LHS, rSystemOfEquations.Q) = 
+		block_for_each<DoubleAssembly>(mrModelPart.Elements(), [&](const Element& rElement)
 		{
 			const auto& r_geometry = rElement.GetGeometry();
 	        const double volume = ComputeVolume(r_geometry);
@@ -164,34 +211,15 @@ protected:
 			std::array<unsigned int, TNumNodes> dofs;
 			for(unsigned int i=0; i<TNumNodes; ++i)
 			{
-				dofs[i] = system.mNodeToDof[r_geometry[i].Id()];
+				dofs[i] = rSystemOfEquations.mNodeToDof[r_geometry[i].Id()];
 			}
 
-			return DoubleAssemblyReuturn(dofs, lhs, q, system.mSize);
+			return AssemblyReduction::DoubleAssemblyReuturn(dofs, lhs, q, rSystemOfEquations.mSize);
 		});
-
-		return system;
 
 		KRATOS_CATCH("")
 	}
 
-	/** @brief Boilerplate to ensure const-ness is well deduced.
-	 * Automatic template deduction fails to set most types to const, causing the compilation to fail.
-	 * This function bypasses it by explicitly stating the types. 
-	 */
-	static const std::tuple<const typename AssemblyReduction::InputType, const typename AssemblyReduction::InputType>
-	DoubleAssemblyReuturn(
-		const typename AssemblyReduction::DofType& rDofs,
-		const typename AssemblyReduction::ArrayType& rVector1,
-		const typename AssemblyReduction::ArrayType& rVector2,
-		const typename AssemblyReduction::SizeType& rSystemSize)
-	{
-		return std::tie<const typename AssemblyReduction::InputType, const typename AssemblyReduction::InputType>
-		(
-			std::tie(rDofs, rVector1, rSystemSize),
-			std::tie(rDofs, rVector2, rSystemSize)
-		);
-	}
 
 	/**
 	 *	Assembles the iteration-dependent vector:
@@ -205,12 +233,14 @@ protected:
 		const array_1d<double, TNumNodes> N(TNumNodes, 1.0/static_cast<double>(TNumNodes));
 		const BoundedMatrix<double, TNumNodes, TNumNodes> iso_M = outer_prod(N, N);
 
-		rSystemOfEquations.Mu.resize(0, false); // Freeing memory
-
-		Vector new_Mu = block_for_each<AssemblyReduction>(mrModelPart.Elements(), [&](Element& rElement)
+		rSystemOfEquations.Mu = 
+		block_for_each<AssemblyReduction>(mrModelPart.Elements(), 
+			[&](const Element& rElement)
 		{
+
 			const auto& r_geometry = rElement.GetGeometry();
 	        const double volume = ComputeVolume(r_geometry);
+
 
 			// Obtaining previous iteration data and DoFs
 			array_1d<double, TNumNodes> nodal_values;
@@ -221,14 +251,14 @@ protected:
 				dofs[i] = rSystemOfEquations.mNodeToDof[r_geometry[i].Id()];
 			}
 
+
 			// Obtaining local matrices
 			const BoundedMatrix<double, TNumNodes, TNumNodes> M_consistent = volume * iso_M;
-			const array_1d<double, TNumNodes> Mu = prod(M_consistent, nodal_values);
+			const array_1d<double, TNumNodes> elemental_Mu = prod(M_consistent, nodal_values);
 
-			return std::tie(dofs, Mu, rSystemOfEquations.mSize);
+
+			return AssemblyReduction::AssemblyReturn(dofs, elemental_Mu, rSystemOfEquations.mSize);
 		});
-
-		rSystemOfEquations.Mu.swap(new_Mu);
 
 		KRATOS_CATCH("")
 	}
