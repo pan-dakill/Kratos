@@ -21,46 +21,33 @@ void JointCohesionDriven2DLaw::ComputeEquivalentStrain(ConstitutiveLawVariables&
                                                     Parameters& rValues)
 {
     const Vector& StrainVector = rValues.GetStrainVector();
+
 	//Triangular area
     if( rValues.GetOptions().Is(ConstitutiveLaw::COMPUTE_STRAIN_ENERGY) ) // No contact between interfaces
-    {
+	{
 		rVariables.EquivalentStrain = 1.0;
         if (mStateVariable == 1.0)
         {
 			double tau = rVariables.YoungModulus * StrainVector[0];
-		    double sigma = rVariables.YoungModulus * StrainVector[1];
+			double sigma = rVariables.YoungModulus * StrainVector[1];
 
-			if (sigma > 0.0)
-			{
-		        double broken_limit = (-rVariables.FrictionCoefficient * rVariables.YoungModulus * StrainVector[1])+ rVariables.Cohesion;
+			double broken_limit = rVariables.FrictionCoefficient * (-rVariables.YoungModulus * StrainVector[1] + rVariables.Cohesion);
 
-		        if (sigma > (rVariables.Cohesion/rVariables.FrictionCoefficient)) rVariables.EquivalentStrain = 0.0;
-		        if (abs (tau) > broken_limit) rVariables.EquivalentStrain = 0.0;
-			}
-        }
-    }
-
-    else // Contact between interfaces
-    {
+			if (sigma > rVariables.Cohesion) rVariables.EquivalentStrain = 0.0;
+			if (abs (tau) > broken_limit) rVariables.EquivalentStrain = 0.0;
+  	    }
+	}
+	else
+	{
         rVariables.EquivalentStrain = 1.0;
-        if (mStateVariable == 1.0)
-        {
-			double tau = rVariables.YoungModulus * StrainVector[0];
-		    double sigma = rVariables.YoungModulus * StrainVector[1];
-
-		    double broken_limit = (-rVariables.FrictionCoefficient * rVariables.YoungModulus * StrainVector[1])+ rVariables.Cohesion;
-
-		    if (sigma > (rVariables.Cohesion/rVariables.FrictionCoefficient)) rVariables.EquivalentStrain = 0.0;
-		    if (abs (tau) > broken_limit) rVariables.EquivalentStrain = 0.0;
-		}
 	}
 }
 
 //----------------------------------------------------------------------------------------
 
 void JointCohesionDriven2DLaw::ComputeConstitutiveMatrix(Matrix& rConstitutiveMatrix,
-                                                                ConstitutiveLawVariables& rVariables,
-                                                                Parameters& rValues)
+                                                         ConstitutiveLawVariables& rVariables,
+                                                         Parameters& rValues)
 {
     const Vector& StrainVector = rValues.GetStrainVector();
 
