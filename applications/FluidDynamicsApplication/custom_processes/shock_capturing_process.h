@@ -399,11 +399,6 @@ private:
                 rElement.GetValue(ARTIFICIAL_DYNAMIC_VISCOSITY) = elem_mu_star;
             }
         }
-
-        constexpr std::size_t n_iterations = 50;
-        ConsistentL2ElementToNodeProjection<TDim, TNumNodes>(ARTIFICIAL_BULK_VISCOSITY, mrModelPart).Project(n_iterations);
-        ConsistentL2ElementToNodeProjection<TDim, TNumNodes>(ARTIFICIAL_CONDUCTIVITY, mrModelPart).Project(n_iterations);
-        ConsistentL2ElementToNodeProjection<TDim, TNumNodes>(ARTIFICIAL_DYNAMIC_VISCOSITY, mrModelPart).Project(n_iterations);
     }
 
     /**

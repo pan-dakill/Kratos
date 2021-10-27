@@ -14,7 +14,8 @@ class ConsistentL2ElementToNodeProjection
 {
 public:
 
-	static_assert(TDim == 2 || TDim == 3); // Only 2D and 3D implemented
+	static_assert(TDim == 2 || TDim == 3,
+		"ConsistentL2ElementToNodeProjection is only implemented for 2D and 3D elements");
 
 	ConsistentL2ElementToNodeProjection(
 		const Variable<double>& rVariable,
@@ -43,7 +44,7 @@ protected:
 	struct SystemOfEquations
 	{
 		SystemOfEquations(const std::size_t size = 0)
-			: mSize(size), Mu(Vector(size)), LHS(Vector(size)), Q(Vector(size))
+			: mSize(size), Mu(Vector(size)), Q(Vector(size))
 		{
 			mNodeToDof.reserve(size);
 		}
@@ -55,26 +56,10 @@ protected:
 		Vector Mu;
 
 		// Cached data
-		Vector LHS;
 		Vector Q;
 
 		// Node to dof mapping
 		std::unordered_map<std::size_t, std::size_t> mNodeToDof;
-
-		Vector Solve()
-		{
-			KRATOS_TRY
-
-			// Solving
-			Vector DU = Q - Mu;
-			IndexPartition<std::size_t>(mSize).template for_each([&](const std::size_t i)
-			{
-				DU[i] /= LHS[i];
-			});
-			return DU;
-
-			KRATOS_CATCH("");
-		}
 
 	private:
 		SystemOfEquations() : mSize(0) {};
@@ -122,7 +107,7 @@ protected:
 	    }
 
 	    /// THREADSAFE (needs some sort of lock guard) reduction, to be used to sync threads
-	    void ThreadSafeReduce(const AssemblyReduction& rOther)
+	    void ThreadSafeReduce(AssemblyReduction& rOther)
 	    {
 	        if(!rOther.mVectorIsInitialized) return;
 
@@ -130,7 +115,9 @@ protected:
 	        {
 		        if(!mVectorIsInitialized)
 	        	{
-	        		mGlobalVector = rOther.mGlobalVector;
+	        		mGlobalVector.swap(rOther.mGlobalVector);
+	        		mVectorIsInitialized = true;
+	        		rOther.mVectorIsInitialized = false;
 	        	} else {
 	        		noalias(mGlobalVector) += rOther.mGlobalVector;
 	        	}
@@ -153,38 +140,16 @@ protected:
 	    		rSystemSize
 	    	);
 	    }
-
-	    /** @brief Boilerplate to ensure const-ness is well deduced for combined reductions.
-		 * Automatic template deduction fails to set most types to const, causing the compilation to fail.
-		 * This function bypasses it by explicitly stating the types. 
-		 */
-		static const std::tuple<const ReturnType, const ReturnType>
-		DoubleAssemblyReuturn(
-			const DofType& rDofs,
-			const ArrayType& rVector1,
-			const ArrayType& rVector2,
-			const SizeType& rSystemSize)
-		{
-			return std::tie<const ReturnType, const ReturnType>
-			(
-				std::tie(rDofs, rVector1, rSystemSize),
-				std::tie(rDofs, rVector2, rSystemSize)
-			);
-	}
 	};
 
 	/**
-	* Constructs the cached vectors:
-	* - Main diagonal of the lumped mass matrix (aka LHS)
+	* Constructs the cached vector:
 	* - Q = \int elemental_value* N_i dV
 	* These vectors do not change each iteration and therefore can be cached
 	*/
 	void InitialAssembly(SystemOfEquations& rSystemOfEquations) const
 	{
 		KRATOS_TRY
-
-		const array_1d<double, TNumNodes> N(TNumNodes, 1.0/static_cast<double>(TNumNodes));
-		const BoundedMatrix<double, TNumNodes, TNumNodes> iso_M = outer_prod(N, N);
 
 		// Mapping form node to dof
 		unsigned int i=0;
@@ -194,10 +159,9 @@ protected:
 			++i;
 		}
 
-		// Asembling lumped mass and Q simultaneously
-		using DoubleAssembly = CombinedReduction<AssemblyReduction, AssemblyReduction>;
-		std::tie(rSystemOfEquations.LHS, rSystemOfEquations.Q) = 
-		block_for_each<DoubleAssembly>(mrModelPart.Elements(), [&](const Element& rElement)
+		// Asembling Q
+		rSystemOfEquations.Q = 
+		block_for_each<AssemblyReduction>(mrModelPart.Elements(), [&](const Element& rElement)
 		{
 			const auto& r_geometry = rElement.GetGeometry();
 	        const double volume = ComputeVolume(r_geometry);
@@ -205,7 +169,6 @@ protected:
 
 			// Obtaining local vectors
 			const array_1d<double, TNumNodes> q(TNumNodes, rElement.GetValue(mrVariable) * nodal_volume);
-			const array_1d<double, TNumNodes> lhs(TNumNodes, nodal_volume);
 
 			// Obtaining dofs
 			std::array<unsigned int, TNumNodes> dofs;
@@ -214,7 +177,7 @@ protected:
 				dofs[i] = rSystemOfEquations.mNodeToDof[r_geometry[i].Id()];
 			}
 
-			return AssemblyReduction::DoubleAssemblyReuturn(dofs, lhs, q, rSystemOfEquations.mSize);
+			return AssemblyReduction::AssemblyReturn(dofs, q, rSystemOfEquations.mSize);
 		});
 
 		KRATOS_CATCH("")
@@ -230,17 +193,16 @@ protected:
 		KRATOS_TRY
 
 		// Asembly
-		const array_1d<double, TNumNodes> N(TNumNodes, 1.0/static_cast<double>(TNumNodes));
-		const BoundedMatrix<double, TNumNodes, TNumNodes> iso_M = outer_prod(N, N);
 
 		rSystemOfEquations.Mu = 
 		block_for_each<AssemblyReduction>(mrModelPart.Elements(), 
 			[&](const Element& rElement)
 		{
-
 			const auto& r_geometry = rElement.GetGeometry();
-	        const double volume = ComputeVolume(r_geometry);
 
+	        constexpr auto integration_method = GeometryData::GI_GAUSS_2;
+			const auto& r_integration_points = r_geometry.IntegrationPoints(integration_method);
+		    const auto& r_N = r_geometry.ShapeFunctionsValues(integration_method);
 
 			// Obtaining previous iteration data and DoFs
 			array_1d<double, TNumNodes> nodal_values;
@@ -251,11 +213,18 @@ protected:
 				dofs[i] = rSystemOfEquations.mNodeToDof[r_geometry[i].Id()];
 			}
 
+			// Obtaining local mass matrix
+			BoundedMatrix<double, TNumNodes, TNumNodes> M_consistent = ZeroMatrix(TNumNodes, TNumNodes);
+			for(unsigned int g=0; g<r_integration_points.size(); ++g)
+			{
+				const auto N = row(r_N, g);
+				const auto w = r_integration_points[g].Weight();
+		    	const auto J = r_geometry.DeterminantOfJacobian(g, integration_method);
+				M_consistent += w * J * outer_prod(N, N);
+			}
 
 			// Obtaining local matrices
-			const BoundedMatrix<double, TNumNodes, TNumNodes> M_consistent = volume * iso_M;
 			const array_1d<double, TNumNodes> elemental_Mu = prod(M_consistent, nodal_values);
-
 
 			return AssemblyReduction::AssemblyReturn(dofs, elemental_Mu, rSystemOfEquations.mSize);
 		});
@@ -267,13 +236,15 @@ protected:
 	{
 		KRATOS_TRY
 
-		const Vector delta_u = rSystemOfEquations.Solve();
+		// Solving
+		Vector RHS = rSystemOfEquations.Q - rSystemOfEquations.Mu;
 
 		// Storing result
 		block_for_each(mrModelPart.Nodes(), [&](Node<3>& r_node)
 		{
 			const auto dof = rSystemOfEquations.mNodeToDof[r_node.Id()];
-			AtomicAdd(r_node.GetValue(mrVariable), delta_u[dof]);
+			const double lhs = r_node.GetValue(NODAL_AREA);
+			AtomicAdd(r_node.GetValue(mrVariable), RHS[dof] / lhs);
 		});
 
 		KRATOS_CATCH("")

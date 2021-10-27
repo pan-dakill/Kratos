@@ -172,6 +172,25 @@ namespace Kratos
         } else {
             KRATOS_ERROR << "Asking for a non-supported geometry. Physics-based shock capturing only supports \'Triangle2D3\' and \'Tetrahedra3D4\' geometries.";
         }
+
+
+        // Project the elemental results onto the nodes
+        bool project_bulk = mShockSensor;
+        bool project_dynamic = mShearSensor;
+        bool project_conductivy = (mShockSensor && mThermallyCoupledFormulation) || mThermalSensor;
+        constexpr std::size_t n_iterations = 50;
+        
+        if (geometry_type == GeometryData::KratosGeometryType::Kratos_Triangle2D3) {
+            if(project_bulk)        ConsistentL2ElementToNodeProjection<2, 3>(ARTIFICIAL_BULK_VISCOSITY, mrModelPart).Project(n_iterations);
+            if(project_conductivy)  ConsistentL2ElementToNodeProjection<2, 3>(ARTIFICIAL_CONDUCTIVITY, mrModelPart).Project(n_iterations);
+            if(project_dynamic)     ConsistentL2ElementToNodeProjection<2, 3>(ARTIFICIAL_DYNAMIC_VISCOSITY, mrModelPart).Project(n_iterations);
+        } else if (geometry_type == GeometryData::KratosGeometryType::Kratos_Tetrahedra3D4) {
+            if(project_bulk)        ConsistentL2ElementToNodeProjection<3, 4>(ARTIFICIAL_BULK_VISCOSITY, mrModelPart).Project(n_iterations);
+            if(project_conductivy)  ConsistentL2ElementToNodeProjection<3, 4>(ARTIFICIAL_CONDUCTIVITY, mrModelPart).Project(n_iterations);
+            if(project_dynamic)     ConsistentL2ElementToNodeProjection<3, 4>(ARTIFICIAL_DYNAMIC_VISCOSITY, mrModelPart).Project(n_iterations);
+        } else {
+            KRATOS_ERROR << "Asking for a non-supported geometry. Physics-based shock capturing only supports \'Triangle2D3\' and \'Tetrahedra3D4\' geometries.";
+        }
     }
 
     double ShockCapturingProcess::LimitingFunction(
