@@ -142,13 +142,6 @@ namespace Kratos
      */
     void ShockCapturingProcess::CalculatePhysicsBasedShockCapturing()
     {
-        // Initialize the values to zero
-        block_for_each(mrModelPart.Nodes(), [](Node<3> &rNode) {
-            rNode.GetValue(ARTIFICIAL_CONDUCTIVITY) = 0.0;
-            rNode.GetValue(ARTIFICIAL_BULK_VISCOSITY) = 0.0;
-            rNode.GetValue(ARTIFICIAL_DYNAMIC_VISCOSITY) = 0.0;
-        });
-
         // If required, update the NODAL_AREA
         if (mUpdateNodalArea) {
             CalculateNodalAreaProcess<false> nodal_area_process(mrModelPart);
