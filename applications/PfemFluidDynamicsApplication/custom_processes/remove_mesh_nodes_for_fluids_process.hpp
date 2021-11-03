@@ -257,6 +257,7 @@ namespace Kratos
 						double finalTime = mrRemesh.BoundingBoxFinalTime;
 
 						double posX = i_node->X();
+						double posY = i_node->Y();
 						double posZ = i_node->Z();
 						double tolerance = 0.01;
 						double time = currentTime;
@@ -265,13 +266,13 @@ namespace Kratos
 						{
 							time = timeLimitForPistonMotion;
 						}
-						double velocityCoeffcientPistonMotion = 2.1 * 0.2;
-						double velXwall = velocityCoeffcientPistonMotion * time;
-						double minPosX = velXwall * time * 0.1 - tolerance;
-						double initialSlope = 180.67867 + tolerance;
+						// double velocityCoeffcientPistonMotion = 2.1 * 0.2;
+						// double velXwall = velocityCoeffcientPistonMotion * time;
+						// double minPosX = velXwall * time * 0.1 - tolerance;
+						double initialSlope = 180 + tolerance;
 						double finalSlope = 236.5 - tolerance;
-						double slope = 3.6 / (236.5 - 180.67867);
-						double minZ = slope * (posX - 180.67867) - tolerance;
+						double slope = 3.6 / (236.5 - 180);
+						double minVertical = slope * (posX - 180) - tolerance;
 
 						if (currentTime > initialTime && currentTime < finalTime)
 						{
@@ -282,11 +283,11 @@ namespace Kratos
 							{
 								i_node->Set(TO_ERASE);
 							}
-							else if (posX < minPosX)
-							{
-								i_node->Set(TO_ERASE);
-							}
-							else if (posX > initialSlope && posX < finalSlope && posZ < minZ)
+							// else if (posX < minPosX)
+							// {
+							// 	i_node->Set(TO_ERASE);
+							// }
+							else if (posX > initialSlope && posX < finalSlope && posY < minVertical)
 							{
 								i_node->Set(TO_ERASE);
 							}
@@ -304,7 +305,7 @@ namespace Kratos
 					/////////////////////////////////////////// here for BOUNDING BOX ///////////////////////////////////////////
 				}
 			}
-			std::cout << "         DONE      erase this node " << std::endl;
+			// std::cout << "         DONE      erase this node " << std::endl;
 
 			rModelPart.Nodes().Sort();
 

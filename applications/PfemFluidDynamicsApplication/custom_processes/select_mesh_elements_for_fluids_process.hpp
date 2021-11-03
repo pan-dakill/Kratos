@@ -179,7 +179,8 @@ namespace Kratos
                     unsigned int previouslyIsolatedNodes = 0;
                     unsigned int sumPreviouslyIsolatedFreeSurf = 0;
                     unsigned int sumIsolatedFreeSurf = 0;
-                    unsigned int bottomRigid = 0;
+                    bool aboveInitialFreeSurface = false;
+                    // unsigned int bottomRigid = 0;
                     std::vector<array_1d<double, 3>> nodesCoordinates;
                     nodesCoordinates.resize(nds);
                     std::vector<array_1d<double, 3>> nodesVelocities;
@@ -238,10 +239,15 @@ namespace Kratos
                             {
                                 countIsolatedWallNodes++;
                             }
-                            double coorZ = vertices.back().Coordinates()[2];
-                            if (coorZ < 3.2 && vertices.back().IsNot(FREE_SURFACE))
+                            // double coorZ = vertices.back().Coordinates()[2];
+                            // if (coorZ < 3.2 && vertices.back().IsNot(FREE_SURFACE))
+                            // {
+                            //     bottomRigid++;
+                            // }
+                            double coorY = vertices.back().Coordinates()[1];
+                            if (coorY > 3.61)
                             {
-                                bottomRigid++;
+                                aboveInitialFreeSurface = true;
                             }
                         }
 
@@ -298,17 +304,17 @@ namespace Kratos
                         if (dimension == 3)
                         {
                             Alpha *= 1.1;
-                            if (bottomRigid > 1 && numfreesurf == 0)
-                            {
-                                if (bottomRigid > 2)
-                                {
-                                    Alpha *= 1.5;
-                                }
-                                else
-                                {
-                                    Alpha *= 1.25;
-                                }
-                            }
+                            // if (bottomRigid > 1 && numfreesurf == 0)
+                            // {
+                            //     if (bottomRigid > 2)
+                            //     {
+                            //         Alpha *= 1.5;
+                            //     }
+                            //     else
+                            //     {
+                            //         Alpha *= 1.25;
+                            //     }
+                            // }
                         }
                     }
 
@@ -336,7 +342,11 @@ namespace Kratos
                     }
                     else if (dimension == 3)
                     {
-                        if (numrigid == 0 && numfreesurf == 0 && numisolated == 0 && previouslyIsolatedNodes == 0 && previouslyFreeSurfaceNodes == 0)
+                        if (aboveInitialFreeSurface == true && (previouslyFreeSurfaceNodes>0 || firstMesh==true))
+                        {
+                            Alpha *= 0.8;
+                        }
+                        else if (numrigid == 0 && numfreesurf == 0 && numisolated == 0 && previouslyIsolatedNodes == 0 && previouslyFreeSurfaceNodes == 0)
                         {
                             Alpha *= 1.5;
                         }
@@ -344,9 +354,13 @@ namespace Kratos
                         {
                             Alpha *= 1.25;
                         }
+                        // else if (numrigid > 0 && (numfreesurf > nds || previouslyFreeSurfaceNodes > nds))
+                        // {
+                        //     Alpha *= 0.85;
+                        // }
                         else if (numisolated == 0 && previouslyIsolatedNodes == 0 && numfreesurf < nds && previouslyFreeSurfaceNodes < nds)
                         {
-                            Alpha *= 1.05;
+                            Alpha *= 1.00;
                         }
                         else
                         {
