@@ -551,7 +551,6 @@ namespace Kratos
                                 accepted = false;
                                 number_of_slivers++;
                             }
-                            delete tetrahedron;
                         }
                         else if (firstMesh == true || numfreesurf > 0)
                         {
@@ -581,8 +580,8 @@ namespace Kratos
                                 // std::cout<<"maxLength "<<maxLength<<" < edgeLength1 "<<edgeLength1<<"  edgeLength2 "<<edgeLength2<<"  edgeLength3 "<<edgeLength3<<std::endl;
                                 // std::cout<<"  edgeLength4 "<<edgeLength4<<"  edgeLength5 "<<edgeLength5<<"  edgeLength6 "<<edgeLength6<<std::endl;
                             }
-                            delete tetrahedron;
                         }
+                        delete tetrahedron;
                     }
 
                     // // to control that the element has a good shape
