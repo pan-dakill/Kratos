@@ -552,33 +552,15 @@ namespace Kratos
                                 number_of_slivers++;
                             }
                         }
-                        else if (firstMesh == true || numfreesurf > 0)
+                        else if ((firstMesh == true || numfreesurf > 0) && accepted == true)
                         {
                             double maxLength = MeanMeshSize * 4.0; // to erase very skewed elements that may be built between the free surface and the walls
-                            array_1d<double, 3> CoorDifference = vertices[0].Coordinates() - vertices[1].Coordinates();
-                            double SquaredLength = CoorDifference[0] * CoorDifference[0] + CoorDifference[1] * CoorDifference[1] + CoorDifference[2] * CoorDifference[2];
-                            double edgeLength1 = sqrt(SquaredLength);
-                            CoorDifference = vertices[0].Coordinates() - vertices[2].Coordinates();
-                            SquaredLength = CoorDifference[0] * CoorDifference[0] + CoorDifference[1] * CoorDifference[1] + CoorDifference[2] * CoorDifference[2];
-                            double edgeLength2 = sqrt(SquaredLength);
-                            CoorDifference = vertices[0].Coordinates() - vertices[3].Coordinates();
-                            SquaredLength = CoorDifference[0] * CoorDifference[0] + CoorDifference[1] * CoorDifference[1] + CoorDifference[2] * CoorDifference[2];
-                            double edgeLength3 = sqrt(SquaredLength);
-                            CoorDifference = vertices[1].Coordinates() - vertices[2].Coordinates();
-                            SquaredLength = CoorDifference[0] * CoorDifference[0] + CoorDifference[1] * CoorDifference[1] + CoorDifference[2] * CoorDifference[2];
-                            double edgeLength4 = sqrt(SquaredLength);
-                            CoorDifference = vertices[1].Coordinates() - vertices[3].Coordinates();
-                            SquaredLength = CoorDifference[0] * CoorDifference[0] + CoorDifference[1] * CoorDifference[1] + CoorDifference[2] * CoorDifference[2];
-                            double edgeLength5 = sqrt(SquaredLength);
-                            CoorDifference = vertices[2].Coordinates() - vertices[3].Coordinates();
-                            SquaredLength = CoorDifference[0] * CoorDifference[0] + CoorDifference[1] * CoorDifference[1] + CoorDifference[2] * CoorDifference[2];
-                            double edgeLength6 = sqrt(SquaredLength);
-                            if (edgeLength1 > maxLength || edgeLength2 > maxLength || edgeLength3 > maxLength || edgeLength4 > maxLength || edgeLength5 > maxLength || edgeLength6 > maxLength)
+                            double maxEdgeLength = tetrahedron->MaxEdgeLength();
+                            if (maxEdgeLength > maxLength && accepted == true)
                             {
                                 accepted = false;
                                 number_of_slivers++;
-                                // std::cout<<"maxLength "<<maxLength<<" < edgeLength1 "<<edgeLength1<<"  edgeLength2 "<<edgeLength2<<"  edgeLength3 "<<edgeLength3<<std::endl;
-                                // std::cout<<"  edgeLength4 "<<edgeLength4<<"  edgeLength5 "<<edgeLength5<<"  edgeLength6 "<<edgeLength6<<std::endl;
+                                // std::cout<<"maxLength "<<maxLength<<" < maxEdgeLength<<std::endl;
                             }
                         }
                         delete tetrahedron;
