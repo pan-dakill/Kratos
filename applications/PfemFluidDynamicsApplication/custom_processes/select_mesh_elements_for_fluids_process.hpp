@@ -344,7 +344,7 @@ namespace Kratos
                     {
                         if (aboveInitialFreeSurface == true && (previouslyFreeSurfaceNodes > 0 || firstMesh == true))
                         {
-                            Alpha *= 0.8;
+                            Alpha *= 0.9;
                         }
                         else if (numrigid == 0 && numfreesurf == 0 && numisolated == 0 && previouslyIsolatedNodes == 0 && previouslyFreeSurfaceNodes == 0)
                         {
@@ -364,7 +364,7 @@ namespace Kratos
                         }
                         else
                         {
-                            Alpha *= 0.95;
+                            Alpha *= 0.975;
                         }
                         // else if (numfreesurf < nds && numisolated < nds && previouslyIsolatedNodes < 3 && previouslyFreeSurfaceNodes < nds && sumPreviouslyIsolatedFreeSurf < nds && sumIsolatedFreeSurf < nds)
                         // {

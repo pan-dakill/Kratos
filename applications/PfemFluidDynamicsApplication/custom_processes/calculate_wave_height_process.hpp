@@ -100,7 +100,7 @@ namespace Kratos
 
           const int thread_id = OpenMPUtils::ThisThread();
           const auto &r_node_coordinates = it_node->Coordinates();
-          if (it_node->IsNot(ISOLATED) &&
+          if (it_node->IsNot(ISOLATED) && it_node->IsNot(RIGID) &&
               it_node->Is(FREE_SURFACE) &&
               r_node_coordinates(mPlaneDirection) < mPlaneCoordinates + mTolerance &&
               r_node_coordinates(mPlaneDirection) > mPlaneCoordinates - mTolerance)
