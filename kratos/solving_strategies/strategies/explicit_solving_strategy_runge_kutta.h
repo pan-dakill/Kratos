@@ -7,12 +7,12 @@
 //  License:		 BSD License
 //					 Kratos default license: kratos/license.txt
 //
-//  Main authors:    Ruben Zorrilla
+//  Main authors:    Eduard Gómez
 //
 //
 
-#if !defined(KRATOS_EXPLICIT_SOLVING_STRATEGY_RUNGE_KUTTA_4)
-#define KRATOS_EXPLICIT_SOLVING_STRATEGY_RUNGE_KUTTA_4
+#if !defined(KRATOS_EXPLICIT_SOLVING_STRATEGY_RUNGE_KUTTA)
+#define KRATOS_EXPLICIT_SOLVING_STRATEGY_RUNGE_KUTTA
 
 /* System includes */
 
@@ -34,6 +34,194 @@ namespace Kratos
 ///@name Type Definitions
 ///@{
 
+/** @brief Butcher tableau for Runge-Kutta method.
+ * 
+ * Contains all info necessary of a particular RK method.
+ * It specifies the coefficients of the particular Runge-Kutta method.
+ *
+ * Child class must provide methods:
+ * - static const MatrixType() GenerateRKMatrix
+ * - static const VectorType() GenerateWeights
+ * - static const VectorType() GenerateNodes
+ * - std::string Name() const
+ */
+template<unsigned int TOrder, typename ChildClass>
+class ButcherTableau
+{
+public:
+    typedef BoundedMatrix<double, TOrder-1, TOrder-1> MatrixType;
+    typedef array_1d<double, TOrder> VectorType;
+
+    constexpr unsigned int Order() {return TOrder;}
+    constexpr unsigned int Size() {return TOrder-1;}
+    
+    constexpr MatrixRow<const MatrixType> GetRKMatrixRow(const unsigned int SubStepIndex)
+    {
+        return row(mA, SubStepIndex-1);
+    }
+
+    constexpr const VectorType& GetWeights()
+    {
+        return mB;
+    }
+
+    constexpr double GetNode(const unsigned int SubStepIndex)
+    {
+        return mC(SubStepIndex);
+    }
+
+    virtual std::string Name() const = 0;
+
+protected:
+    const MatrixType mA = ChildClass::GenerateRKMatrix();   // Runge-Kutta matrix
+    const VectorType mB = ChildClass::GenerateWeights();    // Weights vector
+    const VectorType mC = ChildClass::GenerateNodes();      // Nodes vector
+};
+
+
+class ButcherTableauForwardEuler : public ButcherTableau<1, ButcherTableauForwardEuler>
+{
+public:
+    static const MatrixType GenerateRKMatrix()
+    {
+        MatrixType A = ZeroMatrix(0, 0);
+        return A;
+    }
+
+    static const VectorType GenerateWeights()
+    {
+        VectorType B;
+        B(0) = 1.0;
+        return B;
+    }
+
+    static const VectorType GenerateNodes()
+    {
+        VectorType C;
+        C(0) = 0.0;
+        return C;
+    }
+
+    std::string Name() const override
+    {
+        return "ButcherTableauForwardEuler";
+    }
+};
+
+
+class ButcherTableauMidPointMethod : public ButcherTableau<2, ButcherTableauMidPointMethod>
+{
+public:
+    static const MatrixType GenerateRKMatrix()
+    {
+        MatrixType A = ZeroMatrix(1, 1);
+        A(0,0) = 0.5;
+        return A;
+    }
+
+    static const VectorType GenerateWeights()
+    {
+        VectorType B;
+        B(0) = 0.0;
+        B(1) = 1.0;
+        return B;
+    }
+
+    static const VectorType GenerateNodes()
+    {
+        VectorType C;
+        C(0) = 0.0;
+        C(1) = 0.5;
+        return C;
+    }
+
+    std::string Name() const override
+    {
+        return "ButcherTableauMidPointMethod";
+    }
+};
+
+/** @brief Explicit total variation diminishing 3rd order Runge-Kutta
+ *
+ * @details Implementation of Proposition 3.2 of:
+ * Gottlieb, Sigal, and Chi-Wang Shu. "Total variation diminishing Runge-Kutta schemes."
+ * Mathematics of computation 67.221 (1998): 73-85.
+ */
+class ButcherTableauRK3TVD : public ButcherTableau<3, ButcherTableauRK3TVD>
+{
+public:
+    static const MatrixType GenerateRKMatrix()
+    {
+        MatrixType A = ZeroMatrix(2, 2);
+        A(0,0) = 1;
+        A(1,0) = 0.25;
+        A(1,1) = 0.25;
+        return A;
+    }
+
+    static const VectorType GenerateWeights()
+    {
+        VectorType B;
+        B(0) = 1.0 / 6.0;
+        B(1) = 1.0 / 6.0;
+        B(2) = 2.0 / 3.0;
+        return B;
+    }
+
+    static const VectorType GenerateNodes()
+    {
+        VectorType C;
+        C(0) = 0.0;
+        C(1) = 1.0;
+        C(2) = 0.5;
+        return C;
+    }
+
+    std::string Name() const override
+    {
+        return "ButcherTableauRK3TVD";
+    }
+};
+
+
+class ButcherTableauRK4 : public ButcherTableau<4, ButcherTableauRK4>
+{
+public:
+    static const MatrixType GenerateRKMatrix()
+    {
+        MatrixType A = ZeroMatrix(3, 3);
+        A(0,0) = 0.5;
+        A(1,1) = 0.5;
+        A(2,2) = 1.0;
+        return A;
+    }
+
+    static const VectorType GenerateWeights()
+    {
+        VectorType B;
+        B(0) = 1.0 / 6.0;
+        B(1) = 1.0 / 3.0;
+        B(2) = 1.0 / 3.0;
+        B(3) = 1.0 / 6.0;
+        return B;
+    }
+
+    static const VectorType GenerateNodes()
+    {
+        VectorType C;
+        C(0) = 0.0;
+        C(1) = 0.5;
+        C(2) = 0.5;
+        C(3) = 1.0;
+        return C;
+    }
+
+    std::string Name() const override
+    {
+        return "ButcherTableauRK4";
+    }
+};
+
 ///@}
 ///@name  Enum's
 ///@{
@@ -46,11 +234,21 @@ namespace Kratos
 ///@name Kratos Classes
 ///@{
 
-/** @brief Explicit solving strategy base class
- * @details This is the base class from which we will derive all the explicit strategies (FE, RK4, ...)
+/** 
+ * 
+ * Formulation: for i = 0...N substeps
+ *
+ * - The diferential equation is u_t = f(t, u)
+ * 
+ * The Runge-Kutta method is:
+ * - k^(i) = f(t + c_i*dt, u^(i-1))             -> Where u^(0) := u^n
+ * - u^(i) = u^n + \sum_{j=1}^i A_{ij} k^(j)    -> Intermediate steps. u^(N) is not needed, therefore neither is A[N, :]
+ * - u^{n+1} = u^n + \sum_{i} B_{i} k(u^(i))    -> Solution
+ *
+ * 
  */
-template <class TSparseSpace, class TDenseSpace>
-class ExplicitSolvingStrategyRungeKutta4 : public ExplicitSolvingStrategy<TSparseSpace, TDenseSpace>
+template <class TSparseSpace, class TDenseSpace, class TButcherTableau>
+class ExplicitSolvingStrategyRungeKutta : public ExplicitSolvingStrategy<TSparseSpace, TDenseSpace>
 {
 public:
     ///@name Type Definitions
@@ -63,7 +261,7 @@ public:
     typedef ExplicitSolvingStrategy<TSparseSpace, TDenseSpace> BaseType;
 
     /// The definition of the current class
-    typedef ExplicitSolvingStrategyRungeKutta4<TSparseSpace, TDenseSpace> ClassType;
+    typedef ExplicitSolvingStrategyRungeKutta<TSparseSpace, TDenseSpace, TButcherTableau> ClassType;
 
     // The explicit builder and solver definition
     typedef typename BaseType::ExplicitBuilderType ExplicitBuilderType;
@@ -73,9 +271,10 @@ public:
 
     /// The local vector definition
     typedef typename TDenseSpace::VectorType LocalSystemVectorType;
+    typedef typename TDenseSpace::MatrixType LocalSystemMatrixType;
 
     /** Counted pointer of ClassName */
-    KRATOS_CLASS_POINTER_DEFINITION(ExplicitSolvingStrategyRungeKutta4);
+    KRATOS_CLASS_POINTER_DEFINITION(ExplicitSolvingStrategyRungeKutta);
 
     ///@}
     ///@name Life Cycle
@@ -84,7 +283,7 @@ public:
     /**
      * @brief Default constructor. (empty)
      */
-    explicit ExplicitSolvingStrategyRungeKutta4()
+    explicit ExplicitSolvingStrategyRungeKutta()
         : BaseType()
     {
     }
@@ -94,7 +293,7 @@ public:
      * @param rModelPart The model part of the problem
      * @param ThisParameters The configuration parameters
      */
-    explicit ExplicitSolvingStrategyRungeKutta4(
+    explicit ExplicitSolvingStrategyRungeKutta(
         ModelPart &rModelPart,
         Parameters ThisParameters)
         : BaseType(rModelPart)
@@ -110,7 +309,7 @@ public:
      * @param pExplicitBuilder The pointer to the explicit builder and solver
      * @param MoveMeshFlag The flag to set if the mesh is moved or not
      */
-    explicit ExplicitSolvingStrategyRungeKutta4(
+    explicit ExplicitSolvingStrategyRungeKutta(
         ModelPart &rModelPart,
         typename ExplicitBuilderType::Pointer pExplicitBuilder,
         bool MoveMeshFlag = false,
@@ -124,7 +323,7 @@ public:
      * @param rModelPart The model part to be computed
      * @param MoveMeshFlag The flag to set if the mesh is moved or not
      */
-    explicit ExplicitSolvingStrategyRungeKutta4(
+    explicit ExplicitSolvingStrategyRungeKutta(
         ModelPart &rModelPart,
         bool MoveMeshFlag = false,
         int RebuildLevel = 0)
@@ -147,11 +346,11 @@ public:
 
     /** Copy constructor.
      */
-    ExplicitSolvingStrategyRungeKutta4(const ExplicitSolvingStrategyRungeKutta4 &Other) = delete;
+    ExplicitSolvingStrategyRungeKutta(const ExplicitSolvingStrategyRungeKutta &Other) = delete;
 
     /** Destructor.
      */
-    ~ExplicitSolvingStrategyRungeKutta4() override = default;
+    ~ExplicitSolvingStrategyRungeKutta() override = default;
 
     /**
      * @brief This method provides the defaults parameters to avoid conflicts between the different constructors
@@ -161,7 +360,7 @@ public:
     {
         Parameters default_parameters = Parameters(R"(
         {
-            "name" : "explicit_solving_strategy_runge_kutta_4"
+            "name" : "explicit_solving_strategy_runge_kutta"
         })");
 
         // Getting base class default parameters
@@ -176,7 +375,7 @@ public:
      */
     static std::string Name()
     {
-        return "explicit_solving_strategy_runge_kutta_4";
+        return "explicit_solving_strategy_runge_kutta";
     }
 
     ///@}
@@ -196,7 +395,9 @@ public:
     /// Turn back information as a string.
     std::string Info() const override
     {
-        return "ExplicitSolvingStrategyRungeKutta4";
+        std::stringstream ss;
+        ss << "ExplicitSolvingStrategyRungeKutta with tableau " << mButcherTableau.Name();
+        return ss.str();
     }
 
     /// Print information about this object.
@@ -216,12 +417,12 @@ public:
 protected:
     ///@name Protected static Member Variables
     ///@{
+    const TButcherTableau mButcherTableau;
 
 
     ///@}
     ///@name Protected member Variables
     ///@{
-
 
     ///@}
     ///@name Protected Operators
@@ -242,12 +443,9 @@ protected:
 
         // Set the auxiliary RK vectors
         LocalSystemVectorType u_n(dof_size); // TODO: THIS IS INEFICCIENT. CREATE A UNORDERED_SET WITH THE IDOF AND VALUE AS ENTRIES. THIS HAS TO BE OPTIONAL
-        LocalSystemVectorType rk_k1(dof_size);
-        LocalSystemVectorType rk_k2(dof_size);
-        LocalSystemVectorType rk_k3(dof_size);
-        LocalSystemVectorType rk_k4(dof_size);
+        LocalSystemMatrixType rk_K(dof_size, mButcherTableau.Order());
 
-        // Perform the RK 4 update
+        // Perform the RK 3 update
         const double dt = BaseType::GetDeltaTime();
         KRATOS_ERROR_IF(dt < 1.0e-12) << "ProcessInfo DELTA_TIME is close to zero." << std::endl;
 
@@ -266,11 +464,12 @@ protected:
             }
         );
 
-        // Calculate the RK4 intermediate sub steps
-        PerformRungeKuttaIntermediateSubStep(1, mA21, u_n, rk_k1);
-        PerformRungeKuttaIntermediateSubStep(2, mA32, u_n, rk_k2);
-        PerformRungeKuttaIntermediateSubStep(3, mA43, u_n, rk_k3);
-        PerformRungeKuttaLastSubStep(rk_k4);
+        // Calculate the RK3 intermediate sub steps
+        for(unsigned int i=1; i<mButcherTableau.Order(); ++i)
+        {
+            PerformRungeKuttaIntermediateSubStep(i, u_n, rk_K);
+        }
+        PerformRungeKuttaLastSubStep(rk_K);
 
         // Do the final solution update
         IndexPartition<int>(r_dof_set.size()).for_each(
@@ -281,7 +480,8 @@ protected:
                 const double& r_u_old = it_dof->GetSolutionStepValue(1);
                 if (!it_dof->IsFixed()) {
                     const double mass = r_lumped_mass_vector(i_dof);
-                    r_u = r_u_old + (dt / mass) * (mB1 * rk_k1(i_dof) + mB2 * rk_k2(i_dof) + mB3 * rk_k3(i_dof) + mB4 * rk_k4(i_dof));
+                    const MatrixRow<LocalSystemMatrixType> substeps_k = row(rk_K, i_dof);
+                    r_u = r_u_old + (dt / mass) * inner_prod(mButcherTableau.GetWeights(), substeps_k);
                 } else {
                     r_u = u_n(i_dof);
                 }
@@ -317,15 +517,14 @@ protected:
      * @brief Performs an intermediate RK4 step
      * This functions performs all the operations required in an intermediate RK4 sub step
      * @param SubStepIndex The sub step index
-     * @param SubStepCoefficient The sub step coefficient (these are saved as member variables)
+     * @param SubStepCoefficients The sub step coefficients (these are saved as member variables)
      * @param rFixedDofsValues The vector containing the step n+1 values of the fixed DOFs
      * @param rIntermediateStepResidualVector The vector to store the intermediate sub step residual
      */
     virtual void PerformRungeKuttaIntermediateSubStep(
         const IndexType SubStepIndex,
-        const double SubStepCoefficient,
         const LocalSystemVectorType& rFixedDofsValues,
-        LocalSystemVectorType& rIntermediateStepResidualVector)
+        LocalSystemMatrixType& rIntermediateStepResidualVectors)
     {
         // Get the required data from the explicit builder and solver
         const auto p_explicit_bs = BaseType::pGetExplicitBuilder();
@@ -350,16 +549,19 @@ protected:
                 auto it_dof = r_dof_set.begin() + i_dof;
                 // Save current value in the corresponding vector
                 const double& r_res = it_dof->GetSolutionStepReactionValue();
-                rIntermediateStepResidualVector(i_dof) = r_res;
+                rIntermediateStepResidualVectors(i_dof, SubStepIndex-1) = r_res;
                 // Do the DOF update
                 double& r_u = it_dof->GetSolutionStepValue(0);
                 const double& r_u_old = it_dof->GetSolutionStepValue(1);
                 if (!it_dof->IsFixed()) {
                     const double mass = r_lumped_mass_vector(i_dof);
-                    r_u = r_u_old + SubStepCoefficient * (dt / mass) * r_res;
+                    const auto coeff = mButcherTableau.GetRKMatrixRow(SubStepIndex);
+                    const auto previous_k = row(rIntermediateStepResidualVectors, i_dof);
+                    r_u = r_u_old + (dt / mass) * inner_prod(coeff, previous_k);
                 } else {
                     const double delta_u = rFixedDofsValues(i_dof) - r_u_old;
-                    r_u = r_u_old + SubStepCoefficient * delta_u;
+                    const auto coeff = mButcherTableau.GetNode(SubStepIndex);
+                    r_u = r_u_old + coeff * delta_u;
                 }
             }
         );
@@ -372,7 +574,7 @@ protected:
      * This functions performs all the operations required in the last RK4 sub step
      * @param rLastStepResidualVector The vector to store the last sub step residual
      */
-    virtual void PerformRungeKuttaLastSubStep(LocalSystemVectorType& rLastStepResidualVector)
+    virtual void PerformRungeKuttaLastSubStep(LocalSystemMatrixType& rLastStepResidualVector)
     {
         // Get the required data from the explicit builder and solver
         const auto p_explicit_bs = BaseType::pGetExplicitBuilder();
@@ -383,7 +585,7 @@ protected:
         auto& r_process_info = r_model_part.GetProcessInfo();
 
         // Set the RUNGE_KUTTA_STEP value. This has to be done prior to the InitializeRungeKuttaStep()
-        r_process_info.GetValue(RUNGE_KUTTA_STEP) = 4;
+        r_process_info.GetValue(RUNGE_KUTTA_STEP) = mButcherTableau.Size();
 
         // Perform the last sub step residual calculation
         InitializeRungeKuttaLastSubStep();
@@ -394,7 +596,7 @@ protected:
                 const auto it_dof = r_dof_set.begin() + i_dof;
                 // Save current value in the corresponding vector
                 const double& r_res = it_dof->GetSolutionStepReactionValue();
-                rLastStepResidualVector(i_dof) = r_res;
+                rLastStepResidualVector(i_dof, mButcherTableau.Order() - 1) = r_res;
             }
         );
 
@@ -426,13 +628,6 @@ private:
     ///@name Member Variables
     ///@{
 
-    const double mA21 = 0.5; // RK4 a_21 coefficient
-    const double mA32 = 0.5; // RK4 a_32 coefficient
-    const double mA43 = 1.0; // RK4 a_43 coefficient
-    const double mB1 = 1.0/6.0; // RK4 b_1 coefficient
-    const double mB2 = 1.0/3.0; // RK4 b_2 coefficient
-    const double mB3 = 1.0/3.0; // RK4 b_3 coefficient
-    const double mB4 = 1.0/6.0; // RK4 b_4 coefficient
 
     ///@}
     ///@name Private Operators
@@ -460,15 +655,27 @@ private:
 
 
     ///@}
-}; /* Class NewExplicitSolvingStrategyRungeKutta4 */
+};
 
 ///@}
 
 ///@name Type Definitions
 ///@{
 
+template <class TSparseSpace, class TDenseSpace>
+using ExplicitSolvingStrategyRungeKutta4 = ExplicitSolvingStrategyRungeKutta<TSparseSpace, TDenseSpace, ButcherTableauRK4>;
+
+template <class TSparseSpace, class TDenseSpace>
+using ExplicitSolvingStrategyRungeKutta3TVD = ExplicitSolvingStrategyRungeKutta<TSparseSpace, TDenseSpace, ButcherTableauRK3TVD>;
+
+template <class TSparseSpace, class TDenseSpace>
+using ExplicitSolvingStrategyRungeKutta2 = ExplicitSolvingStrategyRungeKutta<TSparseSpace, TDenseSpace, ButcherTableauMidPointMethod>;
+
+template <class TSparseSpace, class TDenseSpace>
+using ExplicitSolvingStrategyRungeKutta1 = ExplicitSolvingStrategyRungeKutta<TSparseSpace, TDenseSpace, ButcherTableauForwardEuler>;
+
 ///@}
 
 } /* namespace Kratos.*/
 
-#endif /* KRATOS_EXPLICIT_SOLVING_STRATEGY_RUNGE_KUTTA_4  defined */
+#endif /* KRATOS_EXPLICIT_SOLVING_STRATEGY_RUNGE_KUTTA  defined */
