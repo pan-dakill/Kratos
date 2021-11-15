@@ -364,8 +364,11 @@ protected:
             }
         );
 
+        LumpedMassCorrection();
+
         FinalizeRungeKuttaIntermediateSubStep();
     }
+
 
     /**
      * @brief Performs the last RK4 step
@@ -443,6 +446,133 @@ private:
     ///@name Private Operations
     ///@{
 
+    class VectorAssemblyReduction
+    {
+    public:
+        typedef std::tuple<Element::EquationIdVectorType, Vector, std::size_t> value_type;
+        typedef Vector return_type;
+
+        return_type mValue;
+        bool mInitialized = false;
+
+        /// access to reduced value
+        return_type GetValue() const
+        {
+            return mValue;
+        }
+
+        /// NON-THREADSAFE (fast) value of reduction, to be used within a single thread
+        void LocalReduce(const value_type value)
+        {
+            const auto& dofs = std::get<0>(value);
+            const auto& local_vector = std::get<1>(value);
+
+            if(!mInitialized)
+            {
+                const auto& system_size = std::get<2>(value);
+                mValue = Vector(system_size, 0.0);
+                mInitialized = true;
+            }
+
+            for(const auto dof: dofs)
+            {
+                mValue[dof] += local_vector[dof];
+            }
+        }
+
+        /// THREADSAFE (needs some sort of lock guard) reduction, to be used to sync threads
+        void ThreadSafeReduce(VectorAssemblyReduction& rOther)
+        {
+            if(!rOther.mInitialized) return;
+
+            if(!mInitialized)
+            {
+                mValue.swap(rOther.mValue);
+                mInitialized = true;
+                rOther.mInitialized = false;
+            }
+            else
+            {
+                #pragma omp critical
+                {
+                    noalias(mValue) += rOther.mValue;
+                }
+            }
+        }
+    };
+
+    static Vector AssembleQ(const ModelPart::DofsArrayType& rDofSet, const std::size_t system_size)
+    {
+        auto Q = Vector(system_size);
+        block_for_each(rDofSet, [&](Dof<double> dof)
+        {
+            Q[dof.EquationId()] = dof.GetSolutionStepValue();
+        });
+        return Q;
+    }
+
+    static Vector AssembleMu(ModelPart& rModelPart, const std::size_t SystemSize)
+    {
+        const auto& r_process_info = rModelPart.GetProcessInfo();
+
+        return block_for_each<VectorAssemblyReduction>(rModelPart.Elements(),
+            [&](Element& r_element)
+            {
+                Element::EquationIdVectorType equation_ids;
+                r_element.EquationIdVector(equation_ids, r_process_info);
+
+                Matrix M;
+                r_element.CalculateMassMatrix(M, r_process_info);
+
+                Element::DofsVectorType dofs;
+                r_element.GetDofList(dofs, r_process_info);
+
+                // Filling u
+                auto it = dofs.begin();
+                Vector u(dofs.size());
+
+                std::generate(begin(u), end(u), [&](){ return (*it++)->GetSolutionStepValue(); });
+
+                Vector Mu = prod(M, u);
+
+                return std::tie(equation_ids, Mu, SystemSize);
+            });
+    }
+
+        /* Iterativelly applies L*du = q - Mu
+     *  > L is the lumped mass matrix
+     *  > M is the mass matrix
+     *  > q is the solution to      L*q = f
+     *  > u is the approximation to M*u = f
+     */
+    void LumpedMassCorrection()
+    {
+        const auto& r_dof_set = BaseType::pGetExplicitBuilder()->GetDofSet();
+        auto& r_model_part = BaseType::GetModelPart();
+        const auto system_size = r_dof_set.size();
+
+        const auto Q = AssembleQ(r_dof_set, system_size);
+        const auto& L = BaseType::pGetExplicitBuilder()->GetLumpedMassMatrixVector();
+
+        constexpr unsigned int n_iterations = 50;
+        for(unsigned int i = 0; i < n_iterations; ++i)
+        {
+            const auto Mu = AssembleMu(r_model_part, system_size);
+
+            block_for_each(r_dof_set, [&](Dof<double> dof)
+            {
+                if(dof.IsFixed()) return;
+
+                // Save current value in the corresponding vector
+                double& u      = dof.GetSolutionStepValue();
+                const double& q  =  Q[dof.EquationId()];
+                const double& mu = Mu[dof.EquationId()];
+                const double& l  =  L[dof.EquationId()];
+
+                u += (q - mu) / l;
+            });
+        }
+    }
 
     ///@}
     ///@name Private  Access
