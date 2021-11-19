@@ -312,6 +312,8 @@ protected:
             }
         );
 
+        LumpedMassCorrection();
+
         KRATOS_CATCH("");
     }
 
@@ -503,9 +505,9 @@ private:
         }
 
         /// NON-THREADSAFE (fast) value of reduction, to be used within a single thread
-        void LocalReduce(const value_type value)
+        void LocalReduce(const value_type& value)
         {
-            const auto& dofs = std::get<0>(value);
+            const auto& equation_ids = std::get<0>(value);
             const auto& local_vector = std::get<1>(value);
 
             if(!mInitialized)
@@ -515,9 +517,9 @@ private:
                 mInitialized = true;
             }
 
-            for(const auto dof: dofs)
+            for(const auto eq: equation_ids)
             {
-                mValue[dof] += local_vector[dof];
+                mValue[eq] += local_vector[eq];
             }
         }
 
@@ -542,21 +544,24 @@ private:
         }
     };
 
-    static Vector AssembleQ(const ModelPart::DofsArrayType& rDofSet, const std::size_t system_size)
+    Vector AssembleQ() const
     {
-        auto Q = Vector(system_size);
-        block_for_each(rDofSet, [&](Dof<double> dof)
+        const auto& r_dof_set = BaseType::pGetExplicitBuilder()->GetDofSet();
+        Vector Q(r_dof_set.size());
+        block_for_each(r_dof_set, [&](const Dof<double>& dof)
         {
-            Q[dof.EquationId()] = dof.GetSolutionStepValue();
+            Q[dof.EquationId()] = dof.GetSolutionStepValue() - dof.GetSolutionStepValue(1);
         });
         return Q;
     }
 
-    static Vector AssembleMu(ModelPart& rModelPart, const std::size_t SystemSize)
+    Vector AssembleMu() const
     {
-        const auto& r_process_info = rModelPart.GetProcessInfo();
+        auto& r_model_part = BaseType::GetModelPart();
+        const auto& r_process_info = r_model_part.GetProcessInfo();
+        const auto system_size = BaseType::pGetExplicitBuilder()->GetDofSet().size();
 
-        return block_for_each<VectorAssemblyReduction>(rModelPart.Elements(),
+        return block_for_each<VectorAssemblyReduction>(r_model_part.Elements(),
             [&](Element& r_element)
             {
                 Element::EquationIdVectorType equation_ids;
@@ -576,11 +581,11 @@ private:
 
                 Vector Mu = prod(M, u);
 
-                return std::tie(equation_ids, Mu, SystemSize);
+                return std::tie(equation_ids, Mu, system_size);
             });
     }
 
-        /* Iterativelly applies L*du = q - Mu
+    /* Iterativelly applies du = q - L\Mu
      *  > L is the lumped mass matrix
      *  > M is the mass matrix
      *  > q is the solution to      L*q = f
@@ -588,29 +593,26 @@ private:
      */
     void LumpedMassCorrection()
     {
-        const auto& r_dof_set = BaseType::pGetExplicitBuilder()->GetDofSet();
-        auto& r_model_part = BaseType::GetModelPart();
-        const auto system_size = r_dof_set.size();
-
-        const auto Q = AssembleQ(r_dof_set, system_size);
+        const auto Q = AssembleQ();
         const auto& L = BaseType::pGetExplicitBuilder()->GetLumpedMassMatrixVector();
 
+        const auto& r_dof_set = BaseType::pGetExplicitBuilder()->GetDofSet();
         constexpr unsigned int n_iterations = 50;
         for(unsigned int i = 0; i < n_iterations; ++i)
         {
-            const auto Mu = AssembleMu(r_model_part, system_size);
+            const auto Mu = AssembleMu();
 
-            block_for_each(r_dof_set, [&](Dof<double> dof)
+            block_for_each(r_dof_set, [&](Dof<double>& r_dof)
             {
-                if(dof.IsFixed()) return;
+                if(r_dof.IsFixed()) return;
 
-                // Save current value in the corresponding vector
-                double& u      = dof.GetSolutionStepValue();
-                const double& q  =  Q[dof.EquationId()];
-                const double& mu = Mu[dof.EquationId()];
-                const double& l  =  L[dof.EquationId()];
+                // Solve equation in current Dof
+                double& r_u      = r_dof.GetSolutionStepValue();
+                const double& q  =  Q[r_dof.EquationId()];
+                const double& mu = Mu[r_dof.EquationId()];
+                const double& l  =  L[r_dof.EquationId()];
 
-                u += (q - mu) / l;
+                r_u += q - mu / l;
             });
         }
     }

@@ -291,6 +291,15 @@ public:
     };
 
     /**
+     * @brief Operations to get the pointer to the explicit builder and solver
+     * @return mpExplicitBuilder: The explicit builder and solver
+     */
+    const ExplicitBuilderPointerType& pGetExplicitBuilder() const noexcept
+    {
+        return mpExplicitBuilder;
+    };
+
+    /**
      * @brief Operations to get the residual norm
      * @return The residual norm
      */
