@@ -296,6 +296,7 @@ protected:
 
         // Do the final solution update
         const auto& weights = mButcherTableau.GetWeights();
+        Vector G(r_dof_set.size(), 0.0);
         IndexPartition<int>(r_dof_set.size()).for_each(
             [&](int i_dof){
                 auto it_dof = r_dof_set.begin() + i_dof;
@@ -305,14 +306,15 @@ protected:
                 if (!it_dof->IsFixed()) {
                     const double mass = r_lumped_mass_vector(i_dof);
                     const MatrixRow<LocalSystemMatrixType> substeps_k = row(rk_K, i_dof);
-                    r_u = r_u_old + (dt / mass) * inner_prod(weights, substeps_k);
+                    G(i_dof) = dt * inner_prod(weights, substeps_k);
+                    r_u = r_u_old + G(i_dof) / mass;
                 } else {
                     r_u = u_n(i_dof);
                 }
             }
         );
 
-        LumpedMassCorrection();
+        LumpedMassCorrection(G);
 
         KRATOS_CATCH("");
     }
@@ -447,8 +449,6 @@ protected:
             }
         );
 
-        LumpedMassCorrection();
-
         FinalizeRungeKuttaLastSubStep();
 
         KRATOS_CATCH("");
@@ -548,18 +548,7 @@ private:
         }
     };
 
-    Vector AssembleQ() const
-    {
-        const auto& r_dof_set = BaseType::pGetExplicitBuilder()->GetDofSet();
-        Vector Q(r_dof_set.size());
-        block_for_each(r_dof_set, [&](const Dof<double>& dof)
-        {
-            Q[dof.EquationId()] = dof.GetSolutionStepValue() - dof.GetSolutionStepValue(1);
-        });
-        return Q;
-    }
-
-    Vector AssembleMu() const
+    Vector AssembleMdu() const
     {
         auto& r_model_part = BaseType::GetModelPart();
         const auto& r_process_info = r_model_part.GetProcessInfo();
@@ -581,46 +570,46 @@ private:
                 r_element.GetDofList(dofs, r_process_info);
 
                 auto it = dofs.begin();
-                Vector u(dofs.size());
-                std::generate(begin(u), end(u), [&](){ const auto val = (*it)->GetSolutionStepValue(); ++it; return val; });
+                Vector du(dofs.size());
+                std::generate(begin(du), end(du), [&]()
+                {
+                    const auto du_i = (*it)->GetSolutionStepValue() - (*it)->GetSolutionStepValue(1);
+                    ++it;
+                    return du_i;
+                });
 
                 data.local_vector.resize(data.equation_ids.size());
-                data.local_vector = prod(M, u);
+                data.local_vector = prod(M, du);
 
                 return data;
             });
     }
 
-    /* Iterativelly applies du = q - L\Mu
-     *  > L is the lumped mass matrix
-     *  > M is the mass matrix
-     *  > q is the solution to      L*q = f
-     *  > u is the approximation to M*u = f
-     */
-    void LumpedMassCorrection()
+    void LumpedMassCorrection(const Vector& G)
     {
-        const auto Q = AssembleQ();
         const auto& L = BaseType::pGetExplicitBuilder()->GetLumpedMassMatrixVector();
 
         const auto& r_dof_set = BaseType::pGetExplicitBuilder()->GetDofSet();
         constexpr unsigned int n_iterations = 50;
         for(unsigned int i = 0; i < n_iterations; ++i)
         {
-            const auto Mu = AssembleMu();
+            const auto Mdu = AssembleMdu();
 
             block_for_each(r_dof_set, [&](Dof<double>& r_dof)
             {
                 if(r_dof.IsFixed()) return;
 
                 // Solve equation in current Dof
-                double& r_u      = r_dof.GetSolutionStepValue();
-                const double& q  =  Q[r_dof.EquationId()];
-                const double& mu = Mu[r_dof.EquationId()];
-                const double& l  =  L[r_dof.EquationId()];
+                const auto eq = r_dof.EquationId();
 
-                r_u += q - mu / l;
+                const double residual = G[eq] - Mdu[eq];
+                const double lumped_mass = L[eq];
 
-                KRATOS_DEBUG_ERROR_IF(std::isnan(r_u)) << "DOF for equation #" << r_dof.EquationId() << " in iteration #" << i << std::endl;
+                const double correction = residual / lumped_mass;
+
+                r_dof.GetSolutionStepValue() += correction;
+
+                KRATOS_DEBUG_ERROR_IF(std::isnan(correction)) << "DOF for equation #" << eq << " in iteration #" << i << " is NaN." << std::endl;
             });
         }
     }
