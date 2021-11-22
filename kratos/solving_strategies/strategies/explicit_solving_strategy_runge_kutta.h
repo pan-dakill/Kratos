@@ -406,8 +406,6 @@ protected:
             }
         );
 
-        LumpedMassCorrection();
-
         FinalizeRungeKuttaIntermediateSubStep();
 
         KRATOS_CATCH("SubstepIndex = " + std::to_string(SubStepIndex));
@@ -448,6 +446,8 @@ protected:
                 rLastStepResidualVector(i_dof, substep_index - 1) = r_res;
             }
         );
+
+        LumpedMassCorrection();
 
         FinalizeRungeKuttaLastSubStep();
 
@@ -492,34 +492,38 @@ private:
     class VectorAssemblyReduction
     {
     public:
-        typedef std::tuple<Element::EquationIdVectorType, Vector, std::size_t> value_type;
+
+        typedef Element::EquationIdVectorType EquationIdVectorType;
         typedef Vector return_type;
 
-        return_type mValue;
+        struct value_type {
+            EquationIdVectorType equation_ids;
+            Vector local_vector;
+            std::size_t system_size;
+        };
+
+        return_type mGlobalVector;
         bool mInitialized = false;
 
         /// access to reduced value
         return_type GetValue() const
         {
-            return mValue;
+            return mGlobalVector;
         }
 
         /// NON-THREADSAFE (fast) value of reduction, to be used within a single thread
-        void LocalReduce(const value_type& value)
+        void LocalReduce(const value_type& data)
         {
-            const auto& equation_ids = std::get<0>(value);
-            const auto& local_vector = std::get<1>(value);
-
             if(!mInitialized)
             {
-                const auto& system_size = std::get<2>(value);
-                mValue = Vector(system_size, 0.0);
+                mGlobalVector = Vector(data.system_size, 0.0);
                 mInitialized = true;
             }
 
-            for(const auto eq: equation_ids)
+            for(unsigned int i=0; i<data.local_vector.size(); ++i)
             {
-                mValue[eq] += local_vector[eq];
+                const auto eq = data.equation_ids[i];
+                mGlobalVector[eq] += data.local_vector[i];
             }
         }
 
@@ -530,7 +534,7 @@ private:
 
             if(!mInitialized)
             {
-                mValue.swap(rOther.mValue);
+                mGlobalVector.swap(rOther.mGlobalVector);
                 mInitialized = true;
                 rOther.mInitialized = false;
             }
@@ -538,7 +542,7 @@ private:
             {
                 #pragma omp critical
                 {
-                    noalias(mValue) += rOther.mValue;
+                    noalias(mGlobalVector) += rOther.mGlobalVector;
                 }
             }
         }
@@ -564,8 +568,11 @@ private:
         return block_for_each<VectorAssemblyReduction>(r_model_part.Elements(),
             [&](Element& r_element)
             {
-                Element::EquationIdVectorType equation_ids;
-                r_element.EquationIdVector(equation_ids, r_process_info);
+                typename VectorAssemblyReduction::value_type data;
+
+                data.system_size = system_size;
+
+                r_element.EquationIdVector(data.equation_ids, r_process_info);
 
                 Matrix M;
                 r_element.CalculateMassMatrix(M, r_process_info);
@@ -573,15 +580,14 @@ private:
                 Element::DofsVectorType dofs;
                 r_element.GetDofList(dofs, r_process_info);
 
-                // Filling u
                 auto it = dofs.begin();
                 Vector u(dofs.size());
+                std::generate(begin(u), end(u), [&](){ const auto val = (*it)->GetSolutionStepValue(); ++it; return val; });
 
-                std::generate(begin(u), end(u), [&](){ return (*it++)->GetSolutionStepValue(); });
+                data.local_vector.resize(data.equation_ids.size());
+                data.local_vector = prod(M, u);
 
-                Vector Mu = prod(M, u);
-
-                return std::tie(equation_ids, Mu, system_size);
+                return data;
             });
     }
 
@@ -613,6 +619,8 @@ private:
                 const double& l  =  L[r_dof.EquationId()];
 
                 r_u += q - mu / l;
+
+                KRATOS_DEBUG_ERROR_IF(std::isnan(r_u)) << "DOF for equation #" << r_dof.EquationId() << " in iteration #" << i << std::endl;
             });
         }
     }
