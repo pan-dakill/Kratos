@@ -53,7 +53,7 @@ class NavierStokesCompressibleExplicitSolver(FluidSolver):
             },
             "echo_level": 1,
             "time_order": 2,
-            "runge_kutta_scheme" : "RK4",
+            "time_scheme" : "RK4",
             "move_mesh_flag": false,
             "shock_capturing_settings" : { },
             "compute_reactions": false,
