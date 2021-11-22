@@ -59,7 +59,7 @@ namespace Kratos
  * @details This is the base class from which we will derive all the explicit strategies (FE, RK4, ...)
  */
 template <class TSparseSpace, class TDenseSpace, class TButcherTableau>
-class CompressibleNavierStokesExplicitSolvingStrategyRungeKutta 
+class CompressibleNavierStokesExplicitSolvingStrategyRungeKutta
 : public ExplicitSolvingStrategyRungeKutta<TSparseSpace, TDenseSpace, TButcherTableau>
 {
 public:
@@ -75,11 +75,11 @@ public:
     /// The local vector definition
     typedef typename TDenseSpace::VectorType LocalSystemVectorType;
 
-    /// Shock capturing process factory definition
-    typedef Process::UniquePointer(*ShockCapturingFactoryType)(ModelPart & m, Parameters p);
-
-    /// Pointer definition of CompressibleNavierStokesExplicitSolvingStrategyRungeKutta4
+    /// Pointer definition of CompressibleNavierStokesExplicitSolvingStrategyRungeKutta
     KRATOS_CLASS_POINTER_DEFINITION(CompressibleNavierStokesExplicitSolvingStrategyRungeKutta);
+
+    /// Shock capturing process factory
+    typedef Process::UniquePointer (*ShockCapturingFactoryType)(ModelPart&, Parameters);
 
     /// Local Flags
     KRATOS_DEFINE_LOCAL_FLAG(SHOCK_CAPTURING);
@@ -256,7 +256,7 @@ public:
         {
             std::stringstream msg;
             msg << "Provided shock capturing type \""<< sc_type <<"\" does not match any of the available ones.\n";
-            msg << "Please chose one from the following list:\n";
+            msg << "Please choose one from the following list:\n";
             for(const auto& keyvaluepair: shock_capturing_factory_map)
             {
                 msg <<" - " << keyvaluepair.first << "\n";
@@ -608,10 +608,10 @@ private:
 
 ///@}
 
-template<class TSparseSpace, class TDenseSpace> 
+template<class TSparseSpace, class TDenseSpace>
 using CompressibleNavierStokesExplicitSolvingStrategyRungeKutta4 = CompressibleNavierStokesExplicitSolvingStrategyRungeKutta<TSparseSpace, TDenseSpace, ButcherTableauRK4>;
 
-template<class TSparseSpace, class TDenseSpace> 
+template<class TSparseSpace, class TDenseSpace>
 using CompressibleNavierStokesExplicitSolvingStrategyRungeKutta3TVD = CompressibleNavierStokesExplicitSolvingStrategyRungeKutta<TSparseSpace, TDenseSpace, ButcherTableauRK3TVD>;
 
 } /* namespace Kratos.*/
