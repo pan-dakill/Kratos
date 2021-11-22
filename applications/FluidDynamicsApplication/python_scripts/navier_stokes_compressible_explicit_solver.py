@@ -129,7 +129,7 @@ class NavierStokesCompressibleExplicitSolver(FluidSolver):
         strategy_settings.AddEmptyValue("move_mesh_flag").SetBool(self.settings["move_mesh_flag"].GetBool())
         strategy_settings.AddEmptyValue("shock_capturing_settings").RecursivelyAddMissingParameters(self.settings["shock_capturing_settings"])
 
-        rk_parameter = self.settings["runge_kutta_scheme"].GetString()
+        rk_parameter = self.settings["time_scheme"].GetString()
 
         rk_startegies = {
             "RK3-TVD": KratosFluid.CompressibleNavierStokesExplicitSolvingStrategyRungeKutta3TVD,
