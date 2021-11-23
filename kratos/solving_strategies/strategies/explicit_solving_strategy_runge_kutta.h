@@ -381,6 +381,7 @@ protected:
         InitializeRungeKuttaIntermediateSubStep();
         p_explicit_bs->BuildRHS(r_model_part);
 
+        Vector G(r_dof_set.size(), 0.0);
         IndexPartition<int>(r_dof_set.size()).for_each(
             [&](int i_dof){
                 auto it_dof = r_dof_set.begin() + i_dof;
@@ -390,11 +391,12 @@ protected:
                 // Do the DOF update
                 double& r_u = it_dof->GetSolutionStepValue(0);
                 const double& r_u_old = it_dof->GetSolutionStepValue(1);
+                const double mass = r_lumped_mass_vector(i_dof);
+
                 if (!it_dof->IsFixed()) {
-                    const double mass = r_lumped_mass_vector(i_dof);
                     const auto k = row(rIntermediateStepResidualVectors, i_dof);
-                    r_u = r_u_old + (dt / mass) * std::inner_product(alphas.begin, alphas.end, k.begin(), 0.0);
-                    /*                            ^~~~~~~~~~~~~~~~~~
+                    G(i_dof) = dt * std::inner_product(alphas.begin, alphas.end, k.begin(), 0.0);
+                    /*              ^~~~~~~~~~~~~~~~~~
                      * Using std::inner_product instead of boost's inner_prod because it allows us to
                      * chose a begin and, more importantly, an end.
                      *
@@ -403,10 +405,13 @@ protected:
                      */
                 } else {
                     const double delta_u = rFixedDofsValues(i_dof) - r_u_old;
-                    r_u = r_u_old + integration_theta * delta_u;
+                    G(i_dof) = mass * integration_theta * delta_u;
                 }
+                r_u = r_u_old + G(i_dof) / mass;
             }
         );
+
+        LumpedMassCorrection(G);
 
         FinalizeRungeKuttaIntermediateSubStep();
 
