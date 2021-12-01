@@ -56,4 +56,7 @@ namespace Kratos
     KRATOS_CREATE_VARIABLE( double, MAX_TENSILE_STRESS )
     KRATOS_CREATE_VARIABLE( double, COHESION )
 
+    // Uplift
+    KRATOS_CREATE_VARIABLE( double, UPLIFT_PRESSURE )
+
 }// namespace Kratos.

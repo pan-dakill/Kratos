@@ -60,6 +60,8 @@ public:
 
 //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+    void GetLawFeatures(Features& rFeatures) override;
+
     int Check(const Properties& rMaterialProperties, const GeometryType& rElementGeometry, const ProcessInfo& rCurrentProcessInfo) const override;
 
     void InitializeMaterial( const Properties& rMaterialProperties,const GeometryType& rElementGeometry,const Vector& rShapeFunctionsValues ) override;
@@ -74,7 +76,14 @@ protected:
 
     // Member Variables
 
+    double mStateVariable;
+    double mUpliftPressure;
+
 //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+    double& GetValue( const Variable<double>& rThisVariable, double& rValue ) override;
+
+    void SetValue( const Variable<double>& rThisVariable, const double& rValue, const ProcessInfo& rCurrentProcessInfo ) override;
 
     void InitializeConstitutiveLawVariables(ConstitutiveLawVariables& rVariables, Parameters& rValues) override;
 

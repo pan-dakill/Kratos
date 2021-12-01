@@ -17,6 +17,24 @@
 namespace Kratos
 {
 
+void JointCohesionDriven3DLaw::GetLawFeatures(Features& rFeatures)
+{
+    //Set the type of law
+	rFeatures.mOptions.Set( THREE_DIMENSIONAL_LAW );
+	rFeatures.mOptions.Set( INFINITESIMAL_STRAINS );
+	rFeatures.mOptions.Set( ISOTROPIC );
+
+	//Set strain measure required by the consitutive law
+	rFeatures.mStrainMeasures.push_back(StrainMeasure_Infinitesimal);
+	//rFeatures.mStrainMeasures.push_back(StrainMeasure_Deformation_Gradient);
+
+	//Set the spacedimension
+	rFeatures.mSpaceDimension = 3;
+
+	//Set the strain size
+	rFeatures.mStrainSize = 3;
+}
+
 int JointCohesionDriven3DLaw::Check(const Properties& rMaterialProperties, const GeometryType& rElementGeometry, const ProcessInfo& rCurrentProcessInfo) const
 {
     if(rMaterialProperties.Has(YOUNG_MODULUS)) {
@@ -51,7 +69,8 @@ int JointCohesionDriven3DLaw::Check(const Properties& rMaterialProperties, const
 
 void JointCohesionDriven3DLaw::InitializeMaterial( const Properties& rMaterialProperties,const GeometryType& rElementGeometry,const Vector& rShapeFunctionsValues )
 {
-    mStateVariable = 1.0;
+    mStateVariable = rMaterialProperties[STATE_VARIABLE];
+	mUpliftPressure = 0.0;
 }
 
 //----------------------------------------------------------------------------------------
@@ -72,6 +91,35 @@ void JointCohesionDriven3DLaw::FinalizeMaterialResponseCauchy (Parameters& rValu
         {
             mStateVariable = Variables.EquivalentStrain;
         }
+    }
+}
+
+//----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+double& JointCohesionDriven3DLaw::GetValue( const Variable<double>& rThisVariable, double& rValue )
+{
+    if( rThisVariable == STATE_VARIABLE )
+    {
+        rValue = mStateVariable;
+    }
+    else if( rThisVariable == UPLIFT_PRESSURE )
+    {
+        rValue = mUpliftPressure;
+    }
+    return rValue;
+}
+
+//----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+void JointCohesionDriven3DLaw::SetValue( const Variable<double>& rThisVariable, const double& rValue, const ProcessInfo& rCurrentProcessInfo )
+{
+    if (rThisVariable == STATE_VARIABLE)
+    {
+        mStateVariable = rValue;
+    }
+    if (rThisVariable == UPLIFT_PRESSURE)
+    {
+        mUpliftPressure = rValue;
     }
 }
 
