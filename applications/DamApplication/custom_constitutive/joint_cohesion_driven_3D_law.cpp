@@ -69,7 +69,7 @@ int JointCohesionDriven3DLaw::Check(const Properties& rMaterialProperties, const
 
 void JointCohesionDriven3DLaw::InitializeMaterial( const Properties& rMaterialProperties,const GeometryType& rElementGeometry,const Vector& rShapeFunctionsValues )
 {
-    mStateVariable = rMaterialProperties[STATE_VARIABLE];
+    mStateVariable = 1.0;
 	mUpliftPressure = 0.0;
 }
 

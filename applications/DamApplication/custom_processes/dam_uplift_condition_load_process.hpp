@@ -181,7 +181,7 @@ class DamUpliftConditionLoadProcess : public Process
                 ModelPart::ElementsContainerType::iterator it_elem = el_begin + j;
 
                 Element::GeometryType& rGeom = it_elem->GetGeometry();
-                MyIntegrationMethod = it_elem->GetIntegrationMethod();
+                MyIntegrationMethod = GeometryData::IntegrationMethod::GI_GAUSS_1;
                 const Element::GeometryType::IntegrationPointsArrayType& IntegrationPoints = rGeom.IntegrationPoints(MyIntegrationMethod);
                 unsigned int NumGPoints = IntegrationPoints.size();
                 Vector detJContainer(NumGPoints);
@@ -190,7 +190,7 @@ class DamUpliftConditionLoadProcess : public Process
                 it_elem->CalculateOnIntegrationPoints(STATE_VARIABLE,StateVariableVector,CurrentProcessInfo);
 
                 // Loop through GaussPoints
-                for ( unsigned int GPoint = 0; GPoint < StateVariableVector.size(); GPoint++ )
+                for ( unsigned int GPoint = 0; GPoint < NumGPoints; GPoint++ )
                 {
                     // GaussPoint Coordinates
                     AuxLocalCoordinates[0] = IntegrationPoints[GPoint][0];
@@ -216,7 +216,7 @@ class DamUpliftConditionLoadProcess : public Process
                 ModelPart::ElementsContainerType::iterator it_elem = el_begin + j;
 
                 Element::GeometryType& rGeom = it_elem->GetGeometry();
-                MyIntegrationMethod = it_elem->GetIntegrationMethod();
+                MyIntegrationMethod = GeometryData::IntegrationMethod::GI_GAUSS_1;
                 const Element::GeometryType::IntegrationPointsArrayType& IntegrationPoints = rGeom.IntegrationPoints(MyIntegrationMethod);
                 unsigned int NumGPoints = IntegrationPoints.size();
                 Vector detJContainer(NumGPoints);
@@ -224,10 +224,10 @@ class DamUpliftConditionLoadProcess : public Process
                 std::vector<double> StateVariableVector(NumGPoints);
                 it_elem->CalculateOnIntegrationPoints(STATE_VARIABLE,StateVariableVector,CurrentProcessInfo);
 
-                std::vector<double> UpliftPressureVector(StateVariableVector.size());
+                std::vector<double> UpliftPressureVector(NumGPoints);
 
                 // Loop through GaussPoints
-                for ( unsigned int GPoint = 0; GPoint < StateVariableVector.size(); GPoint++ )
+                for ( unsigned int GPoint = 0; GPoint < NumGPoints; GPoint++ )
                 {
                     // GaussPointOld Coordinates
                     AuxLocalCoordinates[0] = IntegrationPoints[GPoint][0];
@@ -401,7 +401,7 @@ class DamUpliftConditionLoadProcess : public Process
                 ModelPart::ElementsContainerType::iterator it_elem = el_begin + j;
 
                 Element::GeometryType& rGeom = it_elem->GetGeometry();
-                MyIntegrationMethod = it_elem->GetIntegrationMethod();
+                MyIntegrationMethod = GeometryData::IntegrationMethod::GI_GAUSS_1;
                 const Element::GeometryType::IntegrationPointsArrayType& IntegrationPoints = rGeom.IntegrationPoints(MyIntegrationMethod);
                 unsigned int NumGPoints = IntegrationPoints.size();
                 Vector detJContainer(NumGPoints);
@@ -410,7 +410,7 @@ class DamUpliftConditionLoadProcess : public Process
                 it_elem->CalculateOnIntegrationPoints(STATE_VARIABLE,StateVariableVector,CurrentProcessInfo);
 
                 // Loop through GaussPoints
-                for ( unsigned int GPoint = 0; GPoint < StateVariableVector.size(); GPoint++ )
+                for ( unsigned int GPoint = 0; GPoint < NumGPoints; GPoint++ )
                 {
                     // GaussPoint Coordinates
                     AuxLocalCoordinates[0] = IntegrationPoints[GPoint][0];
@@ -436,7 +436,7 @@ class DamUpliftConditionLoadProcess : public Process
                 ModelPart::ElementsContainerType::iterator it_elem = el_begin + j;
 
                 Element::GeometryType& rGeom = it_elem->GetGeometry();
-                MyIntegrationMethod = it_elem->GetIntegrationMethod();
+                MyIntegrationMethod = GeometryData::IntegrationMethod::GI_GAUSS_1;
                 const Element::GeometryType::IntegrationPointsArrayType& IntegrationPoints = rGeom.IntegrationPoints(MyIntegrationMethod);
                 unsigned int NumGPoints = IntegrationPoints.size();
                 Vector detJContainer(NumGPoints);
@@ -444,10 +444,10 @@ class DamUpliftConditionLoadProcess : public Process
                 std::vector<double> StateVariableVector(NumGPoints);
                 it_elem->CalculateOnIntegrationPoints(STATE_VARIABLE,StateVariableVector,CurrentProcessInfo);
 
-                std::vector<double> UpliftPressureVector(StateVariableVector.size());
+                std::vector<double> UpliftPressureVector(NumGPoints);
 
                 // Loop through GaussPoints
-                for ( unsigned int GPoint = 0; GPoint < StateVariableVector.size(); GPoint++ )
+                for ( unsigned int GPoint = 0; GPoint < NumGPoints; GPoint++ )
                 {
                     // GaussPointOld Coordinates
                     AuxLocalCoordinates[0] = IntegrationPoints[GPoint][0];
