@@ -168,6 +168,7 @@ namespace Kratos
                     unsigned int numrigid = 0;
                     unsigned int numinlet = 0;
                     unsigned int numisolated = 0;
+                    unsigned int numfixed=0;
                     bool noremesh = false;
                     std::vector<double> normVelocityP;
                     normVelocityP.resize(nds, false);
@@ -214,6 +215,10 @@ namespace Kratos
                         {
                             numboundary++;
                         }
+                        // if (vertices.back().IsFixed(VELOCITY_X))
+                        // {
+                        //     numfixed++;
+                        // }
                         if (vertices.back().GetValue(NO_MESH))
                         {
                             noremesh = true;
@@ -344,7 +349,7 @@ namespace Kratos
                     {
                         if (aboveInitialFreeSurface == true && (previouslyFreeSurfaceNodes > 0 || firstMesh == true))
                         {
-                            Alpha *= 0.9;
+                            Alpha *= 0.95;
                         }
                         else if (numrigid == 0 && numfreesurf == 0 && numisolated == 0 && previouslyIsolatedNodes == 0 && previouslyFreeSurfaceNodes == 0)
                         {
@@ -362,10 +367,10 @@ namespace Kratos
                         {
                             Alpha *= 1.00;
                         }
-                        else
-                        {
-                            Alpha *= 0.975;
-                        }
+                        // else
+                        // {
+                        //     Alpha *= 0.975;
+                        // }
                         // else if (numfreesurf < nds && numisolated < nds && previouslyIsolatedNodes < 3 && previouslyFreeSurfaceNodes < nds && sumPreviouslyIsolatedFreeSurf < nds && sumIsolatedFreeSurf < nds)
                         // {
                         //     Alpha *= 1.05;
@@ -401,7 +406,7 @@ namespace Kratos
 
                     accepted = MesherUtils.AlphaShape(Alpha, vertices, dimension, MeanMeshSize);
 
-                    if (numrigid == nds || noremesh == true)
+                    if (numrigid == nds || numfixed == nds || noremesh == true)
                     {
                         accepted = false;
                     }

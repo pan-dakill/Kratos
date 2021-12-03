@@ -305,6 +305,7 @@ namespace Kratos
 
     void InitializeSolutionStep() override
     {
+      // this->SetBlockedAndIsolatedFlags();
     }
 
     void UpdateStressStrain() override

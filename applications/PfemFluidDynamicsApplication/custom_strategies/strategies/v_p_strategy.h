@@ -158,6 +158,57 @@ namespace Kratos
             {
               isolatedNodes++;
             }
+
+            // double limitDistance = 10;
+            // ModelPart &rModelPart = BaseType::GetModelPart();
+            // ProcessInfo &rCurrentProcessInfo = rModelPart.GetProcessInfo();
+            // const double currentTime = rCurrentProcessInfo[TIME];
+            // limitDistance += 6.0 * currentTime; // the wave is propagating at around 5m/s
+            // if (itElem->GetGeometry()[i].IsNot(RIGID))
+            // {
+            //   if (itElem->GetGeometry()[i].X() > limitDistance)
+            //   {
+            //     if (!itElem->GetGeometry()[i].IsFixed(VELOCITY_X))
+            //     {
+            //       itElem->GetGeometry()[i].GetValue(VELOCITY_X) = 0;
+            //       itElem->GetGeometry()[i].Fix(VELOCITY_X);
+            //     }
+            //     if (!itElem->GetGeometry()[i].IsFixed(VELOCITY_Y))
+            //     {
+            //       itElem->GetGeometry()[i].GetValue(VELOCITY_Y) = 0;
+            //       itElem->GetGeometry()[i].Fix(VELOCITY_Y);
+            //     }
+            //     if (!itElem->GetGeometry()[i].IsFixed(VELOCITY_Z))
+            //     {
+            //       itElem->GetGeometry()[i].GetValue(VELOCITY_Z) = 0;
+            //       itElem->GetGeometry()[i].Fix(VELOCITY_Z);
+            //     }
+            //     // if (!itElem->GetGeometry()[i].IsFixed(PRESSURE))
+            //     // {
+            //     //   itElem->GetGeometry()[i].GetValue(PRESSURE) = 0;
+            //     //   itElem->GetGeometry()[i].Fix(PRESSURE);
+            //     // }
+            //   }
+            //   else
+            //   {
+            //     if (itElem->GetGeometry()[i].IsFixed(VELOCITY_X))
+            //     {
+            //       itElem->GetGeometry()[i].Free(VELOCITY_X);
+            //     }
+            //     if (itElem->GetGeometry()[i].IsFixed(VELOCITY_Y))
+            //     {
+            //       itElem->GetGeometry()[i].Free(VELOCITY_Y);
+            //     }
+            //     if (itElem->GetGeometry()[i].IsFixed(VELOCITY_Z))
+            //     {
+            //       itElem->GetGeometry()[i].Free(VELOCITY_Z);
+            //     }
+            //     // if (itElem->GetGeometry()[i].IsFixed(PRESSURE))
+            //     // {
+            //     //   itElem->GetGeometry()[i].Free(PRESSURE);
+            //     // }
+            //   }
+            // }
           }
 
           if (dimension == 3)
