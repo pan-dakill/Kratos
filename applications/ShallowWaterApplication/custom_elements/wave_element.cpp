@@ -531,7 +531,7 @@ double WaveElement<TNumNodes>::InverseHeight(const ElementData& rData) const
 }
 
 template<std::size_t TNumNodes>
-const array_1d<double,3> WaveElement<TNumNodes>::VectorProduct(
+inline const array_1d<double,3> WaveElement<TNumNodes>::VectorProduct(
     const array_1d<array_1d<double,3>,TNumNodes>& rV,
     const array_1d<double,TNumNodes>& rN) const
 {
@@ -541,6 +541,35 @@ const array_1d<double,3> WaveElement<TNumNodes>::VectorProduct(
         result += rV[i] * rN[i];
     }
     return result;
+}
+
+
+template<std::size_t TNumNodes>
+inline const void WaveElement<TNumNodes>::DiagonalProduct(
+    const BoundedMatrix<double,3,3>& rMatrix,
+    const array_1d<double,3>& rDiagonal,
+    BoundedMatrix<double,3,3>& rResult) const
+{
+    for (std::size_t i = 0; i < 3, ++i)
+    {
+        for (std::size_t j = 0; j < 3; ++j)
+        {
+            rResult(i,j) = rMatrix(i,j) * rDiagonal[j];
+        }
+    }
+}
+
+
+template<std::size_t TNumNodes>
+inline const void WaveElement<TNumNodes>::DiagonalProduct(
+    const array_1d<double,3>& rVector,
+    const array_1d<double,3>& rDiagonal,
+    array_1d<double,3>& rResult) const
+{
+    for (std::size_t i = 0; i < 3; ++i)
+    {
+        rResult[i] = rVector[i] * rDiagonal[i];
+    }
 }
 
 

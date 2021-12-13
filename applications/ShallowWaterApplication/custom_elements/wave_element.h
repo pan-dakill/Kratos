@@ -378,7 +378,19 @@ protected:
 
     double InverseHeight(const ElementData& rData) const;
 
-    const array_1d<double,3> VectorProduct(const array_1d<array_1d<double,3>,TNumNodes>& rV, const array_1d<double,TNumNodes>& rN) const;
+    inline const array_1d<double,3> VectorProduct(
+        const array_1d<array_1d<double,3>,TNumNodes>& rV,
+        const array_1d<double,TNumNodes>& rN) const;
+
+    inline const void DiagonalProduct(
+        const BoundedMatrix<double,3,3>& rMatrix,
+        const array_1d<double,3>& rDiagonal,
+        BoundedMatrix<double,3,3>& rResult) const;
+
+    inline const void DiagonalProduct(
+        const array_1d<double,3>& rVector,
+        const array_1d<double,3>& rDiagonal,
+        array_1d<double,3>& rResult) const;
 
     ///@}
     ///@name Protected  Access
