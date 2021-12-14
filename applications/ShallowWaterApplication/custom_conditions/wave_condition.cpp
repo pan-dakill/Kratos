@@ -253,6 +253,15 @@ void WaveCondition<TNumNodes>::AddWaveTerms(
     const auto z = rData.nodal_z;
     const auto n = rData.normal;
 
+    BoundedMatrix<double,1,3> A1_h;
+    BoundedMatrix<double,1,3> A2_h;
+    A1_h(0,0) = rData.A1(2,0);
+    A1_h(0,1) = rData.A1(2,1);
+    A1_h(0,2) = rData.A1(2,2);
+    A2_h(0,0) = rData.A2(2,0);
+    A2_h(0,1) = rData.A2(2,1);
+    A2_h(0,2) = rData.A2(2,2);
+
     for (IndexType i = 0; i < TNumNodes; ++i)
     {
         for (IndexType j = 0; j < TNumNodes; ++j)
@@ -265,12 +274,16 @@ void WaveCondition<TNumNodes>::AddWaveTerms(
             }
 
             /// First component
-            MathUtils<double>::AddMatrix(rMatrix,  Weight*n_ij*rData.A1*n[0], 3*i, 3*j);
-            MathUtils<double>::AddVector(rVector, -Weight*n_ij*rData.b1*n[0]*z[j], 3*i);
+            // MathUtils<double>::AddMatrix(rMatrix,  Weight*n_ij*rData.A1*n[0], 3*i, 3*j);
+            // MathUtils<double>::AddVector(rVector, -Weight*n_ij*rData.b1*n[0]*z[j], 3*i);
+            MathUtils<double>::AddMatrix(rMatrix, Weight*n_ij*A1_h*n[0], 3*i + 2, 3*j);
+            rVector[3*i + 2] -= Weight*n_ij*rData.b1[2]*n[0]*z[j];
 
             /// Second component
-            MathUtils<double>::AddMatrix(rMatrix,  Weight*n_ij*rData.A2*n[1], 3*i, 3*j);
-            MathUtils<double>::AddVector(rVector, -Weight*n_ij*rData.b2*n[1]*z[j], 3*i);
+            // MathUtils<double>::AddMatrix(rMatrix,  Weight*n_ij*rData.A2*n[1], 3*i, 3*j);
+            // MathUtils<double>::AddVector(rVector, -Weight*n_ij*rData.b2*n[1]*z[j], 3*i);
+            MathUtils<double>::AddMatrix(rMatrix, Weight*n_ij*A2_h*n[0], 3*i + 2, 3*j);
+            rVector[3*i + 2] -= Weight*n_ij*rData.b2[2]*n[1]*z[j];
         }
     }
 }

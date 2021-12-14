@@ -312,28 +312,59 @@ void WaveElement<TNumNodes>::AddWaveTerms(
     const array_1d<double,3> Ab12 = prod(rData.A1, rData.b2);
     const array_1d<double,3> Ab21 = prod(rData.A2, rData.b1);
 
+    array_1d<double,3> gradients_1;
+    array_1d<double,3> gradients_2;
+    array_1d<double,3> vector_contribution;
+    BoundedMatrix<double,3,3> matrix_contribution;
+
     for (IndexType i = 0; i < TNumNodes; ++i)
     {
         for (IndexType j = 0; j < TNumNodes; ++j)
         {
-            double g1_ij;
-            double g2_ij;
+            // double g1_ij;
+            // double g2_ij;
             double d_ij;
             if (rData.integrate_by_parts) {
-                g1_ij = -rDN_DX(i,0) * rN[j];
-                g2_ij = -rDN_DX(i,1) * rN[j];
+                // gradients_1[0] =  rN[i] * rDN_DX(j,0);
+                // gradients_1[1] =  rN[i] * rDN_DX(j,0);
+                // gradients_1[2] = -rDN_DX(i,0) * rN[j];
+                // gradients_2[0] =  rN[i] * rDN_DX(j,1);
+                // gradients_2[1] =  rN[i] * rDN_DX(j,1);
+                // gradients_2[2] = -rDN_DX(i,1) * rN[j];
+                gradients_1[0] = -rDN_DX(i,0) * rN[j];
+                gradients_1[1] = -rDN_DX(i,0) * rN[j];
+                gradients_1[2] =  rN[i] * rDN_DX(j,0);
+                gradients_2[0] = -rDN_DX(i,1) * rN[j];
+                gradients_2[1] = -rDN_DX(i,1) * rN[j];
+                gradients_2[2] =  rN[i] * rDN_DX(j,1);
+                // g1_ij = -rDN_DX(i,0) * rN[j];
+                // g2_ij = -rDN_DX(i,1) * rN[j];
             } else {
-                g1_ij = rN[i] * rDN_DX(j,0);
-                g2_ij = rN[i] * rDN_DX(j,1);
+                gradients_1[0] = rN[i] * rDN_DX(j,0);
+                gradients_1[1] = rN[i] * rDN_DX(j,0);
+                gradients_1[2] = rN[i] * rDN_DX(j,0);
+                gradients_2[0] = rN[i] * rDN_DX(j,1);
+                gradients_2[1] = rN[i] * rDN_DX(j,1);
+                gradients_2[2] = rN[i] * rDN_DX(j,1);
+                // g1_ij = rN[i] * rDN_DX(j,0);
+                // g2_ij = rN[i] * rDN_DX(j,1);
             }
 
             /// First component
-            MathUtils<double>::AddMatrix(rMatrix,  Weight*g1_ij*rData.A1, 3*i, 3*j);
-            MathUtils<double>::AddVector(rVector, -Weight*g1_ij*rData.b1*z[j], 3*i);
+            // MathUtils<double>::AddMatrix(rMatrix,  Weight*g1_ij*rData.A1, 3*i, 3*j);
+            // MathUtils<double>::AddVector(rVector, -Weight*g1_ij*rData.b1*z[j], 3*i);
+            DiagonalProduct(gradients_1, rData.A1, matrix_contribution);
+            DiagonalProduct(gradients_1, rData.b1, vector_contribution);
+            MathUtils<double>::AddMatrix(rMatrix,  Weight*matrix_contribution, 3*i, 3*j);
+            MathUtils<double>::AddVector(rVector, -Weight*vector_contribution*z[j], 3*i);
 
             /// Second component
-            MathUtils<double>::AddMatrix(rMatrix,  Weight*g2_ij*rData.A2, 3*i, 3*j);
-            MathUtils<double>::AddVector(rVector, -Weight*g2_ij*rData.b2*z[j], 3*i);
+            // MathUtils<double>::AddMatrix(rMatrix,  Weight*g2_ij*rData.A2, 3*i, 3*j);
+            // MathUtils<double>::AddVector(rVector, -Weight*g2_ij*rData.b2*z[j], 3*i);
+            DiagonalProduct(gradients_2, rData.A2, matrix_contribution);
+            DiagonalProduct(gradients_2, rData.b2, vector_contribution);
+            MathUtils<double>::AddMatrix(rMatrix,  Weight*matrix_contribution, 3*i, 3*j);
+            MathUtils<double>::AddVector(rVector, -Weight*vector_contribution*z[j], 3*i);
 
             /// Stabilization x-x
             d_ij = rDN_DX(i,0) * rDN_DX(j,0);
