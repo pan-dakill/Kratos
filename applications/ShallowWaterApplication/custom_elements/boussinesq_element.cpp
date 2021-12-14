@@ -179,18 +179,18 @@ void BoussinesqElement<TNumNodes>::AddDispersiveTerms(
             MathUtils<double>::AddMatrix(laplacian, -outer_prod(gradients_vector_i, gradients_vector_j), 3*i, 3*j);
 
             // Shape functions of the field E
-            gradients_matrix_k(2,0) = -rDN_DX(i,0);
-            gradients_matrix_k(2,1) = -rDN_DX(i,1);
+            gradients_matrix_k(2,0) = rDN_DX(j,0);
+            gradients_matrix_k(2,1) = rDN_DX(j,1);
             shape_functions_k(0,0) = rN[j];
             shape_functions_k(1,1) = rN[j];
             MathUtils<double>::AddMatrix(gradients_matrix, gradients_matrix_k, 3*i, 3*j);
             MathUtils<double>::AddMatrix(shape_functions,  shape_functions_k,  3*i, 3*j);
 
             // Stabilization terms for the field E
-            MathUtils<double>::AddMatrix(gradients_matrix, -l * rDN_DX(j,0)*prod(rData.A1, gradients_matrix_k), 3*i, 3*j);
-            MathUtils<double>::AddMatrix(gradients_matrix, -l * rDN_DX(j,1)*prod(rData.A2, gradients_matrix_k), 3*i, 3*j);
-            MathUtils<double>::AddMatrix(shape_functions,  l * rDN_DX(i,0)*prod(rData.A1, shape_functions_k),  3*i, 3*j);
-            MathUtils<double>::AddMatrix(shape_functions,  l * rDN_DX(i,1)*prod(rData.A2, shape_functions_k),  3*i, 3*j);
+            MathUtils<double>::AddMatrix(gradients_matrix, l * rDN_DX(i,0)*prod(rData.A1, gradients_matrix_k), 3*i, 3*j);
+            MathUtils<double>::AddMatrix(gradients_matrix, l * rDN_DX(i,1)*prod(rData.A2, gradients_matrix_k), 3*i, 3*j);
+            MathUtils<double>::AddMatrix(shape_functions, -l * rDN_DX(j,0)*prod(rData.A1, shape_functions_k),  3*i, 3*j);
+            MathUtils<double>::AddMatrix(shape_functions, -l * rDN_DX(j,1)*prod(rData.A2, shape_functions_k),  3*i, 3*j);
         }
     }
     LocalVectorType acceleration = this->GetAccelerationsVector(rData);
