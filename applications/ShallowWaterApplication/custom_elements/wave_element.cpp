@@ -546,15 +546,15 @@ inline const array_1d<double,3> WaveElement<TNumNodes>::VectorProduct(
 
 template<std::size_t TNumNodes>
 inline const void WaveElement<TNumNodes>::DiagonalProduct(
-    const BoundedMatrix<double,3,3>& rMatrix,
     const array_1d<double,3>& rDiagonal,
+    const BoundedMatrix<double,3,3>& rMatrix,
     BoundedMatrix<double,3,3>& rResult) const
 {
-    for (std::size_t i = 0; i < 3, ++i)
+    for (std::size_t i = 0; i < 3; ++i)
     {
         for (std::size_t j = 0; j < 3; ++j)
         {
-            rResult(i,j) = rMatrix(i,j) * rDiagonal[j];
+            rResult(i,j) = rDiagonal[i] * rMatrix(i,j);
         }
     }
 }
@@ -562,13 +562,13 @@ inline const void WaveElement<TNumNodes>::DiagonalProduct(
 
 template<std::size_t TNumNodes>
 inline const void WaveElement<TNumNodes>::DiagonalProduct(
-    const array_1d<double,3>& rVector,
     const array_1d<double,3>& rDiagonal,
+    const array_1d<double,3>& rVector,
     array_1d<double,3>& rResult) const
 {
     for (std::size_t i = 0; i < 3; ++i)
     {
-        rResult[i] = rVector[i] * rDiagonal[i];
+        rResult[i] = rDiagonal[i] * rVector[i];
     }
 }
 
