@@ -68,7 +68,7 @@ class PfemFluidDynamicsAnalysis(AnalysisStage):
 
         self.problem_path = os.getcwd()
         self.problem_name = parameters["problem_data"]["problem_name"].GetString()
-
+                
                         #print model_part and properties
         if (self.echo_level>-1):
             for properties in self.main_model_part.Properties:
@@ -166,6 +166,24 @@ class PfemFluidDynamicsAnalysis(AnalysisStage):
         self.end_time   = self.project_parameters["problem_data"]["end_time"].GetDouble()
         self.delta_time = self.project_parameters["solver_settings"]["time_stepping"]["time_step"].GetDouble()
 
+        self.wave_process_wg1 = KratosPfemFluid.CalculateWaveHeightProcess(self.computing_model_part, 1, 0,   1.9,   0.0, 0.03, "WG_01", 0.05)
+        self.wave_process_wg2 = KratosPfemFluid.CalculateWaveHeightProcess(self.computing_model_part, 1, 0,   3.1,   0.0, 0.03, "WG_02", 0.05)
+        self.wave_process_wg3 = KratosPfemFluid.CalculateWaveHeightProcess(self.computing_model_part, 1, 0,   6.0,   0.0, 0.03, "WG_03", 0.05)
+        self.wave_process_wg4 = KratosPfemFluid.CalculateWaveHeightProcess(self.computing_model_part, 1, 0,   8.8,   0.0, 0.03, "WG_04", 0.05)
+        self.wave_process_wg5 = KratosPfemFluid.CalculateWaveHeightProcess(self.computing_model_part, 1, 0,   11.3,   0.0, 0.03, "WG_05", 0.05)
+        self.wave_process_wg6 = KratosPfemFluid.CalculateWaveHeightProcess(self.computing_model_part, 1, 0,   16.8,   0.0, 0.03, "WG_06", 0.05)
+        self.wave_process_wg7 = KratosPfemFluid.CalculateWaveHeightProcess(self.computing_model_part, 1, 0,   22.0,   0.0, 0.03, "WG_07", 0.05)
+        self.wave_process_wg8 = KratosPfemFluid.CalculateWaveHeightProcess(self.computing_model_part, 1, 0,   26.6,   0.0, 0.03, "WG_08", 0.05)
+        self.wave_process_wg9 = KratosPfemFluid.CalculateWaveHeightProcess(self.computing_model_part, 1, 0,   32.5,   0.0, 0.03, "WG_09", 0.05)        
+        
+        self.wave_process_fritz_wg1 = KratosPfemFluid.CalculateWaveHeightProcess(self.computing_model_part, 1, 0,   1.13,   0.0, 0.03, "WG_fritz_01", 0.05)
+        self.wave_process_fritz_wg2 = KratosPfemFluid.CalculateWaveHeightProcess(self.computing_model_part, 1, 0,   2.13,   0.0, 0.03, "WG_fritz_02", 0.05)
+        self.wave_process_fritz_wg3 = KratosPfemFluid.CalculateWaveHeightProcess(self.computing_model_part, 1, 0,   3.13,   0.0, 0.03, "WG_fritz_03", 0.05)
+        self.wave_process_fritz_wg4 = KratosPfemFluid.CalculateWaveHeightProcess(self.computing_model_part, 1, 0,   4.13,   0.0, 0.03, "WG_fritz_04", 0.05)
+        self.wave_process_fritz_wg5 = KratosPfemFluid.CalculateWaveHeightProcess(self.computing_model_part, 1, 0,   5.13,   0.0, 0.03, "WG_fritz_05", 0.05)
+        self.wave_process_fritz_wg6 = KratosPfemFluid.CalculateWaveHeightProcess(self.computing_model_part, 1, 0,   6.13,   0.0, 0.03, "WG_fritz_06", 0.05)
+
+
 
     def InitializeSolutionStep(self):
         """This function performs all the required operations that should be executed
@@ -213,6 +231,23 @@ class PfemFluidDynamicsAnalysis(AnalysisStage):
             process.ExecuteAfterOutputStep()
 
         self.StopTimeMeasuring(self.clock_time,"Finalize Step" , self.report);
+
+        self.wave_process_wg1.Execute()
+        self.wave_process_wg2.Execute()
+        self.wave_process_wg3.Execute()
+        self.wave_process_wg4.Execute()
+        self.wave_process_wg5.Execute()
+        self.wave_process_wg6.Execute()
+        self.wave_process_wg7.Execute()
+        self.wave_process_wg8.Execute()
+        self.wave_process_wg9.Execute()        
+        
+        self.wave_process_fritz_wg1.Execute()
+        self.wave_process_fritz_wg2.Execute()
+        self.wave_process_fritz_wg3.Execute()
+        self.wave_process_fritz_wg4.Execute()
+        self.wave_process_fritz_wg5.Execute()
+        self.wave_process_fritz_wg6.Execute()
 
     def Finalize(self):
         """This function finalizes the AnalysisStage

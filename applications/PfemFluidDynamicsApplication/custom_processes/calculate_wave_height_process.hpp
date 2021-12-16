@@ -88,7 +88,14 @@ namespace Kratos
       const double time = mrModelPart.GetProcessInfo()[TIME];
       const int step = mrModelPart.GetProcessInfo()[STEP];
 
-      if (time - mPreviousPlotTime > mTimeInterval || step == 1) {
+      // double middleTransversalcoordinate = 2.5;
+      // double transversalRange = 0.4;
+
+      // double minTransversalCoordinate = middleTransversalcoordinate - transversalRange;
+      // double maxTransversalCoordinate = middleTransversalcoordinate + transversalRange;
+
+      if (time - mPreviousPlotTime > mTimeInterval || step == 1)
+      {
         // We loop over the nodes...
         const auto it_node_begin = mrModelPart.NodesBegin();
         const int num_threads = ParallelUtilities::GetNumThreads();
@@ -102,9 +109,16 @@ namespace Kratos
           const auto &r_node_coordinates = it_node->Coordinates();
           if (it_node->IsNot(ISOLATED) &&
               it_node->Is(FREE_SURFACE) &&
-              r_node_coordinates(mPlaneDirection) < mPlaneCoordinates + mTolerance &&
-              r_node_coordinates(mPlaneDirection) > mPlaneCoordinates - mTolerance)
+              r_node_coordinates(mPlaneDirection) < (mPlaneCoordinates + mTolerance) &&
+              r_node_coordinates(mPlaneDirection) > (mPlaneCoordinates - mTolerance))
           {
+            // if (it_node->IsNot(ISOLATED) && it_node->IsNot(RIGID) &&
+            //     it_node->Is(FREE_SURFACE) &&
+            //     r_node_coordinates(mPlaneDirection) < (mPlaneCoordinates + mTolerance) &&
+            //     r_node_coordinates(mPlaneDirection) > (mPlaneCoordinates - mTolerance) &&
+            //     r_node_coordinates(2) > minTransversalCoordinate &&
+            //     r_node_coordinates(2) < maxTransversalCoordinate)
+            // {
             const double height = r_node_coordinates(mHeightDirection);
 
             const double wave_height = std::abs(height - mHeightReference);

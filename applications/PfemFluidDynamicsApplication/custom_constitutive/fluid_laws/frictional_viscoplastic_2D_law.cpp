@@ -57,12 +57,27 @@ namespace Kratos
         Flags &r_options = rValues.GetOptions();
 
         const Properties &r_properties = rValues.GetMaterialProperties();
+        const GeometryType &r_geometry = rValues.GetElementGeometry();
+        const unsigned int number_of_nodes = r_geometry.size();
 
         Vector &r_strain_vector = rValues.GetStrainVector();
         Vector &r_stress_vector = rValues.GetStressVector();
 
         const double dynamic_viscosity = this->GetEffectiveDynamicViscosity(rValues);
-        const double friction_angle = r_properties[INTERNAL_FRICTION_ANGLE];
+        double friction_angle = 0;
+
+        for (unsigned int i = 0; i < number_of_nodes; i++)
+        {
+            if (r_geometry[i].Is(RIGID))
+            {
+                friction_angle += 24/3.0;
+            }
+            else
+            {
+                friction_angle += r_properties[INTERNAL_FRICTION_ANGLE]/3.0;
+            }
+        }
+
         const double cohesion = r_properties[COHESION];
         const double adaptive_exponent = r_properties[ADAPTIVE_EXPONENT];
         double effective_dynamic_viscosity = 0;
