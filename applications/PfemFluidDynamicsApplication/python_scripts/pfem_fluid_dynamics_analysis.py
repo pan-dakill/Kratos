@@ -176,12 +176,12 @@ class PfemFluidDynamicsAnalysis(AnalysisStage):
         self.wave_process_wg8 = KratosPfemFluid.CalculateWaveHeightProcess(self.computing_model_part, 1, 0,   26.6,   0.0, 0.03, "WG_08", 0.05)
         self.wave_process_wg9 = KratosPfemFluid.CalculateWaveHeightProcess(self.computing_model_part, 1, 0,   32.5,   0.0, 0.03, "WG_09", 0.05)        
         
-        self.wave_process_fritz_wg1 = KratosPfemFluid.CalculateWaveHeightProcess(self.computing_model_part, 1, 0,   1.13,   0.0, 0.03, "WG_fritz_01", 0.05)
-        self.wave_process_fritz_wg2 = KratosPfemFluid.CalculateWaveHeightProcess(self.computing_model_part, 1, 0,   2.13,   0.0, 0.03, "WG_fritz_02", 0.05)
-        self.wave_process_fritz_wg3 = KratosPfemFluid.CalculateWaveHeightProcess(self.computing_model_part, 1, 0,   3.13,   0.0, 0.03, "WG_fritz_03", 0.05)
-        self.wave_process_fritz_wg4 = KratosPfemFluid.CalculateWaveHeightProcess(self.computing_model_part, 1, 0,   4.13,   0.0, 0.03, "WG_fritz_04", 0.05)
-        self.wave_process_fritz_wg5 = KratosPfemFluid.CalculateWaveHeightProcess(self.computing_model_part, 1, 0,   5.13,   0.0, 0.03, "WG_fritz_05", 0.05)
-        self.wave_process_fritz_wg6 = KratosPfemFluid.CalculateWaveHeightProcess(self.computing_model_part, 1, 0,   6.13,   0.0, 0.03, "WG_fritz_06", 0.05)
+        self.wave_process_fritz_wg1 = KratosPfemFluid.CalculateWaveHeightProcess(self.computing_model_part, 1, 0,   1.13,   0.0, 0.03, "WG_fritz_01", 0.01)
+        self.wave_process_fritz_wg2 = KratosPfemFluid.CalculateWaveHeightProcess(self.computing_model_part, 1, 0,   2.13,   0.0, 0.03, "WG_fritz_02", 0.01)
+        self.wave_process_fritz_wg3 = KratosPfemFluid.CalculateWaveHeightProcess(self.computing_model_part, 1, 0,   3.13,   0.0, 0.03, "WG_fritz_03", 0.01)
+        self.wave_process_fritz_wg4 = KratosPfemFluid.CalculateWaveHeightProcess(self.computing_model_part, 1, 0,   4.13,   0.0, 0.03, "WG_fritz_04", 0.01)
+        self.wave_process_fritz_wg5 = KratosPfemFluid.CalculateWaveHeightProcess(self.computing_model_part, 1, 0,   5.13,   0.0, 0.03, "WG_fritz_05", 0.01)
+        self.wave_process_fritz_wg6 = KratosPfemFluid.CalculateWaveHeightProcess(self.computing_model_part, 1, 0,   6.13,   0.0, 0.03, "WG_fritz_06", 0.01)
 
 
 
