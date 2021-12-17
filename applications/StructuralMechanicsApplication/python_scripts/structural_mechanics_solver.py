@@ -122,6 +122,10 @@ class MechanicalSolver(PythonSolver):
                 "use_lagrange_BS"   : false,
                 "advanced_settings" : { }
             },
+            "desired_iterations":                 4,
+            "max_radius_factor":                  0.000001,
+            "min_radius_factor":                  0.000001,
+            "arc_length"       :                  false,
             "clear_storage": false,
             "move_mesh_flag": true,
             "multi_point_constraints_used": true,
@@ -455,7 +459,7 @@ class MechanicalSolver(PythonSolver):
                 if self.settings["arc_length"].GetBool() == False:
                     mechanical_solution_strategy = self._create_newton_raphson_strategy()
                 else:
-                    mechanical_solution_strategy = self._create_ramm_arc_lenght_strategy()
+                    mechanical_solution_strategy = self._create_ramm_arc_length_strategy()
             else:
                 mechanical_solution_strategy = self._create_line_search_strategy()
         else:
@@ -510,15 +514,17 @@ class MechanicalSolver(PythonSolver):
         strategy.SetUseOldStiffnessInFirstIterationFlag(self.settings["use_old_stiffness_in_first_iteration"].GetBool())
         return strategy
 
-    def _create_ramm_arc_lenght_strategy(self):
+    def _create_ramm_arc_length_strategy(self):
+        import json
         # Arc-Length strategy
         self.strategy_params = KratosMultiphysics.Parameters("{}")
-        self.strategy_params.AddValue("loads_sub_model_part_list",self.loads_sub_sub_model_part_list)
-        self.strategy_params.AddValue("loads_variable_list",self.settings["loads_variable_list"])
+        
+        self.strategy_params.AddValue("loads_sub_model_part_list",KratosMultiphysics.Parameters(json.dumps(["PointLoad2D_Load_on_points_Auto1"])))
+        self.strategy_params.AddValue("loads_variable_list",KratosMultiphysics.Parameters(json.dumps(["POINT_LOAD"])))
 
         self.main_model_part.ProcessInfo.SetValue(KratosPoro.ARC_LENGTH_LAMBDA, 1.0)
         self.main_model_part.ProcessInfo.SetValue(KratosPoro.ARC_LENGTH_RADIUS_FACTOR, 1.0)
-
+        
         self.strategy_params.AddValue("desired_iterations",self.settings["desired_iterations"])
         self.strategy_params.AddValue("max_radius_factor",self.settings["max_radius_factor"])
         self.strategy_params.AddValue("min_radius_factor",self.settings["min_radius_factor"])
