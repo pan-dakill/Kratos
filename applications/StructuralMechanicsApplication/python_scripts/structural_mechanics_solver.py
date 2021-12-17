@@ -529,7 +529,7 @@ class MechanicalSolver(PythonSolver):
         self.strategy_params.AddValue("max_radius_factor",self.settings["max_radius_factor"])
         self.strategy_params.AddValue("min_radius_factor",self.settings["min_radius_factor"])
         
-        solving_strategy = KratosPoro.PoromechanicsRammArcLengthNonlocalStrategy(self.GetComputingModelPart(),
+        solving_strategy = KratosPoro.PoromechanicsRammArcLengthStrategy(self.GetComputingModelPart(),
                                                                         self._GetScheme(),
                                                                         self._GetConvergenceCriterion(),
                                                                         self._GetBuilderAndSolver(),
