@@ -452,7 +452,10 @@ class MechanicalSolver(PythonSolver):
             mechanical_solution_strategy = self._create_linear_strategy()
         elif analysis_type == "non_linear":
             if(self.settings["line_search"].GetBool() == False):
-                mechanical_solution_strategy = self._create_newton_raphson_strategy()
+                if self.settings["arc_length"].GetBool() == False:
+                    mechanical_solution_strategy = self._create_newton_raphson_strategy()
+                else:
+                    mechanical_solution_strategy = self._create_ramm_arc_lenght_strategy()
             else:
                 mechanical_solution_strategy = self._create_line_search_strategy()
         else:
@@ -520,9 +523,6 @@ class MechanicalSolver(PythonSolver):
         self.strategy_params.AddValue("max_radius_factor",self.settings["max_radius_factor"])
         self.strategy_params.AddValue("min_radius_factor",self.settings["min_radius_factor"])
         
-        self.strategy_params.AddValue("body_domain_sub_model_part_list",self.body_domain_sub_sub_model_part_list)
-        self.strategy_params.AddValue("characteristic_length",self.settings["characteristic_length"])
-        self.strategy_params.AddValue("search_neighbours_step",self.settings["search_neighbours_step"])
         solving_strategy = KratosPoro.PoromechanicsRammArcLengthNonlocalStrategy(self.GetComputingModelPart(),
                                                                         self._GetScheme(),
                                                                         self._GetConvergenceCriterion(),
@@ -531,4 +531,5 @@ class MechanicalSolver(PythonSolver):
                                                                         self.settings["max_iteration"].GetInt(),
                                                                         self.settings["compute_reactions"].GetBool(),
                                                                         self.settings["reform_dofs_at_each_step"].GetBool(),
-                                                                        self.settings["move_mesh_flag"].GetBool())  
+                                                                        self.settings["move_mesh_flag"].GetBool())
+        return solving_strategy
