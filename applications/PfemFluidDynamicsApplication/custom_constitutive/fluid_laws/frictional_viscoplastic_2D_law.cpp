@@ -66,32 +66,32 @@ namespace Kratos
         const double dynamic_viscosity = this->GetEffectiveDynamicViscosity(rValues);
         double friction_angle = r_properties[INTERNAL_FRICTION_ANGLE];
 
-        //////////////////////////////////////////////////////
-        // slip friction on boundaries
-        for (unsigned int i = 0; i < number_of_nodes; i++)
-        {
-            if (r_geometry[i].Is(RIGID))
-            {
-                friction_angle = 24;
-            }
-        }
-        //////////////////////////////////////////////////////
-
-        //////////////////////////////////////////////////////
-        // // average friction on boundaries
-        // friction_angle =0;
+        // //////////////////////////////////////////////////////
+        // // slip friction on boundaries
         // for (unsigned int i = 0; i < number_of_nodes; i++)
         // {
         //     if (r_geometry[i].Is(RIGID))
         //     {
-        //         friction_angle += 24 / 3.0;
-        //     }
-        //     else
-        //     {
-        //         friction_angle += r_properties[INTERNAL_FRICTION_ANGLE] / 3.0;
+        //         friction_angle = 24;
         //     }
         // }
-        //////////////////////////////////////////////////////
+        // //////////////////////////////////////////////////////
+
+        ////////////////////////////////////////////////////
+        // average friction on boundaries
+        friction_angle =0;
+        for (unsigned int i = 0; i < number_of_nodes; i++)
+        {
+            if (r_geometry[i].Is(RIGID))
+            {
+                friction_angle += 24 / 3.0;
+            }
+            else
+            {
+                friction_angle += r_properties[INTERNAL_FRICTION_ANGLE] / 3.0;
+            }
+        }
+        ////////////////////////////////////////////////////
 
         const double cohesion = r_properties[COHESION];
         const double adaptive_exponent = r_properties[ADAPTIVE_EXPONENT];
