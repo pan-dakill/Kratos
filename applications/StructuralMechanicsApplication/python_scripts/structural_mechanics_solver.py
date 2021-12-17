@@ -3,6 +3,7 @@ import KratosMultiphysics
 
 # Import applications
 import KratosMultiphysics.StructuralMechanicsApplication as StructuralMechanicsApplication
+import KratosMultiphysics.PoromechanicsApplication as KratosPoro
 
 # Importing the base class
 from KratosMultiphysics.python_solver import PythonSolver
@@ -505,3 +506,29 @@ class MechanicalSolver(PythonSolver):
                                                      self.settings["move_mesh_flag"].GetBool())
         strategy.SetUseOldStiffnessInFirstIterationFlag(self.settings["use_old_stiffness_in_first_iteration"].GetBool())
         return strategy
+
+    def _create_ramm_arc_lenght_strategy(self):
+        # Arc-Length strategy
+        self.strategy_params = KratosMultiphysics.Parameters("{}")
+        self.strategy_params.AddValue("loads_sub_model_part_list",self.loads_sub_sub_model_part_list)
+        self.strategy_params.AddValue("loads_variable_list",self.settings["loads_variable_list"])
+
+        self.main_model_part.ProcessInfo.SetValue(KratosPoro.ARC_LENGTH_LAMBDA, 1.0)
+        self.main_model_part.ProcessInfo.SetValue(KratosPoro.ARC_LENGTH_RADIUS_FACTOR, 1.0)
+
+        self.strategy_params.AddValue("desired_iterations",self.settings["desired_iterations"])
+        self.strategy_params.AddValue("max_radius_factor",self.settings["max_radius_factor"])
+        self.strategy_params.AddValue("min_radius_factor",self.settings["min_radius_factor"])
+        
+        self.strategy_params.AddValue("body_domain_sub_model_part_list",self.body_domain_sub_sub_model_part_list)
+        self.strategy_params.AddValue("characteristic_length",self.settings["characteristic_length"])
+        self.strategy_params.AddValue("search_neighbours_step",self.settings["search_neighbours_step"])
+        solving_strategy = KratosPoro.PoromechanicsRammArcLengthNonlocalStrategy(self.GetComputingModelPart(),
+                                                                        self._GetScheme(),
+                                                                        self._GetConvergenceCriterion(),
+                                                                        self._GetBuilderAndSolver(),
+                                                                        self.strategy_params,
+                                                                        self.settings["max_iteration"].GetInt(),
+                                                                        self.settings["compute_reactions"].GetBool(),
+                                                                        self.settings["reform_dofs_at_each_step"].GetBool(),
+                                                                        self.settings["move_mesh_flag"].GetBool())  
