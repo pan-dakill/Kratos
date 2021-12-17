@@ -96,50 +96,50 @@ public:
 		{
             MotherType::Initialize();
 
-            if (mInitializeArcLengthWasPerformed == false)
-            {
-                //set up the system
-                if (mpBuilderAndSolver->GetDofSetIsInitializedFlag() == false)
-                {
-                    //setting up the list of the DOFs to be solved
-                    mpBuilderAndSolver->SetUpDofSet(mpScheme, BaseType::GetModelPart());
+            // if (mInitializeArcLengthWasPerformed == false)
+            // {
+            //     //set up the system
+            //     if (mpBuilderAndSolver->GetDofSetIsInitializedFlag() == false)
+            //     {
+            //         //setting up the list of the DOFs to be solved
+            //         mpBuilderAndSolver->SetUpDofSet(mpScheme, BaseType::GetModelPart());
 
-                    //shaping correctly the system
-                    mpBuilderAndSolver->SetUpSystem(BaseType::GetModelPart());
-                }
+            //         //shaping correctly the system
+            //         mpBuilderAndSolver->SetUpSystem(BaseType::GetModelPart());
+            //     }
 
-                // Compute initial radius (mRadius_0)
-                mpBuilderAndSolver->ResizeAndInitializeVectors(mpScheme, mpA, mpDx, mpb, BaseType::GetModelPart());
-                TSystemMatrixType& mA = *mpA;
-                TSystemVectorType& mDx = *mpDx;
-                TSystemVectorType& mb = *mpb;
-                TSparseSpace::SetToZero(mA);
-                TSparseSpace::SetToZero(mDx);
-                TSparseSpace::SetToZero(mb);
+            //     // Compute initial radius (mRadius_0)
+            //     mpBuilderAndSolver->ResizeAndInitializeVectors(mpScheme, mpA, mpDx, mpb, BaseType::GetModelPart());
+            //     TSystemMatrixType& mA = *mpA;
+            //     TSystemVectorType& mDx = *mpDx;
+            //     TSystemVectorType& mb = *mpb;
+            //     TSparseSpace::SetToZero(mA);
+            //     TSparseSpace::SetToZero(mDx);
+            //     TSparseSpace::SetToZero(mb);
 
-                mpBuilderAndSolver->BuildAndSolve(mpScheme, BaseType::GetModelPart(), mA, mDx, mb);
+            //     mpBuilderAndSolver->BuildAndSolve(mpScheme, BaseType::GetModelPart(), mA, mDx, mb);
 
-                mRadius_0 = TSparseSpace::TwoNorm(mDx);
-                mRadius = mRadius_0;
+            //     mRadius_0 = TSparseSpace::TwoNorm(mDx);
+            //     mRadius = mRadius_0;
 
-                // Compute vector of reference external force (mf)
-                this->InitializeSystemVector(mpf);
-                TSystemVectorType& mf = *mpf;
-                TSparseSpace::SetToZero(mf);
+            //     // Compute vector of reference external force (mf)
+            //     this->InitializeSystemVector(mpf);
+            //     TSystemVectorType& mf = *mpf;
+            //     TSparseSpace::SetToZero(mf);
 
-                mpBuilderAndSolver->BuildRHS(mpScheme, BaseType::GetModelPart(), mf);
+            //     mpBuilderAndSolver->BuildRHS(mpScheme, BaseType::GetModelPart(), mf);
 
-                //Initialize the loading factor Lambda
-                mLambda = 0.0;
-                mLambda_old = 1.0;
+            //     //Initialize the loading factor Lambda
+            //     mLambda = 0.0;
+            //     mLambda_old = 1.0;
 
-                // Initialize Norm of solution
-                mNormxEquilibrium = 0.0;
+            //     // Initialize Norm of solution
+            //     mNormxEquilibrium = 0.0;
 
-                mInitializeArcLengthWasPerformed = true;
+            //     mInitializeArcLengthWasPerformed = true;
 
-                KRATOS_INFO("Ramm's Arc Length Strategy") << "Strategy Initialized" << std::endl;
-            }
+            //     KRATOS_INFO("Ramm's Arc Length Strategy") << "Strategy Initialized" << std::endl;
+            // }
         }
 
         KRATOS_CATCH( "" )
@@ -150,7 +150,50 @@ public:
     void InitializeSolutionStep() override
     {
         KRATOS_TRY
+        if (mInitializeArcLengthWasPerformed == false)
+        {
+            //set up the system
+            if (mpBuilderAndSolver->GetDofSetIsInitializedFlag() == false)
+            {
+                //setting up the list of the DOFs to be solved
+                mpBuilderAndSolver->SetUpDofSet(mpScheme, BaseType::GetModelPart());
 
+                //shaping correctly the system
+                mpBuilderAndSolver->SetUpSystem(BaseType::GetModelPart());
+            }
+
+            // Compute initial radius (mRadius_0)
+            mpBuilderAndSolver->ResizeAndInitializeVectors(mpScheme, mpA, mpDx, mpb, BaseType::GetModelPart());
+            TSystemMatrixType& mA = *mpA;
+            TSystemVectorType& mDx = *mpDx;
+            TSystemVectorType& mb = *mpb;
+            TSparseSpace::SetToZero(mA);
+            TSparseSpace::SetToZero(mDx);
+            TSparseSpace::SetToZero(mb);
+
+            mpBuilderAndSolver->BuildAndSolve(mpScheme, BaseType::GetModelPart(), mA, mDx, mb);
+
+            mRadius_0 = TSparseSpace::TwoNorm(mDx);
+            mRadius = mRadius_0;
+
+            // Compute vector of reference external force (mf)
+            this->InitializeSystemVector(mpf);
+            TSystemVectorType& mf = *mpf;
+            TSparseSpace::SetToZero(mf);
+
+            mpBuilderAndSolver->BuildRHS(mpScheme, BaseType::GetModelPart(), mf);
+
+            //Initialize the loading factor Lambda
+            mLambda = 0.0;
+            mLambda_old = 1.0;
+
+            // Initialize Norm of solution
+            mNormxEquilibrium = 0.0;
+
+            mInitializeArcLengthWasPerformed = true;
+
+            KRATOS_INFO("Ramm's Arc Length Strategy") << "Strategy Initialized" << std::endl;
+        }
 		if (mSolutionStepIsInitialized == false)
 		{
             GrandMotherType::InitializeSolutionStep();
