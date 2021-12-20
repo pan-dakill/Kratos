@@ -195,89 +195,153 @@ public:
      * @param A The LHS matrix
      * @param b The RHS vector
      */
+    void BuildNumericalDerivation(
+        typename TSchemeType::Pointer pScheme,
+        ModelPart& rModelPart,
+        TSystemMatrixType& rA,
+        TSystemVectorType& rb)
+    {
+        KRATOS_TRY
+
+        BuildRHS(pScheme, rModelPart, rb); // here we have the RHS
+        TSystemVectorType perturbed_b;
+        perturbed_b.resize(rb.size(), false);
+        TSparseSpace::SetToZero(perturbed_b);
+        const double pert = 1.0e-3;
+        unsigned int dof = 0;
+
+        for (auto& r_dof : BaseType::mDofSet) {
+            const IndexType dof_id = r_dof.EquationId();
+            if (!r_dof.IsFixed()) {
+                double perturbation = pert * r_dof.GetSolutionStepValue();
+                if (std::abs(perturbation) == 0.0)
+                    perturbation = 1.0e-3;
+                r_dof.GetSolutionStepValue() += perturbation;
+                BuildRHS(pScheme, rModelPart, perturbed_b);
+                TSparseSpace::UnaliasedAdd(perturbed_b, -1.0, rb); // finite difference
+                #pragma omp parallel for
+                for (int i = 0; i < rA.size1(); i++) {
+                    rA(i, dof_id) = -perturbed_b[i] / perturbation;
+                }
+                TSparseSpace::SetToZero(perturbed_b);
+                r_dof.GetSolutionStepValue() -= perturbation;
+            } else {
+                rA(dof_id, dof_id) = 1.0e6;
+            }
+        }
+        // KRATOS_WATCH("**********************")
+        // KRATOS_WATCH("**********************")
+        // KRATOS_WATCH("**********************")
+        // KRATOS_WATCH(rA)
+        
+
+        // TSparseSpace::SetToZero(rA);
+        // BuildLHS(pScheme, rModelPart, rA);
+        // KRATOS_WATCH(rA)
+        // KRATOS_ERROR_IF(rModelPart.GetProcessInfo()[STEP] ==2) << "" << std::endl;
+
+        // KRATOS_WATCH("**********************")
+        // KRATOS_WATCH("**********************")
+        // KRATOS_WATCH("**********************")
+
+        KRATOS_CATCH("")
+    }
+
+
+
+
+    /**
+     * @brief Function to perform the build of the RHS. The vector could be sized as the total number
+     * of dofs or as the number of unrestrained ones
+     * @param pScheme The integration scheme considered
+     * @param rModelPart The model part of the problem to solve
+     * @param A The LHS matrix
+     * @param b The RHS vector
+     */
     void Build(
         typename TSchemeType::Pointer pScheme,
         ModelPart& rModelPart,
         TSystemMatrixType& A,
         TSystemVectorType& b) override
     {
-        KRATOS_TRY
+        BuildNumericalDerivation(pScheme, rModelPart, A, b);
+        // KRATOS_TRY
 
-        KRATOS_ERROR_IF(!pScheme) << "No scheme provided!" << std::endl;
+        // KRATOS_ERROR_IF(!pScheme) << "No scheme provided!" << std::endl;
 
-        // Getting the elements from the model
-        const int nelements = static_cast<int>(rModelPart.Elements().size());
+        // // Getting the elements from the model
+        // const int nelements = static_cast<int>(rModelPart.Elements().size());
 
-        // Getting the array of the conditions
-        const int nconditions = static_cast<int>(rModelPart.Conditions().size());
+        // // Getting the array of the conditions
+        // const int nconditions = static_cast<int>(rModelPart.Conditions().size());
 
-        const ProcessInfo& CurrentProcessInfo = rModelPart.GetProcessInfo();
-        ModelPart::ElementsContainerType::iterator el_begin = rModelPart.ElementsBegin();
-        ModelPart::ConditionsContainerType::iterator cond_begin = rModelPart.ConditionsBegin();
+        // const ProcessInfo& CurrentProcessInfo = rModelPart.GetProcessInfo();
+        // ModelPart::ElementsContainerType::iterator el_begin = rModelPart.ElementsBegin();
+        // ModelPart::ConditionsContainerType::iterator cond_begin = rModelPart.ConditionsBegin();
 
-        //contributions to the system
-        LocalSystemMatrixType LHS_Contribution = LocalSystemMatrixType(0, 0);
-        LocalSystemVectorType RHS_Contribution = LocalSystemVectorType(0);
+        // //contributions to the system
+        // LocalSystemMatrixType LHS_Contribution = LocalSystemMatrixType(0, 0);
+        // LocalSystemVectorType RHS_Contribution = LocalSystemVectorType(0);
 
-        //vector containing the localization in the system of the different
-        //terms
-        Element::EquationIdVectorType EquationId;
+        // //vector containing the localization in the system of the different
+        // //terms
+        // Element::EquationIdVectorType EquationId;
 
-        // Assemble all elements
-        const auto timer = BuiltinTimer();
+        // // Assemble all elements
+        // const auto timer = BuiltinTimer();
 
-        #pragma omp parallel firstprivate(nelements,nconditions, LHS_Contribution, RHS_Contribution, EquationId )
-        {
-            # pragma omp for  schedule(guided, 512) nowait
-            for (int k = 0; k < nelements; k++)
-            {
-                ModelPart::ElementsContainerType::iterator it = el_begin + k;
+        // #pragma omp parallel firstprivate(nelements,nconditions, LHS_Contribution, RHS_Contribution, EquationId )
+        // {
+        //     # pragma omp for  schedule(guided, 512) nowait
+        //     for (int k = 0; k < nelements; k++)
+        //     {
+        //         ModelPart::ElementsContainerType::iterator it = el_begin + k;
 
-                //detect if the element is active or not. If the user did not make any choice the element
-                //is active by default
-                bool element_is_active = true;
-                if ((it)->IsDefined(ACTIVE))
-                    element_is_active = (it)->Is(ACTIVE);
+        //         //detect if the element is active or not. If the user did not make any choice the element
+        //         //is active by default
+        //         bool element_is_active = true;
+        //         if ((it)->IsDefined(ACTIVE))
+        //             element_is_active = (it)->Is(ACTIVE);
 
-                if (element_is_active)
-                {
-                    //calculate elemental contribution
-                    pScheme->CalculateSystemContributions(*it, LHS_Contribution, RHS_Contribution, EquationId, CurrentProcessInfo);
+        //         if (element_is_active)
+        //         {
+        //             //calculate elemental contribution
+        //             pScheme->CalculateSystemContributions(*it, LHS_Contribution, RHS_Contribution, EquationId, CurrentProcessInfo);
 
-                    //assemble the elemental contribution
-                    Assemble(A, b, LHS_Contribution, RHS_Contribution, EquationId);
-                }
+        //             //assemble the elemental contribution
+        //             Assemble(A, b, LHS_Contribution, RHS_Contribution, EquationId);
+        //         }
 
-            }
+        //     }
 
-            #pragma omp for  schedule(guided, 512)
-            for (int k = 0; k < nconditions; k++)
-            {
-                ModelPart::ConditionsContainerType::iterator it = cond_begin + k;
+        //     #pragma omp for  schedule(guided, 512)
+        //     for (int k = 0; k < nconditions; k++)
+        //     {
+        //         ModelPart::ConditionsContainerType::iterator it = cond_begin + k;
 
-                //detect if the element is active or not. If the user did not make any choice the element
-                //is active by default
-                bool condition_is_active = true;
-                if ((it)->IsDefined(ACTIVE))
-                    condition_is_active = (it)->Is(ACTIVE);
+        //         //detect if the element is active or not. If the user did not make any choice the element
+        //         //is active by default
+        //         bool condition_is_active = true;
+        //         if ((it)->IsDefined(ACTIVE))
+        //             condition_is_active = (it)->Is(ACTIVE);
 
-                if (condition_is_active)
-                {
-                    //calculate elemental contribution
-                    pScheme->CalculateSystemContributions(*it, LHS_Contribution, RHS_Contribution, EquationId, CurrentProcessInfo);
+        //         if (condition_is_active)
+        //         {
+        //             //calculate elemental contribution
+        //             pScheme->CalculateSystemContributions(*it, LHS_Contribution, RHS_Contribution, EquationId, CurrentProcessInfo);
 
-                    //assemble the elemental contribution
-                    Assemble(A, b, LHS_Contribution, RHS_Contribution, EquationId);
-                }
-            }
-        }
+        //             //assemble the elemental contribution
+        //             Assemble(A, b, LHS_Contribution, RHS_Contribution, EquationId);
+        //         }
+        //     }
+        // }
 
-        KRATOS_INFO_IF("ResidualBasedBlockBuilderAndSolver", this->GetEchoLevel() >= 1) << "Build time: " << timer.ElapsedSeconds() << std::endl;
+        // KRATOS_INFO_IF("ResidualBasedBlockBuilderAndSolver", this->GetEchoLevel() >= 1) << "Build time: " << timer.ElapsedSeconds() << std::endl;
 
 
-        KRATOS_INFO_IF("ResidualBasedBlockBuilderAndSolver", (this->GetEchoLevel() > 2 && rModelPart.GetCommunicator().MyPID() == 0)) << "Finished parallel building" << std::endl;
+        // KRATOS_INFO_IF("ResidualBasedBlockBuilderAndSolver", (this->GetEchoLevel() > 2 && rModelPart.GetCommunicator().MyPID() == 0)) << "Finished parallel building" << std::endl;
 
-        KRATOS_CATCH("")
+        // KRATOS_CATCH("")
     }
 
     /**
