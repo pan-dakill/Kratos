@@ -144,9 +144,9 @@ namespace Kratos
     const auto &r_geometry = this->GetGeometry();
     const SizeType dimension = r_geometry.WorkingSpaceDimension();
 
-    //WARNING THIS MUST BE REMOVED ASAP
+    // WARNING THIS MUST BE REMOVED ASAP
     const_cast<TwoStepUpdatedLagrangianVPImplicitFluidElement<TDim> *>(this)->mpConstitutiveLaw = const_cast<TwoStepUpdatedLagrangianVPImplicitFluidElement<TDim> *>(this)->GetProperties().GetValue(CONSTITUTIVE_LAW);
-    //mpConstitutiveLaw = this->GetProperties().GetValue(CONSTITUTIVE_LAW);
+    // mpConstitutiveLaw = this->GetProperties().GetValue(CONSTITUTIVE_LAW);
 
     // Verify that the constitutive law exists
     KRATOS_ERROR_IF_NOT(r_properties.Has(CONSTITUTIVE_LAW))
@@ -587,6 +587,21 @@ namespace Kratos
     DeviatoricCoeff = rElementalVariables.ConstitutiveMatrix(voigt_size - 1, voigt_size - 1);
     VolumetricCoeff = bulk_modulus * time_step;
     Density = mpConstitutiveLaw->CalculateValue(constitutive_law_values, DENSITY, Density);
+
+    // ////////////// imposing max Density to interface elements ///////////
+    // const auto &r_geometry = this->GetGeometry();
+    // const unsigned int number_of_nodes = r_geometry.size();  
+    // double maxDensity = Density;
+    // for (unsigned int i = 0; i < number_of_nodes; i++)
+    // {
+    //   double nodal_density = r_geometry[i].FastGetSolutionStepValue(DENSITY);
+    //   if (r_geometry[i].Is(RIGID) && nodal_density > maxDensity)
+    //   {
+    //     maxDensity = nodal_density;
+    //   }
+    // }
+    // Density = maxDensity;
+    // ////////////////////////////////////////////////////////////////////
 
     this->mMaterialDeviatoricCoefficient = DeviatoricCoeff;
     this->mMaterialVolumetricCoefficient = VolumetricCoeff;
