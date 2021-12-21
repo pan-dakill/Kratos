@@ -43,16 +43,16 @@ void JointCohesionDriven2DLaw::ComputeEquivalentStrain(ConstitutiveLawVariables&
 	rVariables.EquivalentStrain = 1.0;
 
     double tau = rVariables.YoungModulus * StrainVector[0];
-	double sigma = rVariables.YoungModulus * StrainVector[1];
+	double sigma = rVariables.YoungModulus * StrainVector[1] + mUpliftPressure;
 
     if( rValues.GetOptions().Is(ConstitutiveLaw::COMPUTE_STRAIN_ENERGY) ) // No contact between interfaces
     {
-        double broken_limit = rVariables.Cohesion - mUpliftPressure;
+        double broken_limit = rVariables.Cohesion;
 		if (std::sqrt(sigma * sigma + tau * tau) > broken_limit) rVariables.EquivalentStrain = 0.0;
     }
     else // Contact between interfaces
     {
-		double broken_limit = fabs(rVariables.FrictionCoefficient * sigma) + rVariables.Cohesion - mUpliftPressure;
+		double broken_limit = fabs(rVariables.FrictionCoefficient * sigma) + rVariables.Cohesion;
 	    if (fabs (tau) > broken_limit) rVariables.EquivalentStrain = 0.0;
     }
 }
