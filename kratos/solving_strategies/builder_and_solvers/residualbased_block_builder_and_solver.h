@@ -204,45 +204,67 @@ public:
         KRATOS_TRY
 
         BuildRHS(pScheme, rModelPart, rb); // here we have the RHS
-        TSystemVectorType perturbed_b;
-        perturbed_b.resize(rb.size(), false);
-        TSparseSpace::SetToZero(perturbed_b);
+        // TSystemVectorType perturbed_b;
+        // perturbed_b.resize(rb.size(), false);
+        // TSparseSpace::SetToZero(perturbed_b);
         const double pert = 1.0e-3;
         unsigned int dof = 0;
 
-        for (auto& r_dof : BaseType::mDofSet) {
-            const IndexType dof_id = r_dof.EquationId();
-            if (!r_dof.IsFixed()) {
-                double perturbation = pert * r_dof.GetSolutionStepValue();
-                if (std::abs(perturbation) == 0.0)
-                    perturbation = 1.0e-3;
-                r_dof.GetSolutionStepValue() += perturbation;
-                BuildRHS(pScheme, rModelPart, perturbed_b);
-                TSparseSpace::UnaliasedAdd(perturbed_b, -1.0, rb); // finite difference
-                #pragma omp parallel for
-                for (int i = 0; i < rA.size1(); i++) {
-                    rA(i, dof_id) = -perturbed_b[i] / perturbation;
+        // for (auto& r_dof : BaseType::mDofSet) {
+        //     const IndexType dof_id = r_dof.EquationId();
+        //     if (!r_dof.IsFixed()) {
+        //         double perturbation = pert * r_dof.GetSolutionStepValue();
+        //         if (std::abs(perturbation) == 0.0)
+        //             perturbation = 1.0e-3;
+        //         r_dof.GetSolutionStepValue() += perturbation;
+        //         BuildRHS(pScheme, rModelPart, perturbed_b);
+        //         TSparseSpace::UnaliasedAdd(perturbed_b, -1.0, rb); // finite difference
+        //         #pragma omp parallel for
+        //         for (int i = 0; i < rA.size1(); i++) {
+        //             rA(i, dof_id) = -perturbed_b[i] / perturbation;
+        //         }
+        //         TSparseSpace::SetToZero(perturbed_b);
+        //         r_dof.GetSolutionStepValue() -= perturbation;
+        //     } else {
+        //         rA(dof_id, dof_id) = 1.0e6;
+        //     }
+        // }
+
+        const int ndofs = static_cast<int>(BaseType::mDofSet.size());
+        auto dof_begin = BaseType::mDofSet.begin();
+        #pragma omp parallel
+        {
+            TSystemVectorType perturbed_b;
+            perturbed_b.resize(rb.size(), false);
+            TSparseSpace::SetToZero(perturbed_b);
+
+            #pragma omp for
+            for (int k = 0; k < ndofs; k++)
+            {
+                auto it_dof = dof_begin + k;
+                const IndexType dof_id = it_dof->EquationId();
+
+                // TSystemVectorType perturbed_b;
+                // perturbed_b.resize(rb.size(), false);
+                // TSparseSpace::SetToZero(perturbed_b);
+
+                if (!it_dof->IsFixed()) {
+                    double perturbation = pert * it_dof->GetSolutionStepValue();
+                    if (std::abs(perturbation) == 0.0)
+                        perturbation = 1.0e-3;
+                    it_dof->GetSolutionStepValue() += perturbation;
+                    BuildRHS(pScheme, rModelPart, perturbed_b);
+                    TSparseSpace::UnaliasedAdd(perturbed_b, -1.0, rb); // finite difference
+                    for (int i = 0; i < rA.size1(); i++) {
+                        rA(i, dof_id) = -(perturbed_b)[i] / perturbation;
+                    }
+                    TSparseSpace::SetToZero(perturbed_b);
+                    it_dof->GetSolutionStepValue() -= perturbation;
+                } else {
+                    rA(dof_id, dof_id) = 1.0e6;
                 }
-                TSparseSpace::SetToZero(perturbed_b);
-                r_dof.GetSolutionStepValue() -= perturbation;
-            } else {
-                rA(dof_id, dof_id) = 1.0e6;
             }
         }
-        // KRATOS_WATCH("**********************")
-        // KRATOS_WATCH("**********************")
-        // KRATOS_WATCH("**********************")
-        // KRATOS_WATCH(rA)
-        
-
-        // TSparseSpace::SetToZero(rA);
-        // BuildLHS(pScheme, rModelPart, rA);
-        // KRATOS_WATCH(rA)
-        // KRATOS_ERROR_IF(rModelPart.GetProcessInfo()[STEP] ==2) << "" << std::endl;
-
-        // KRATOS_WATCH("**********************")
-        // KRATOS_WATCH("**********************")
-        // KRATOS_WATCH("**********************")
 
         KRATOS_CATCH("")
     }
