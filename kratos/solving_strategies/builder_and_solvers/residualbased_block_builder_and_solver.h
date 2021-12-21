@@ -204,130 +204,28 @@ public:
         KRATOS_TRY
 
         BuildRHS(pScheme, rModelPart, rb); // here we have the RHS
-        // TSystemVectorType perturbed_b;
-        // perturbed_b.resize(rb.size(), false);
-        // TSparseSpace::SetToZero(perturbed_b);
-        // const double pert = 1.0e-3;
-        // unsigned int dof = 0;
-        // for (auto& r_dof : BaseType::mDofSet) {
-        //     const IndexType dof_id = r_dof.EquationId();
-        //     if (!r_dof.IsFixed()) {
-        //         double perturbation = pert * r_dof.GetSolutionStepValue();
-        //         if (std::abs(perturbation) == 0.0)
-        //             perturbation = 1.0e-3;
-        //         r_dof.GetSolutionStepValue() += perturbation;
-        //         BuildRHS(pScheme, rModelPart, perturbed_b);
-        //         TSparseSpace::UnaliasedAdd(perturbed_b, -1.0, rb); // finite difference
-        //         #pragma omp parallel for
-        //         for (int i = 0; i < rA.size1(); i++) {
-        //             rA(i, dof_id) = -perturbed_b[i] / perturbation;
-        //         }
-        //         TSparseSpace::SetToZero(perturbed_b);
-        //         r_dof.GetSolutionStepValue() -= perturbation;
-        //     } else {
-        //         rA(dof_id, dof_id) = 1.0e6;
-        //     }
-        // }
-
-        // ***********************************************
-        // ***********************************************
-        // ***********************************************
-
-        const int ndofs = static_cast<int>(BaseType::mDofSet.size());
-        auto dof_begin = BaseType::mDofSet.begin();
-        unsigned int num_threads = ParallelUtilities::GetNumThreads();
+        TSystemVectorType perturbed_b;
+        perturbed_b.resize(rb.size(), false);
+        TSparseSpace::SetToZero(perturbed_b);
         const double pert = 1.0e-3;
-
-        // We initialize the perturbed_b for each thread
-        std::vector<TSystemVectorType> perturbed_b_vector(num_threads);
-        std::vector<double> perturbation_vector(num_threads, 0.0);
-        for (IndexType i = 0; i < num_threads; ++i) {
-            perturbed_b_vector[i].resize(ndofs, false);
-            TSparseSpace::SetToZero(perturbed_b_vector[i]);
-        }
-
-        //Getting the Elements
-        ElementsArrayType& pElements = rModelPart.Elements();
-        //getting the array of the conditions
-        ConditionsArrayType& ConditionsArray = rModelPart.Conditions();
-        const ProcessInfo& CurrentProcessInfo = rModelPart.GetProcessInfo();
-
-        #pragma omp parallel
-        {
-            LocalSystemMatrixType LHS_Contribution = LocalSystemMatrixType(0, 0);
-            LocalSystemVectorType RHS_Contribution = LocalSystemVectorType(0);
-            Element::EquationIdVectorType EquationId;
-            const int nconditions = static_cast<int>(ConditionsArray.size());
-            const int nelements = static_cast<int>(pElements.size());
-
-            #pragma omp parallel for
-            for (int k = 0; k < ndofs; k++)
-            {
-                auto it_dof = dof_begin + k;
-                const IndexType dof_id = it_dof->EquationId();
-                int thread = OpenMPUtils::ThisThread();
-
-                if (!it_dof->IsFixed()) {
-                    perturbation_vector[thread] = pert * it_dof->GetSolutionStepValue();
-                    if (std::abs(perturbation_vector[thread]) == 0.0)
-                        perturbation_vector[thread] = 1.0e-3;
-                    it_dof->GetSolutionStepValue() += perturbation_vector[thread];
-
-                    //BuildRHS(pScheme, rModelPart, perturbed_b_vector[thread]);
-                    //BuildRHSNoDirichletSerial(pScheme, rModelPart, perturbed_b_vector[thread]);
-            //--------------------------------------------------
-            //--------------------------------------------------
-            //--------------------------------------------------
-                    for (int i=0; i<nelements; i++) {
-                        typename ElementsArrayType::iterator it = pElements.begin() + i;
-                        //detect if the element is active or not. If the user did not make any choice the element
-                        //is active by default
-                        bool element_is_active = true;
-                        if( (it)->IsDefined(ACTIVE) ) {
-                            element_is_active = (it)->Is(ACTIVE);
-                        }
-
-                        if(element_is_active) {
-                            //calculate elemental Right Hand Side Contribution
-                            pScheme->CalculateRHSContribution(*it, RHS_Contribution, EquationId, CurrentProcessInfo);
-
-                            //assemble the elemental contribution
-                            AssembleRHS(perturbed_b_vector[thread], RHS_Contribution, EquationId);
-                        }
-                    }
-
-                    LHS_Contribution.resize(0, 0, false);
-                    RHS_Contribution.resize(0, false);
-
-                    // assemble all conditions
-                    for (int i = 0; i<nconditions; i++) {
-                        auto it = ConditionsArray.begin() + i;
-                        //detect if the element is active or not. If the user did not make any choice the element
-                        //is active by default
-                        bool condition_is_active = true;
-                        if( (it)->IsDefined(ACTIVE) ) {
-                            condition_is_active = (it)->Is(ACTIVE);
-                        }
-
-                        if(condition_is_active) {
-                            //calculate elemental contribution
-                            pScheme->CalculateRHSContribution(*it, RHS_Contribution, EquationId, CurrentProcessInfo);
-
-                            //assemble the elemental contribution
-                            AssembleRHS(perturbed_b_vector[thread], RHS_Contribution, EquationId);
-                        }
-                    }
-            //--------------------------------------------------
-            //--------------------------------------------------
-            //--------------------------------------------------
-
-                    TSparseSpace::UnaliasedAdd(perturbed_b_vector[thread], -1.0, rb); // finite difference
-                    for (int i = 0; i < rA.size1(); i++) {
-                        rA(i, dof_id) = -(perturbed_b_vector[thread])[i] / perturbation_vector[thread];
-                    }
-                    TSparseSpace::SetToZero(perturbed_b_vector[thread]);
-                    it_dof->GetSolutionStepValue() -= perturbation_vector[thread];
+        unsigned int dof = 0;
+        for (auto& r_dof : BaseType::mDofSet) {
+            const IndexType dof_id = r_dof.EquationId();
+            if (!r_dof.IsFixed()) {
+                double perturbation = pert * r_dof.GetSolutionStepValue();
+                if (std::abs(perturbation) == 0.0)
+                    perturbation = 1.0e-3;
+                r_dof.GetSolutionStepValue() += perturbation;
+                BuildRHS(pScheme, rModelPart, perturbed_b);
+                TSparseSpace::UnaliasedAdd(perturbed_b, -1.0, rb); // finite difference
+                #pragma omp parallel for
+                for (int i = 0; i < rA.size1(); i++) {
+                    rA(i, dof_id) = -perturbed_b[i] / perturbation;
                 }
+                TSparseSpace::SetToZero(perturbed_b);
+                r_dof.GetSolutionStepValue() -= perturbation;
+            } else {
+                rA(dof_id, dof_id) = 1.0e6;
             }
         }
 
