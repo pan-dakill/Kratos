@@ -247,12 +247,23 @@ public:
         mpBuilderAndSolver->SystemSolve(mA, mDxf, mb);
 
         //update results
-        double DLambda = mRadius/TSparseSpace::TwoNorm(mDxf);
+        double DLambda = mRadius / TSparseSpace::TwoNorm(mDxf);
         mDLambdaStep = DLambda;
         mLambda += DLambda;
         noalias(mDxPred) = DLambda*mDxf;
         noalias(mDxStep) = mDxPred;
+        //KRATOS_WATCH(mb)
         this->Update(rDofSet, mA, mDxPred, mb);
+
+        // KRATOS_WATCH(DLambda) ok
+        // KRATOS_WATCH(mDLambdaStep) ok
+        // TSparseSpace::SetToZero(mb);
+        // mpBuilderAndSolver->BuildRHS(mpScheme, BaseType::GetModelPart(), mb);
+        // KRATOS_WATCH(mb)
+        // KRATOS_WATCH(mDxPred)
+        //KRATOS_WATCH(mDxf) ok
+        // KRATOS_WATCH(mA) should be ok
+        // KRATOS_WATCH(is_converged) ok
 
         //move the mesh if needed
         if(BaseType::MoveMeshFlag() == true) BaseType::MoveMesh();
@@ -261,10 +272,16 @@ public:
         if (is_converged == true)
         {
             mpConvergenceCriteria->InitializeSolutionStep(BaseType::GetModelPart(), rDofSet, mA, mDxf, mb);
+            // KRATOS_WATCH(mb) OK
             if (mpConvergenceCriteria->GetActualizeRHSflag() == true)
             {
                 TSparseSpace::SetToZero(mb);
                 mpBuilderAndSolver->BuildRHS(mpScheme, BaseType::GetModelPart(), mb);
+                //TSparseSpace::UnaliasedAdd(mb, -1.0, mf);
+                // KRATOS_WATCH(BaseType::GetModelPart().GetNode(125).FastGetSolutionStepValue(DISPLACEMENT))
+                // KRATOS_WATCH(BaseType::GetModelPart().GetCondition(1).GetValue(POINT_LOAD))
+                // KRATOS_WATCH(BaseType::GetModelPart().GetNode(171).FastGetSolutionStepValue(FORCE))
+                KRATOS_WATCH(mb) // NOT EQUAL
             }
             is_converged = mpConvergenceCriteria->PostCriteria(BaseType::GetModelPart(), rDofSet, mA, mDxf, mb);
         }
@@ -635,12 +652,14 @@ protected:
 
                     for (ModelPart::NodeIterator itNode = NodesBegin; itNode != NodesEnd; ++itNode)
                     {
-                        double& rvaluex = itNode->FastGetSolutionStepValue(varx);
-                        rvaluex *= (mLambda/mLambda_old);
-                        double& rvaluey = itNode->FastGetSolutionStepValue(vary);
-                        rvaluey *= (mLambda/mLambda_old);
-                        double& rvaluez = itNode->FastGetSolutionStepValue(varz);
-                        rvaluez *= (mLambda/mLambda_old);
+                        if (itNode->SolutionStepsDataHas(varx)) {
+                            double& rvaluex = itNode->FastGetSolutionStepValue(varx);
+                            rvaluex *= (mLambda/mLambda_old);
+                            double& rvaluey = itNode->FastGetSolutionStepValue(vary);
+                            rvaluey *= (mLambda/mLambda_old);
+                            double& rvaluez = itNode->FastGetSolutionStepValue(varz);
+                            rvaluez *= (mLambda/mLambda_old);
+                        }
                     }
                 }
 
