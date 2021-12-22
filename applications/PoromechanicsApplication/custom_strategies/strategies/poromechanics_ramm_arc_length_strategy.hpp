@@ -622,9 +622,10 @@ protected:
             else if( KratosComponents< Variable<array_1d<double,3> > >::Has(VariableName) )
             {
                 typedef Variable<double> component_type;
-                const component_type& varx = KratosComponents< component_type >::Get(VariableName+std::string("_X"));
-                const component_type& vary = KratosComponents< component_type >::Get(VariableName+std::string("_Y"));
-                const component_type& varz = KratosComponents< component_type >::Get(VariableName+std::string("_Z"));
+                const Variable<array_1d<double, 3>> &var = KratosComponents<Variable<array_1d<double, 3>>>::Get(VariableName);
+                // const component_type& varx = KratosComponents< component_type >::Get(VariableName+std::string("_X"));
+                // const component_type& vary = KratosComponents< component_type >::Get(VariableName+std::string("_Y"));
+                // const component_type& varz = KratosComponents< component_type >::Get(VariableName+std::string("_Z"));
 
                 // #pragma omp parallel
                 // {
@@ -651,12 +652,16 @@ protected:
 
                     for (ModelPart::ConditionIterator it_cond = ConditionsBegin; it_cond != ConditionsEnd; ++it_cond)
                     {
-                        double& rvaluex = it_cond->GetValue(varx);
-                        rvaluex *= (mLambda/mLambda_old);
-                        double& rvaluey = it_cond->GetValue(vary);
-                        rvaluey *= (mLambda/mLambda_old);
-                        double& rvaluez = it_cond->GetValue(varz);
-                        rvaluez *= (mLambda/mLambda_old);
+                        auto& r_value = it_cond->GetValue(var);
+                        r_value[0] *= (mLambda/mLambda_old);
+                        r_value[1] *= (mLambda/mLambda_old);
+                        r_value[2] *= (mLambda/mLambda_old);
+                        // double& rvaluex = it_cond->GetValue(varx);
+                        // rvaluex *= (mLambda/mLambda_old);
+                        // double& rvaluey = it_cond->GetValue(vary);
+                        // rvaluey *= (mLambda/mLambda_old);
+                        // double& rvaluez = it_cond->GetValue(varz);
+                        // rvaluez *= (mLambda/mLambda_old);
                     }
                 }
             }
