@@ -255,7 +255,8 @@ public:
         //KRATOS_WATCH(mb)
         this->Update(rDofSet, mA, mDxPred, mb);
 
-        // KRATOS_WATCH(DLambda) ok
+        // KRATOS_WATCH(mLambda)
+        // KRATOS_WATCH(mLambda_old)
         // KRATOS_WATCH(mDLambdaStep) ok
         // TSparseSpace::SetToZero(mb);
         // mpBuilderAndSolver->BuildRHS(mpScheme, BaseType::GetModelPart(), mb);
@@ -276,12 +277,14 @@ public:
             if (mpConvergenceCriteria->GetActualizeRHSflag() == true)
             {
                 TSparseSpace::SetToZero(mb);
+                // TSparseSpace::UnaliasedAdd(mb, -1.0, );
                 mpBuilderAndSolver->BuildRHS(mpScheme, BaseType::GetModelPart(), mb);
                 //TSparseSpace::UnaliasedAdd(mb, -1.0, mf);
+                // KRATOS_WATCH(BaseType::GetModelPart().GetNode(53).FastGetSolutionStepValue(DISPLACEMENT))
                 // KRATOS_WATCH(BaseType::GetModelPart().GetNode(125).FastGetSolutionStepValue(DISPLACEMENT))
                 // KRATOS_WATCH(BaseType::GetModelPart().GetCondition(1).GetValue(POINT_LOAD))
                 // KRATOS_WATCH(BaseType::GetModelPart().GetNode(171).FastGetSolutionStepValue(FORCE))
-                KRATOS_WATCH(mb) // NOT EQUAL
+                //KRATOS_WATCH(mb) // NOT EQUAL
             }
             is_converged = mpConvergenceCriteria->PostCriteria(BaseType::GetModelPart(), rDofSet, mA, mDxf, mb);
         }
@@ -649,6 +652,7 @@ protected:
                     ModelPart::NodeIterator NodesBegin;
                     ModelPart::NodeIterator NodesEnd;
                     OpenMPUtils::PartitionedIterators(rSubModelPart.Nodes(),NodesBegin,NodesEnd);
+                    // KRATOS_WATCH(mLambda/mLambda_old)
 
                     for (ModelPart::NodeIterator itNode = NodesBegin; itNode != NodesEnd; ++itNode)
                     {
@@ -672,9 +676,9 @@ protected:
                     for (ModelPart::ConditionIterator it_cond = ConditionsBegin; it_cond != ConditionsEnd; ++it_cond)
                     {
                         auto& r_value = it_cond->GetValue(var);
-                        r_value[0] *= (mLambda/mLambda_old);
-                        r_value[1] *= (mLambda/mLambda_old);
-                        r_value[2] *= (mLambda/mLambda_old);
+                        r_value[0] *= (mLambda);
+                        r_value[1] *= (mLambda);
+                        r_value[2] *= (mLambda);
                         // double& rvaluex = it_cond->GetValue(varx);
                         // rvaluex *= (mLambda/mLambda_old);
                         // double& rvaluey = it_cond->GetValue(vary);
