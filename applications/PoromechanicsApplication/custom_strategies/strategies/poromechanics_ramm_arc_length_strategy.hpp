@@ -623,26 +623,26 @@ protected:
             {
                 typedef Variable<double> component_type;
                 const Variable<array_1d<double, 3>> &var = KratosComponents<Variable<array_1d<double, 3>>>::Get(VariableName);
-                // const component_type& varx = KratosComponents< component_type >::Get(VariableName+std::string("_X"));
-                // const component_type& vary = KratosComponents< component_type >::Get(VariableName+std::string("_Y"));
-                // const component_type& varz = KratosComponents< component_type >::Get(VariableName+std::string("_Z"));
+                const component_type& varx = KratosComponents< component_type >::Get(VariableName+std::string("_X"));
+                const component_type& vary = KratosComponents< component_type >::Get(VariableName+std::string("_Y"));
+                const component_type& varz = KratosComponents< component_type >::Get(VariableName+std::string("_Z"));
 
-                // #pragma omp parallel
-                // {
-                //     ModelPart::NodeIterator NodesBegin;
-                //     ModelPart::NodeIterator NodesEnd;
-                //     OpenMPUtils::PartitionedIterators(rSubModelPart.Nodes(),NodesBegin,NodesEnd);
+                #pragma omp parallel
+                {
+                    ModelPart::NodeIterator NodesBegin;
+                    ModelPart::NodeIterator NodesEnd;
+                    OpenMPUtils::PartitionedIterators(rSubModelPart.Nodes(),NodesBegin,NodesEnd);
 
-                //     for (ModelPart::NodeIterator itNode = NodesBegin; itNode != NodesEnd; ++itNode)
-                //     {
-                //         double& rvaluex = itNode->FastGetSolutionStepValue(varx);
-                //         rvaluex *= (mLambda/mLambda_old);
-                //         double& rvaluey = itNode->FastGetSolutionStepValue(vary);
-                //         rvaluey *= (mLambda/mLambda_old);
-                //         double& rvaluez = itNode->FastGetSolutionStepValue(varz);
-                //         rvaluez *= (mLambda/mLambda_old);
-                //     }
-                // }
+                    for (ModelPart::NodeIterator itNode = NodesBegin; itNode != NodesEnd; ++itNode)
+                    {
+                        double& rvaluex = itNode->FastGetSolutionStepValue(varx);
+                        rvaluex *= (mLambda/mLambda_old);
+                        double& rvaluey = itNode->FastGetSolutionStepValue(vary);
+                        rvaluey *= (mLambda/mLambda_old);
+                        double& rvaluez = itNode->FastGetSolutionStepValue(varz);
+                        rvaluez *= (mLambda/mLambda_old);
+                    }
+                }
 
                 #pragma omp parallel
                 {
