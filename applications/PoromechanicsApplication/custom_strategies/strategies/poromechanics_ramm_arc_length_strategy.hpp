@@ -626,19 +626,36 @@ protected:
                 const component_type& vary = KratosComponents< component_type >::Get(VariableName+std::string("_Y"));
                 const component_type& varz = KratosComponents< component_type >::Get(VariableName+std::string("_Z"));
 
+                // #pragma omp parallel
+                // {
+                //     ModelPart::NodeIterator NodesBegin;
+                //     ModelPart::NodeIterator NodesEnd;
+                //     OpenMPUtils::PartitionedIterators(rSubModelPart.Nodes(),NodesBegin,NodesEnd);
+
+                //     for (ModelPart::NodeIterator itNode = NodesBegin; itNode != NodesEnd; ++itNode)
+                //     {
+                //         double& rvaluex = itNode->FastGetSolutionStepValue(varx);
+                //         rvaluex *= (mLambda/mLambda_old);
+                //         double& rvaluey = itNode->FastGetSolutionStepValue(vary);
+                //         rvaluey *= (mLambda/mLambda_old);
+                //         double& rvaluez = itNode->FastGetSolutionStepValue(varz);
+                //         rvaluez *= (mLambda/mLambda_old);
+                //     }
+                // }
+
                 #pragma omp parallel
                 {
-                    ModelPart::NodeIterator NodesBegin;
-                    ModelPart::NodeIterator NodesEnd;
-                    OpenMPUtils::PartitionedIterators(rSubModelPart.Nodes(),NodesBegin,NodesEnd);
+                    ModelPart::ConditionIterator ConditionsBegin;
+                    ModelPart::ConditionIterator ConditionsEnd;
+                    OpenMPUtils::PartitionedIterators(rSubModelPart.Conditions(), ConditionsBegin, ConditionsEnd);
 
-                    for (ModelPart::NodeIterator itNode = NodesBegin; itNode != NodesEnd; ++itNode)
+                    for (ModelPart::ConditionIterator it_cond = ConditionsBegin; it_cond != ConditionsEnd; ++it_cond)
                     {
-                        double& rvaluex = itNode->FastGetSolutionStepValue(varx);
+                        double& rvaluex = it_cond->GetValue(varx);
                         rvaluex *= (mLambda/mLambda_old);
-                        double& rvaluey = itNode->FastGetSolutionStepValue(vary);
+                        double& rvaluey = it_cond->GetValue(vary);
                         rvaluey *= (mLambda/mLambda_old);
-                        double& rvaluez = itNode->FastGetSolutionStepValue(varz);
+                        double& rvaluez = it_cond->GetValue(varz);
                         rvaluez *= (mLambda/mLambda_old);
                     }
                 }
